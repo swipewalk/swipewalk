@@ -251,7 +251,7 @@ public sealed class ScanService(IProgress<string> log)
                         OtherAppearancePixelScale = other.PixelScale,
                         AppearanceUnchanged = true,
                     };
-                    log.Report($"The screen looked the same after switching to {otherAppearance} appearance; the app may not have picked it up.");
+                    log.Report($"The screen looked the same after switching to {otherAppearance} appearance; the app may force one theme, use fixed colors, or only read the theme at launch.");
                 }
                 else
                     screen = AppearanceMerge.Merge(screen, primaryAppearance, other, otherAppearance);
@@ -290,7 +290,7 @@ public sealed class ScanService(IProgress<string> log)
     /// <returns>
     /// The other appearance's rule results and the two appearance labels (all three non-null together, on
     /// success); a skip reason when nothing was captured; whether the two captures looked the same (see
-    /// <see cref="AppearanceChangeDetector"/>) -- meaning the app most likely did not respond to the change.
+    /// <see cref="AppearanceChangeDetector"/>) -- meaning the screen most likely did not visibly change.
     /// </returns>
     private async Task<(ScreenResult? Other, string? Appearance, string? OtherAppearance, string? SkippedReason, bool Unchanged)> RunAppearanceRescanAsync(
         bool ios, ScanOptions options, ScreenSnapshot snapshot, string captureDir, CancellationToken cancellationToken)

@@ -415,7 +415,7 @@ public static class HtmlReport
         {
             html.Append(AppearanceFigure(screen, appearanceShot, numbered));
             if (screen.AppearanceUnchanged == true)
-                html.Append($"""<p class="hint">The screen looked the same after switching to {E(screen.OtherAppearance)} appearance, so the app may not have picked up the change; these findings may not reflect that appearance.</p>""");
+                html.Append($"""<p class="hint">The screen looked the same after switching to {E(screen.OtherAppearance)} appearance -- the app may force one theme, use fixed colors, or only read the theme at launch; these findings may not reflect that appearance.</p>""");
         }
         else if (screen.AppearanceSkippedReason is { } appearanceSkippedReason)
             html.Append($"""<p class="hint">Appearance check not done: {E(appearanceSkippedReason)}. Check this screen in the other appearance by hand.</p>""");

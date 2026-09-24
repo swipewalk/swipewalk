@@ -3,11 +3,12 @@ namespace Swipewalk.Core.Model;
 /// <summary>
 /// Tells whether a screen captured again after switching the device's dark/light appearance (see
 /// <c>Swipewalk.Engine.ScanOptions.AppearanceBoth</c>) actually looks any different, or whether the app did
-/// not visibly respond to the change -- some frameworks (e.g. .NET MAUI apps that only read the theme at
-/// launch) need a restart to pick up a new appearance, the same way some apps only pick up a larger system
-/// text size after a restart. This is a pure, testable decision: same accessibility tree (so it's genuinely
-/// the same screen, not a relaunch that landed somewhere else) and near-identical average screenshot
-/// brightness. A different screen, or a real color change, is never called "unchanged".
+/// not visibly respond to the change. This can't tell why: the app may force one theme regardless of the
+/// system setting, use fixed colors instead of theme-aware ones, or only read the theme at launch and need a
+/// restart to pick up a new one -- the scan has no way to distinguish those from the outside. This is a pure,
+/// testable decision: same accessibility tree (so it's genuinely the same screen, not a relaunch that landed
+/// somewhere else) and near-identical average screenshot brightness. A different screen, or a real color
+/// change, is never called "unchanged".
 /// </summary>
 public static class AppearanceChangeDetector
 {

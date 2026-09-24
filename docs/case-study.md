@@ -380,19 +380,53 @@ Simulator `simctl ui appearance`), captures again, runs every check on both capt
 the device's original appearance afterward. Verified with real runs, each confirmed restored to its
 starting appearance afterward:
 
+- **WeatherTwentyOne itself, on an Android emulator and a physical Pixel 4a**: `scan --appearance
+  both`, run once on each device (the emulator starting in light mode, the Pixel 4a starting in dark
+  mode), reproduced the same 5 WCAG 1.4.3 contrast failures the two hand-compared scans above found,
+  automatically, in a single run each. On the emulator: those 5 failures plus 4 ATF icon-contrast
+  review items, all labeled "Only in light appearance"; a `page-titled` item (no pane title set) was
+  the only finding common to both appearances. On the Pixel 4a: the same 5 contrast failures
+  (measured slightly differently -- about 2.15-2.17:1 vs. the emulator's 2.14-2.17:1, device
+  rendering differences) plus 5 ATF icon-contrast review items, again all labeled "Only in light
+  appearance", and the same `page-titled` item common to both appearances. The app redrew live in
+  both directions on both devices -- no restart was needed. This is public, MIT-licensed Microsoft
+  sample code (`Microsoft.Maui.Controls` 10.0.60, using `AppThemeBinding`), so this result can be
+  shown as-is.
 - **BuggyApp (MAUI)**, light-to-dark on an Android emulator, dark-to-light on a Pixel 4a, and
   light-to-dark on the iOS Simulator: in all three, the second screenshot was byte-identical to the
-  first (confirmed by comparing the two capture files directly) -- the app did not visibly respond
-  to the appearance change on any of the three platforms tested, so `--appearance both` reported the
-  screen as unchanged rather than silently repeating the same findings under two labels.
-- **samples/NativeAndroid** (Views), on the same emulator and Pixel 4a: also byte-identical between
-  the two captures.
-- **samples/NativeiOS** (UIKit "Pay a parking ticket" screen), on the iOS Simulator: this one *did*
-  visibly change -- the second capture found one additional WCAG 1.4.3 Contrast (Minimum) (AA)
-  failure not present in the first ("View payment history", about 1.48:1, white text on a light
-  gray background, only visible once the appearance actually switched to dark). The report labels
-  that finding "Only in dark appearance"; the 12 findings seen in both captures are labeled "Found
-  in both appearances".
+  first (confirmed by comparing the two capture files directly), so `--appearance both` reported the
+  screen as unchanged rather than silently repeating the same findings under two labels. The specific
+  reason here isn't "MAUI ignores appearance changes" -- WeatherTwentyOne is MAUI too, and it redrew
+  live above. BuggyApp's `App.xaml.cs` sets `UserAppTheme = AppTheme.Light` deliberately (the ground
+  truth assumes light colors), which forces light appearance regardless of the system setting on
+  every platform MAUI's `UserAppTheme` applies to -- exactly what was observed on all three.
+- **samples/NativeAndroid's launcher screen** (the plain "VIEWS SCREEN" / "COMPOSE SCREEN" picker
+  shown on launch, not the Views or Compose ground-truth screens themselves), on the same emulator
+  and Pixel 4a: also byte-identical between the two captures. Its theme
+  (`Theme.MaterialComponents.DayNight.DarkActionBar`) is otherwise DayNight-aware, but the app's
+  `styles.xml` overrides `android:windowBackground` to a fixed white and doesn't vary
+  `colorPrimary`/`colorAccent` for night mode -- fixed colors, not a live-update limitation of
+  native Android. From the source, its Compose screen also hard-codes its own colors directly (e.g.
+  `Color(0xFF1F1F1F)`), the same reason: nothing there is theme-aware to begin with either, though
+  that screen itself wasn't part of this device verification (only the launcher screen was scanned).
+- **samples/NativeiOS** (UIKit "Pay a parking ticket" screen), on the iOS Simulator: this screen sets
+  a fixed white `view.backgroundColor` in code, the same kind of forced-color choice as the two
+  samples above -- but changed partly anyway: the second capture found one additional WCAG 1.4.3
+  Contrast (Minimum) (AA) failure not present in the first ("View payment history", about 1.48:1,
+  white text on a light gray background). Its text color evidently follows the system's dynamic
+  label color (white in dark mode) while the element behind it kept a fixed light gray, creating a
+  contrast mismatch that only shows up in dark appearance -- a fixed background and a theme-aware
+  foreground can disagree even within the same screen. The report labels that finding "Only in dark
+  appearance"; the 12 findings seen in both captures are labeled "Found in both appearances".
+
+None of this shows that a framework class (MAUI, native Android, native iOS) generally does or
+doesn't respond live to an appearance change -- it depends on whether the specific colors in play
+(background, text, icons) are theme-aware or fixed, which can differ element by element within one
+screen, and which a scan can't tell from the outside. WeatherTwentyOne (MAUI, `AppThemeBinding`)
+changed throughout; BuggyApp (MAUI, a forced theme) and samples/NativeAndroid's launcher (fixed
+colors) didn't change at all; samples/NativeiOS (a fixed background, but at least one dynamic text
+color) changed partly. The deciding factor was each app's own color handling, not the platform or
+framework.
 
 Not supported yet on a physical iPhone -- Swipewalk doesn't switch a physical iPhone's appearance
 yet. A scan attempted on a physical iPhone with `--appearance both` in this verification failed
