@@ -36,6 +36,19 @@ public sealed record ScanOptions
     public string? Standard { get; init; }
     public string ScreenName { get; init; } = "Screen 1";
     public bool LargeText { get; init; }
+
+    /// <summary>
+    /// scan only for now: also capture the screen in the device's other dark/light appearance (Android
+    /// `cmd uimode night`; iOS Simulator `simctl ui appearance`) and run every rule on that capture too, so a
+    /// contrast failure that only shows up in one theme is still found regardless of which theme the device
+    /// happened to be in (see docs/case-study.md: the same screen scanned clean in dark mode and found 5
+    /// contrast failures in light mode). The device's original appearance is restored afterward, including on
+    /// an error or cancellation. Off by default: it doubles the capture and rule-running work for a screen.
+    /// Not supported yet on a physical iPhone -- see <c>Swipewalk.Core.Reports.AppearanceLabels
+    /// .PhysicalIphoneNotSupportedReason</c> -- where it is skipped with a reason rather than attempted.
+    /// </summary>
+    public bool AppearanceBoth { get; init; }
+
     public bool KeepStatusBar { get; init; }
     public bool SkipChecks { get; init; }
 

@@ -53,6 +53,16 @@ public sealed record Finding
 
     /// <summary>Platform engines that reported the same issue on the same element.</summary>
     public IReadOnlyList<string> AlsoReportedBy { get; init; } = [];
+
+    /// <summary>
+    /// Which appearance this finding came from, when the screen was checked in both (see
+    /// <c>Swipewalk.Engine.ScanOptions.AppearanceBoth</c> and <see cref="Reports.AppearanceMerge"/>):
+    /// <c>"dark"</c> or <c>"light"</c> for a finding seen in only one of the two captures, or
+    /// <see cref="Reports.AppearanceLabels.Both"/> when the same rule reported the same element in each. The
+    /// WCAG mapping above is unchanged either way -- both are user-selectable modes, so a contrast failure in
+    /// either one is a real WCAG failure. Null when the appearance rescan did not run for this screen.
+    /// </summary>
+    public string? Appearance { get; init; }
 }
 
 /// <summary>The findings for one scanned screen.</summary>
@@ -153,4 +163,37 @@ public sealed record ScreenResult
     /// Null for a screen's first (or only) capture in a run, and always null for a scan.
     /// </summary>
     public DateTimeOffset? RescannedAt { get; init; }
+
+    /// <summary>
+    /// The appearance ("dark" or "light") the primary capture above was taken in, when the dark/light
+    /// rescan (<c>Swipewalk.Engine.ScanOptions.AppearanceBoth</c>) ran for this screen. Null when it wasn't
+    /// requested for this run.
+    /// </summary>
+    public string? Appearance { get; init; }
+
+    /// <summary>The other appearance actually captured and compared against. Null when the rescan wasn't
+    /// requested, or was requested but skipped -- see <see cref="AppearanceSkippedReason"/>.</summary>
+    public string? OtherAppearance { get; init; }
+
+    /// <summary>Screenshot of the screen in <see cref="OtherAppearance"/>, alongside the primary one above.</summary>
+    public string? OtherAppearanceScreenshotPath { get; init; }
+
+    public double OtherAppearancePixelScale { get; init; } = 1.0;
+
+    /// <summary>
+    /// Why the other-appearance capture wasn't made for this screen, when the rescan was requested: today,
+    /// always because appearance can't yet be changed on a physical iPhone (see docs/limitations.md). Null
+    /// when it was captured (see <see cref="OtherAppearance"/>), or wasn't requested for this run.
+    /// </summary>
+    public string? AppearanceSkippedReason { get; init; }
+
+    /// <summary>
+    /// True when the other-appearance capture looked the same as the primary one -- same accessibility tree,
+    /// near-identical screenshot brightness (see <see cref="Model.AppearanceChangeDetector"/>) -- meaning the
+    /// app most likely did not pick up the appearance change (some frameworks only read the theme at launch,
+    /// the same restart requirement some apps have for a larger text size). Findings from that capture are
+    /// still reported, since automated checks did run against it, but the report says the check may not
+    /// reflect the other appearance. Null when not checked, or when a real change was seen.
+    /// </summary>
+    public bool? AppearanceUnchanged { get; init; }
 }

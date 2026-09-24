@@ -92,6 +92,13 @@ const string Usage = """
                              set through the Settings app on a physical iPhone). On a physical device this
                              changes the phone's text size and restores it; use a test device. record does
                              this by default
+      --appearance <both>    scan: also capture the screen in the device's other dark/light appearance (Android
+                             `cmd uimode night`; iOS Simulator `simctl ui appearance`) and run every check on
+                             it too, so a contrast failure that only shows up in one theme isn't missed just
+                             because the device happened to be in the other one. Restores the device's original
+                             appearance afterward, including on an error or Ctrl-C. Off by default. Not
+                             supported yet on a physical iPhone (the report says why it was skipped); Simulator
+                             and emulator/Android device both work
       --standard <id>        Focus the report on one standard: ada-title-ii, section-508, en-301-549, en-301-549-v4, uk-public-sector
       --expect <names>       record: comma-separated screens you meant to cover; missing ones are listed
       --auto                 record: also scan automatically when the screen changes (default: off -- only
@@ -307,6 +314,21 @@ if (options is null || platformName is not ("android" or "ios")
 }
 if (!ValidStandard(options.GetValueOrDefault("standard")))
     return 1;
+if (options.GetValueOrDefault("appearance") is { } appearanceValue)
+{
+    if (appearanceValue != "both")
+    {
+        Console.Error.WriteLine($"--appearance must be \"both\", not \"{appearanceValue}\".");
+        return 1;
+    }
+    if (command == "record")
+    {
+        // Not wired into Recorder yet (see ScanOptions.AppearanceBoth); reject rather than silently do
+        // nothing, so nobody thinks a recording checked both appearances when it didn't.
+        Console.Error.WriteLine("--appearance is scan only for now; record does not support it yet.");
+        return 1;
+    }
+}
 
 var scanOptions = ToScanOptions(platformName, options, command);
 if (command == "doctor")
@@ -416,6 +438,7 @@ static ScanOptions ToScanOptions(string platform, Dictionary<string, string> o, 
     Standard = o.GetValueOrDefault("standard"),
     ScreenName = o.GetValueOrDefault("screen") ?? "Screen 1",
     LargeText = command == "record" ? o.GetValueOrDefault("large-text") != "false" : o.GetValueOrDefault("large-text") is { } lt && lt != "false",
+    AppearanceBoth = o.GetValueOrDefault("appearance") == "both",
     KeepStatusBar = o.GetValueOrDefault("keep-status-bar") is { } k && k != "false",
     SkipChecks = o.ContainsKey("skip-checks"),
     FromCapture = o.GetValueOrDefault("from"),
