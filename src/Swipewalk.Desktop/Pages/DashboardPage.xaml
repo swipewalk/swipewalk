@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Swipewalk.Desktop.Pages.DashboardPage"
+             Title="Dashboard">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,16" Spacing="16">
+            <Label Text="Dashboard" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Automated checks find only some accessibility issues; manual testing is still required. Numbers are counts of findings, not a measure of conformance." FontSize="{DynamicResource FontCaption}" />
+            <FlexLayout x:Name="Tiles" Wrap="Wrap" JustifyContent="Start" />
+            <Label Text="Latest run per app" FontSize="{DynamicResource FontHeading}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+            <VerticalStackLayout x:Name="LatestList" Spacing="12" />
+            <Button Text="Start a new scan" StyleClass="primary" Clicked="OnNewScan" HorizontalOptions="Start" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

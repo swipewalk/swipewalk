@@ -1,0 +1,8 @@
+<resources>
+    <color name="white">#FFFFFFFF</color>
+    <color name="text_dark">#FF1F1F1F</color>
+    <color name="low_contrast_gray">#FFAAAAAA</color>
+    <color name="icon_low_contrast">#FFDDDDDD</color>
+    <color name="brand_blue">#FF1F4E79</color>
+    <color name="light_panel">#FFE8EEF4</color>
+</resources>

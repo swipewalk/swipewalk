@@ -1,0 +1,97 @@
+name: Docs check
+
+# A PR that changes user-facing code must also touch docs/** or README.md, unless its description
+# says why not (see CONTRIBUTING.md, "Keep docs current"). Also fails a PR that adds a tracked-file
+# reference to the repo's local-only, gitignored notes file or its directory, since a public reader
+# can't see either one. This is a required check on main.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  docs-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: No references to private notes in tracked files
+        env:
+          # This file is excluded from the search below, since it has to name the pattern.
+          PRIVATE_NOTES_PATTERN: CLAUDE\.md|\.claude/
+        run: |
+          set -euo pipefail
+
+          # The notes file and its directory are local-only and gitignored; tracked files must not point
+          # readers at them. Excluded from the search: .gitignore (the one allowed mention, just listing
+          # the filename) and this workflow file itself.
+          matches=$(git grep -n -iE "$PRIVATE_NOTES_PATTERN" -- . ':!.gitignore' ':!.github/workflows/docs-check.yml' || true)
+          if [ -n "$matches" ]; then
+            echo "::error::Tracked files reference the private notes file or its directory, which are gitignored -- readers of the public repo can't see them. Replace the reference with the underlying fact, or drop it."
+            echo "$matches"
+            exit 1
+          fi
+
+          echo "OK."
+
+      - name: Docs updated, or explained as not needed
+        env:
+          # The PR body is attacker-controlled text (anyone who can open a PR controls it), so it's
+          # passed through the environment and read with "$PR_BODY" below rather than interpolated
+          # into the run script via ${{ }} -- interpolating it directly would let a PR description
+          # inject arbitrary shell commands into this step.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if grep -qE '^Docs: none needed' <<< "$PR_BODY"; then
+            echo "PR description has a 'Docs: none needed' line -- not requiring a docs change."
+            exit 0
+          fi
+
+          # List every file this PR changes via the API (paginated); no checkout needed for that.
+          changed_files=$(mktemp)
+          page=1
+          while :; do
+            response=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/files?per_page=100&page=$page")
+            names=$(printf '%s' "$response" | jq -r '.[].filename')
+            if [ -z "$names" ]; then
+              break
+            fi
+            printf '%s\n' "$names" >> "$changed_files"
+            count=$(printf '%s' "$response" | jq 'length')
+            if [ "$count" -lt 100 ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+
+          # Where user-facing text lives: CLI output and options (Swipewalk.Cli), desktop app screens
+          # (XAML and its code-behind), rule/finding/fix-guidance wording, report and coverage-table
+          # text, known limitations, and the WCAG/law standards mapping (mirrors Limitations: both
+          # generate a docs/*.md page and are guarded by a DocsPage_IsUpToDate test) -- plus anything
+          # the Engine library surfaces through the CLI or desktop app (e.g. exit-code/status wording).
+          code_pattern='^(src/Swipewalk\.Cli/|src/Swipewalk\.Desktop/.*\.xaml|src/Swipewalk\.Core/Rules/|src/Swipewalk\.Core/Reports/|src/Swipewalk\.Core/Limitations/|src/Swipewalk\.Core/Coverage/|src/Swipewalk\.Core/Standards/|src/Swipewalk\.Engine/)'
+          docs_pattern='^(docs/|README\.md$)'
+
+          touches_code=$(grep -cE "$code_pattern" "$changed_files" || true)
+          touches_docs=$(grep -cE "$docs_pattern" "$changed_files" || true)
+
+          echo "Changed files touching user-facing code: $touches_code; touching docs/README: $touches_docs"
+
+          if [ "$touches_code" -gt 0 ] && [ "$touches_docs" -eq 0 ]; then
+            echo "::error::This PR changes user-facing code (CLI, desktop UI, rules, reports, limitations, coverage, standards or the Engine) but doesn't touch docs/** or README.md."
+            echo "::error::Fix: update the relevant doc in this PR (see CONTRIBUTING.md's \"Keep docs current\" section -- regenerate docs/limitations.md, docs/standards.md and docs/checks.md if you changed the rules, limitations or standards they're generated from), or add a line starting with \"Docs: none needed - <reason>\" to the PR description explaining why no doc applies."
+            exit 1
+          fi
+
+          echo "OK."

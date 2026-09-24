@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.NativeAndroidSample"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Exported (not just reachable from MainActivity) so it can be started directly for
+             scanning, e.g. adb shell am start -n org.swipewalk.nativeandroid/.ViewsActivity -->
+        <activity
+            android:name=".ViewsActivity"
+            android:exported="true"
+            android:label="@string/views_screen_title" />
+
+        <!-- Exported for the same reason: adb shell am start -n org.swipewalk.nativeandroid/.ComposeActivity -->
+        <activity
+            android:name=".ComposeActivity"
+            android:exported="true"
+            android:label="@string/compose_screen_title" />
+
+    </application>
+
+</manifest>

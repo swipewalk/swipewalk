@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Swipewalk.Desktop.Pages.ComparePage"
+             Title="Compare runs">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,16" Spacing="12">
+            <Label Text="Changes since the previous run" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label x:Name="Subtitle" FontSize="{DynamicResource FontBody}" />
+            <Label x:Name="Summary" FontSize="{DynamicResource FontSubheading}" FontAttributes="Bold" />
+            <Label Text="&quot;No longer found&quot; means the automated checks didn't report the issue this time, for example because the issue was addressed, the screen looked different, or a check could not run. Check by hand whether each issue is gone; automated checks find only some issues." FontSize="{DynamicResource FontCaption}" />
+            <HorizontalStackLayout Spacing="12">
+                <Button x:Name="OpenLater" Text="Open this run's report" Clicked="OnOpenLater" />
+                <Button x:Name="OpenEarlier" Text="Open previous report" Clicked="OnOpenEarlier" />
+            </HorizontalStackLayout>
+            <VerticalStackLayout x:Name="Sections" Spacing="8" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

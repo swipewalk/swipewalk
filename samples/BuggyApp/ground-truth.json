@@ -1,0 +1,339 @@
+{
+  "description": "Expected Swipewalk findings for MainPage, per platform. Each finding is matched on rule, kind, role and label (label = accessible name or visible text). null for a platform means no finding is expected there; knownMiss documents a real problem the scanner cannot detect yet. Keys: 'android' and 'ios' for single scans; 'androidLargeText' for findings that need the 200% text-size capture. 'iosLargeText' (AX3, about 235%) is reference data only -- no acceptance test reads it yet, there is no saved iOS large-text fixture. Android findings with an 'atf:' rule id come from Google's Accessibility Test Framework via the instrumentation harness; tests/Swipewalk.Core.Tests/Fixtures/BuggyApp.Android now includes the harness's atf-harness.json sidecar alongside the uiautomator dump, so GroundTruthTests exercises the merge (Finding.AlsoReportedBy) as well as ATF-only findings. A second, smaller fixture (Fixtures/BuggyApp.Android.History, the 'Payment history' screen reached from MainPage) is not covered by this file -- it is scoped to MainPage only -- but is checked by its own test (GroundTruthTests.HistoryScreen_AtfBackArrowContrastFinding) for one ATF-only finding (the back arrow's ImageContrastCheck) that only appears on that screen.",
+  "screen": "Pay a parking ticket",
+  "expected": [
+    {
+      "id": "B1",
+      "planted": true,
+      "element": "City seal image, no text alternative",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "needsReview",
+          "role": "image",
+          "label": null
+        }
+      ],
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "needsReview",
+          "role": "image",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "OK1",
+      "planted": false,
+      "element": "Decorative divider hidden from assistive technology",
+      "note": "Neither uiautomator nor XCUITest exposes the 'hidden on purpose' flag, so it is reported for review like B1. Also flagged by Google's Accessibility Test Framework (ImageContrastCheck, estimated ~2.09:1 against its background) via the Android instrumentation harness; reported for review under 1.4.11, which exempts purely decorative graphics, so a reviewer who confirms the divider is decorative should find no 1.4.11 problem here. Kept as a separate needsReview finding, not merged into missing-name, since it's a different concern (contrast vs. name) -- see RuleRunner.SameConcern. Seen in a live scan of the emulator on 2026-09-23.",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "needsReview",
+          "role": "image",
+          "label": null
+        },
+        {
+          "rule": "atf:ImageContrastCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": null
+        }
+      ],
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "needsReview",
+          "role": "image",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "B2",
+      "planted": true,
+      "element": "Icon-only search button with no name",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ],
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "B3",
+      "planted": true,
+      "element": "Low-contrast helper text (#AAAAAA on white)",
+      "android": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ],
+      "ios": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ]
+    },
+    {
+      "id": "B4",
+      "planted": true,
+      "element": "Plate number entry, visible label not associated",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        },
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": null
+        }
+      ],
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "X1",
+      "planted": false,
+      "element": "Ticket number entry renders 44 dp tall on Android",
+      "note": "Resolved by the .NET MAUI version bump (BuggyApp pinned to 10.0.110, checked 2026-09-22): dotnet/maui#37151 ('SemanticProperties.Description is not applied to Android contentDescription for Entry', fixed .NET 10 SR11) means the uiautomator dump now shows content-desc=\"Ticket number\" on this field, so missing-name no longer fires on Android at all (confirmed by a live scan, not just the saved fixture). Previously (MAUI 10.0.100 and earlier) content-desc was empty and 'Ticket number' appeared only in the rendered text attribute -- the same attribute a typed value would use -- so missing-name reported it for review (see KnownLimitations 'android-edittext-text', which still applies to fields without an explicit SemanticProperties.Description). On iOS this Entry's SemanticProperties.Description becomes a real accessibilityLabel ('Ticket number'), so it is named there and produces no missing-name finding either. The target-size advisory remains on Android, and Google's Accessibility Test Framework, via the Android instrumentation harness, flags this same field on two counts our own rules don't cover: EditableContentDescCheck (mapped to 4.1.2 Name, Role, Value -- the contentDescription the .NET MAUI #37151 fix now sets can stop TalkBack announcing what was typed instead) and DuplicateSpeakableTextCheck (no WCAG criterion is mapped -- the field's speakable text \"Ticket number\" is identical to another element's, probably the visible label above it). Seen in a live scan of the emulator on 2026-09-23. These two stay separate from target-size (different concern -- see RuleRunner.SameConcern); ATF's TouchTargetSizeCheck on this same field is the one that merges into target-size.",
+      "android": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": "Ticket number"
+        },
+        {
+          "rule": "atf:EditableContentDescCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "Ticket number"
+        },
+        {
+          "rule": "atf:DuplicateSpeakableTextCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "Ticket number"
+        }
+      ],
+      "ios": null
+    },
+    {
+      "id": "B5",
+      "planted": true,
+      "element": "Help icon drawn 20x20; MAUI enlarges the touch area to 44 dp/pt",
+      "android": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Help"
+        }
+      ],
+      "ios": null
+    },
+    {
+      "id": "B6",
+      "planted": true,
+      "element": "Button shows 'Pay' but its name is 'Submit'",
+      "android": [
+        {
+          "rule": "label-in-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": "Submit"
+        }
+      ],
+      "ios": [
+        {
+          "rule": "label-in-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": "Submit"
+        }
+      ]
+    },
+    {
+      "id": "B7",
+      "planted": true,
+      "element": "Close button with only an AutomationId (becomes resource-id / accessibilityIdentifier, not a name)",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ],
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "B8",
+      "planted": true,
+      "element": "Email button named 'img_email_receipt'",
+      "android": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_email_receipt"
+        }
+      ],
+      "ios": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "B9",
+      "planted": true,
+      "element": "36 dp/pt tall 'Save for later' button",
+      "android": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Save for later"
+        }
+      ],
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Save for later"
+        }
+      ]
+    },
+    {
+      "id": "B10",
+      "planted": true,
+      "element": "Tiny 'Terms' tap link next to the help button",
+      "note": "Not flagged under WCAG 2.5.8 on iOS because of the spacing exception.",
+      "android": null,
+      "knownMissAndroid": "MAUI does not mark tap-gesture labels as clickable, so uiautomator does not expose it as a target.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Terms"
+        }
+      ]
+    },
+    {
+      "id": "B11",
+      "planted": true,
+      "element": "'Late fees apply after 30 days.' with a fixed 20 dp/pt height",
+      "note": "Only detectable with the large-text capture (record mode or scan --large-text). This is a fixed-height clipping bug (a text that never grows), not the live-update bug that TextResizeLiveUpdateRule reports -- the two are different and don't overlap. On iOS, before the app applied the larger text size live (BuggyApp now pins MAUI 10.0.110, which is past 10.0.100 / dotnet/maui#34445), almost every text on the screen failed to grow, so TextResizeRule's screen-level 'X of Y texts did not grow' finding covered B11 too instead of naming it (see case-study.md's 'B11 was covered by a broader finding'). Confirmed by a live scan on 2026-09-22 (MAUI 10.0.110): the screen-level finding is gone and B11 is now reported as its own per-text finding, same rule and kind, role and label as the Android large-text entry below. There is still no iOS large-text acceptance-test fixture (see the top-level description), so this is not yet enforced by GroundTruthTests.",
+      "android": null,
+      "ios": null,
+      "androidLargeText": [
+        {
+          "rule": "text-resize",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Late fees apply after 30 days."
+        }
+      ],
+      "iosLargeText": [
+        {
+          "rule": "text-resize",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Late fees apply after 30 days."
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "planted": false,
+      "element": "Navigation bar title from the default MAUI template styles (light gray on white)",
+      "android": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Parking tickets"
+        }
+      ],
+      "ios": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Parking tickets"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "planted": false,
+      "element": "Screen exposes no pane title to screen readers",
+      "note": "No pane title in the captured tree. MainPage sets Title=\"Parking tickets\" (shown in the NavigationPage toolbar) and has two headings, but MAUI's Page.Title does not set an Android pane title. Whether TalkBack announces a screen title on arrival (e.g. from the window title, which this rule doesn't read) has not been checked. Android only (needs the instrumentation harness; AtfRan) -- not implemented on iOS. Added when the page-titled rule (WCAG 2.4.2) was introduced.",
+      "android": [
+        {
+          "rule": "page-titled",
+          "kind": "needsReview",
+          "role": "window",
+          "label": null
+        }
+      ],
+      "ios": null
+    },
+    {
+      "id": "A1",
+      "planted": false,
+      "element": "Fixed font sizes do not follow the iOS text size setting",
+      "android": null,
+      "ios": [
+        {
+          "rule": "engine:dynamicType",
+          "kind": "needsReview",
+          "role": "screen",
+          "label": null
+        }
+      ]
+    }
+  ]
+}

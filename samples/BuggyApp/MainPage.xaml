@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  Ground-truth screen for Swipewalk. Bugs are deliberate; each is tagged with an ID
+  (B1..) that matches ground-truth.json. Elements tagged OK are negative controls.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BuggyApp.MainPage"
+             Title="Parking tickets"
+             BackgroundColor="White">
+
+    <VerticalStackLayout Padding="20,12" Spacing="12">
+
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <!-- B1: informative logo image with no text alternative. -->
+            <Image Source="city_seal.png" WidthRequest="48" HeightRequest="48" />
+
+            <!-- OK: heading. -->
+            <Label Grid.Column="1" Text="City of Exampleville" FontSize="22" TextColor="#1F1F1F"
+                   VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
+
+            <!-- B2: icon-only search button with no accessible name. -->
+            <ImageButton Grid.Column="2" Source="search.png" WidthRequest="48" HeightRequest="48" Padding="12" />
+        </Grid>
+
+        <!-- OK: decorative image hidden from assistive technology. -->
+        <Image Source="divider_wave.png" HeightRequest="16" AutomationProperties.IsInAccessibleTree="False" />
+
+        <!-- OK: heading. -->
+        <Label Text="Pay a parking ticket" FontSize="20" TextColor="#1F1F1F" SemanticProperties.HeadingLevel="Level2" />
+
+        <!-- B3: low-contrast text (#AAAAAA on white, about 2.3:1). -->
+        <Label Text="Payments post within 2 business days." FontSize="14" TextColor="#AAAAAA" />
+
+        <!-- B11: fixed height; the text is clipped when the system text size is enlarged (1.4.4, record mode). -->
+        <Label Text="Late fees apply after 30 days." FontSize="14" HeightRequest="20" TextColor="#1F1F1F" />
+
+        <!-- OK: entry with an accessible name. -->
+        <Label Text="Ticket number" FontSize="14" TextColor="#1F1F1F" />
+        <Entry SemanticProperties.Description="Ticket number" TextColor="#1F1F1F" />
+
+        <!-- B4: entry whose visible label is not programmatically associated. -->
+        <Label Text="Plate number" FontSize="14" TextColor="#1F1F1F" />
+        <Entry TextColor="#1F1F1F" />
+
+        <HorizontalStackLayout Spacing="0">
+            <Label Text="Need help?" FontSize="14" TextColor="#1F1F1F" VerticalOptions="Center" />
+            <!-- B5: icon drawn at 20x20; MAUI enlarges the touch area to 44 dp on Android
+                 (Android 48 dp advisory only). A source-only scan would misreport this. -->
+            <ImageButton Source="help.png" WidthRequest="20" HeightRequest="20"
+                         SemanticProperties.Description="Help" />
+            <!-- B10: tiny tappable text link (about 32x15). Not flagged under WCAG 2.5.8 only because of the spacing
+                 exception; below Apple's 44 pt guideline. On Android MAUI does not expose the tap
+                 gesture as clickable, so the scanner cannot see it as a target (known miss). -->
+            <Label Text="Terms" FontSize="11" TextColor="#1F4E79" TextDecorations="Underline" VerticalOptions="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer />
+                </Label.GestureRecognizers>
+            </Label>
+        </HorizontalStackLayout>
+
+        <!-- B6: visible text "Pay" but the accessible name is "Submit" (label in name). -->
+        <Button Text="Pay" SemanticProperties.Description="Submit" HeightRequest="50"
+                BackgroundColor="#1F4E79" TextColor="White" />
+
+        <HorizontalStackLayout Spacing="12">
+            <!-- B7: only an AutomationId, no accessible name. -->
+            <ImageButton Source="close.png" WidthRequest="48" HeightRequest="48" Padding="12"
+                         AutomationId="btnCancelPayment" />
+
+            <!-- B8: accessible name copied from an identifier. -->
+            <ImageButton Source="email.png" WidthRequest="48" HeightRequest="48" Padding="12"
+                         SemanticProperties.Description="img_email_receipt" />
+        </HorizontalStackLayout>
+
+        <!-- B9: 36 dp tall button; not flagged under WCAG 2.5.8 (24) but below Android's 48 dp guideline. -->
+        <Button Text="Save for later" HeightRequest="36" MinimumHeightRequest="36" Padding="12,0"
+                BackgroundColor="#E8EEF4" TextColor="#1F1F1F" />
+
+        <!-- OK: normal button. -->
+        <Button Text="View payment history" HeightRequest="50" Clicked="OnHistoryClicked"
+                BackgroundColor="#E8EEF4" TextColor="#1F1F1F" />
+    </VerticalStackLayout>
+</ContentPage>

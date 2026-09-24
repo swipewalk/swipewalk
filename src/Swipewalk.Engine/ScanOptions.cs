@@ -1,0 +1,89 @@
+using Swipewalk.Core.Model;
+
+namespace Swipewalk.Engine;
+
+public enum TargetPlatform
+{
+    Android,
+    Ios,
+}
+
+/// <summary>Everything a scan or recording needs. Built from command-line options, swipewalk.json, or the desktop app.</summary>
+public sealed record ScanOptions
+{
+    public required TargetPlatform Platform { get; init; }
+
+    /// <summary>adb serial or iOS UDID; null for the only connected Android device / the booted Simulator.</summary>
+    public string? Device { get; init; }
+
+    /// <summary>Android package of the app under test.</summary>
+    public string? Package { get; init; }
+
+    /// <summary>iOS bundle id of the app under test.</summary>
+    public string? BundleId { get; init; }
+
+    /// <summary>Already-built app to install first (.apk, Simulator .app/.zip, device .ipa).</summary>
+    public string? InstallFile { get; init; }
+
+    public AppFramework? Framework { get; init; }
+
+    /// <summary>
+    /// Framework version, when known (for example from detecting .NET MAUI in a physical iPhone's .app/.ipa
+    /// before installing it; see <see cref="Swipewalk.Collectors.AppInstaller.InstalledIosApp"/>). iOS
+    /// Simulator scans detect this later, from the running app, and ignore this field. Null unless set here.
+    /// </summary>
+    public string? FrameworkVersion { get; init; }
+    public string? Standard { get; init; }
+    public string ScreenName { get; init; } = "Screen 1";
+    public bool LargeText { get; init; }
+    public bool KeepStatusBar { get; init; }
+    public bool SkipChecks { get; init; }
+
+    /// <summary>
+    /// record: scan automatically when the screen changes, without pressing "Scan this screen now" / Enter.
+    /// Off by default: only an explicit scan (button or Enter) captures a screen, so a recording never
+    /// captures a screen the person is still navigating through (see Swipewalk.Engine.Recorder).
+    /// </summary>
+    public bool AutoScanOnScreenChange { get; init; }
+
+    /// <summary>
+    /// record: what to do when a large-text check finds that the larger size needs a restart to show (see
+    /// Swipewalk.Engine.LargeTextRestartPolicy). The caller (CLI, desktop app) resolves its own default --
+    /// "ask" when it can ask, "never" otherwise -- before setting this; the engine itself never guesses at
+    /// whether a console or UI is available.
+    /// </summary>
+    public LargeTextRestartPolicy LargeTextRestartPolicy { get; init; } = LargeTextRestartPolicy.Never;
+
+    /// <summary>Re-scan a saved capture directory instead of a live device.</summary>
+    public string? FromCapture { get; init; }
+
+    /// <summary>Screens the user means to cover (record); missing ones are listed in the report.</summary>
+    public IReadOnlyList<string> ExpectedScreens { get; init; } = [];
+
+    public required string OutputDirectory { get; init; }
+
+    // iOS signing and harness
+    public string? Team { get; init; }
+    public string? Profile { get; init; }
+    public string? HarnessBundlePrefix { get; init; }
+    public string? HarnessProject { get; init; }
+    public bool ForceResultBundle { get; init; }
+
+    /// <summary>Path to harness/android, for Google's Accessibility Test Framework (see
+    /// Swipewalk.Collectors.Android.AndroidHarness); null auto-detects it. A missing or unbuildable harness
+    /// only skips those checks (see KnownLimitations "android-atf-harness"), never the scan itself.</summary>
+    public string? AndroidHarnessDir { get; init; }
+
+    /// <summary>
+    /// Android only for now: also drive TalkBack over every screen captured in this run and read back what
+    /// it actually says, compared against Swipewalk's predicted transcript (see
+    /// Swipewalk.Collectors.Android.AndroidHarness.RunScreenReaderCaptureAsync). Opt-in and false by
+    /// default: it costs roughly 1-2 seconds per element (a 30-element screen ~1 minute) on top of an
+    /// ordinary capture. A harness problem (TalkBack not installed, its settings screen not found) only
+    /// skips this for the affected screen, never the rest of the scan.
+    /// </summary>
+    public bool ScreenReaderCapture { get; init; }
+
+    /// <summary>The app identifier for the platform (package or bundle id), when known.</summary>
+    public string? AppId => Platform == TargetPlatform.Ios ? BundleId : Package;
+}

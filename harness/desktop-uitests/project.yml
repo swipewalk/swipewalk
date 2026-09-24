@@ -1,0 +1,43 @@
+# UI tests for the Swipewalk desktop app (Mac Catalyst). They launch the built app by path and drive it
+# through the macOS accessibility layer, so they also check that controls have usable names.
+# Needs Automation Mode without authentication (once per Mac):
+#   automationmodetool enable-automationmode-without-authentication
+# Run: scripts/desktop-uitests.sh
+name: SwipewalkDesktopUITests
+options:
+  bundleIdPrefix: org.swipewalk
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  Runner:
+    type: application
+    platform: macOS
+    sources: [Runner]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.swipewalk.desktop-uitests.runner
+  DesktopUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [DesktopUITests]
+    dependencies:
+      - target: Runner
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.swipewalk.desktop-uitests
+        TEST_TARGET_NAME: Runner
+schemes:
+  DesktopUITests:
+    build:
+      targets:
+        Runner: all
+        DesktopUITests: [test]
+    test:
+      targets: [DesktopUITests]

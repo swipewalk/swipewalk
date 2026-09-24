@@ -1,0 +1,156 @@
+using Swipewalk.Core.Wcag;
+
+namespace Swipewalk.Core.Model;
+
+public enum FindingKind
+{
+    /// <summary>A possible failure of one or more WCAG 2.2 success criteria.</summary>
+    WcagIssue,
+
+    /// <summary>Automated checks can't decide; a person must review against the cited WCAG criteria.</summary>
+    NeedsReview,
+
+    /// <summary>Below a platform guideline (Apple HIG, Android, Windows) but not a WCAG criterion.</summary>
+    PlatformAdvisory,
+}
+
+/// <summary>One issue automated checks found on a screen.</summary>
+public sealed record Finding
+{
+    public required string RuleId { get; init; }
+    public required FindingKind Kind { get; init; }
+    public required string Message { get; init; }
+
+    /// <summary>WCAG criteria this finding maps to. Required unless the kind is <see cref="FindingKind.PlatformAdvisory"/>.</summary>
+    public IReadOnlyList<WcagCriterion> Criteria { get; init; } = [];
+
+    /// <summary>The platform guideline cited by an advisory, e.g. "Android: touch targets at least 48×48 dp".</summary>
+    public string? PlatformGuideline { get; init; }
+
+    /// <summary>Child-index path from the root, e.g. "0/2/1"; the root is "".</summary>
+    public required string NodePath { get; init; }
+
+    public required string Role { get; init; }
+    public string? Label { get; init; }
+    public Bounds Bounds { get; init; }
+
+    /// <summary>Who reported the finding: "Swipewalk" or a platform engine such as "Apple accessibility audit".</summary>
+    public string Source { get; init; } = DefaultSource;
+
+    public const string DefaultSource = "Swipewalk";
+
+    /// <summary>Rule-specific data for reports and downstream tools, e.g. measured colors or visible text.</summary>
+    public IReadOnlyDictionary<string, string> Details { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// Ids of standards whose referenced WCAG version and level include this finding's criteria
+    /// (see Swipewalk.Core.Standards.KnownStandards). Filled in by the rule runner.
+    /// </summary>
+    public IReadOnlyList<string> RelevantStandards { get; init; } = [];
+
+    /// <summary>Suggested fix, example code and likely causes for the app's framework. Filled in by the rule runner.</summary>
+    public Reports.Fix? Fix { get; init; }
+
+    /// <summary>Platform engines that reported the same issue on the same element.</summary>
+    public IReadOnlyList<string> AlsoReportedBy { get; init; } = [];
+}
+
+/// <summary>The findings for one scanned screen.</summary>
+public sealed record ScreenResult
+{
+    public required Platform Platform { get; init; }
+    public required string ScreenName { get; init; }
+    public AppFramework Framework { get; init; } = AppFramework.Unknown;
+
+    /// <summary>The framework's own version, when detected (see <see cref="ScreenSnapshot.FrameworkVersion"/>).</summary>
+    public string? FrameworkVersion { get; init; }
+
+    public DeviceInfo? Device { get; init; }
+    public string? ScreenshotPath { get; init; }
+    public required IReadOnlyList<Finding> Findings { get; init; }
+
+    /// <summary>Screenshot at enlarged system text size (record mode), and the setting used.</summary>
+    public string? LargeTextScreenshotPath { get; init; }
+    public double LargeTextPixelScale { get; init; } = 1.0;
+    public string? LargeTextSetting { get; init; }
+
+    /// <summary>The text-size scale tested (see <see cref="ScreenSnapshot.LargeTextScale"/>). Null when not captured
+    /// or not recorded (older captures).</summary>
+    public double? LargeTextScale { get; init; }
+
+    /// <summary>How the large-text capture was produced (see <see cref="ScreenSnapshot.LargeTextMethod"/>).</summary>
+    public string? LargeTextMethod { get; init; }
+
+    /// <summary>Whether the large-text capture was live or only appeared after a restart (see
+    /// <see cref="ScreenSnapshot.LargeTextAppliedLive"/>); the report shows this next to the method.</summary>
+    public bool? LargeTextAppliedLive { get; init; }
+
+    /// <summary>Whether a force-stop + relaunch comparison was actually captured (see
+    /// <see cref="ScreenSnapshot.LargeTextRestartCaptured"/>); the report shows this next to the method. Null
+    /// when not captured or not recorded (older results), so old results.json files still load.</summary>
+    public bool? LargeTextRestartCaptured { get; init; }
+
+    /// <summary>
+    /// Why the large-text check was skipped for this screen (a physical device, a different screen at the
+    /// larger size, or the app not coming back to front), when it was attempted but not captured. Null when
+    /// large text was captured (see <see cref="LargeTextSetting"/>) or was never requested for this screen.
+    /// </summary>
+    public string? LargeTextSkippedReason { get; init; }
+
+    /// <summary>
+    /// Warning when the device's text size was already enlarged before this screen's normal-size capture, so
+    /// that capture isn't at the platform's default size (Android font_scale, iOS Simulator content_size, or
+    /// a physical iPhone's Larger Text state -- see Swipewalk.Collectors.BaselineTextSize). When set, the
+    /// large-text comparison for this screen was skipped (see <see cref="LargeTextSkippedReason"/>) rather
+    /// than risk a large-vs-large comparison that would wrongly look like text "did not grow"; the normal-size
+    /// findings above are unaffected. Null when the baseline was at default, or wasn't checked.
+    /// </summary>
+    public string? BaselineTextSizeNote { get; init; }
+
+    /// <summary>
+    /// Set when Swipewalk had to start the app itself because it wasn't running (see
+    /// Swipewalk.Collectors.BringToFront): this screen (or, in record mode, the first screen of the recording)
+    /// is the app's own first screen -- possibly onboarding or a terms screen -- not wherever it was last left.
+    /// Null when the app was already running (whether already in front or brought forward from the background
+    /// -- neither of which restarts it, so its state is usually preserved) or this screen wasn't the one that
+    /// triggered a launch.
+    /// </summary>
+    public string? AppLaunchedNote { get; init; }
+
+    /// <summary>Whether Google's Accessibility Test Framework actually ran for this screen (see
+    /// <see cref="ScreenSnapshot.AtfRan"/>); defaults to false.</summary>
+    public bool AtfRan { get; init; }
+
+    /// <summary>
+    /// Why Google's Accessibility Test Framework (Android instrumentation harness, harness/android) did not
+    /// run for this screen, meaningful only when <see cref="AtfRan"/> is false (see
+    /// <see cref="ScreenSnapshot.AtfSkippedReason"/>). Reports and the WCAG coverage section use this to say
+    /// Google's checks didn't run instead of silently showing zero issues; see KnownLimitations
+    /// "android-atf-harness" and <see cref="Coverage.ScreenActivityBuilder"/>.
+    /// </summary>
+    public string? AtfSkippedReason { get; init; }
+
+    /// <summary>Scale from tree units to screenshot pixels, for drawing overlays.</summary>
+    public double PixelScale { get; init; } = 1.0;
+
+    /// <summary>Predicted (not recorded) screen-reader output in swipe order.</summary>
+    public IReadOnlyList<Announcement> PredictedTranscript { get; init; } = [];
+
+    /// <summary>Real screen-reader evidence for this screen, carried through from
+    /// <see cref="ScreenSnapshot.ScreenReaderCapture"/> (see its remarks). Null when none was captured.</summary>
+    public ScreenReaderCapture? ScreenReaderCapture { get; init; }
+
+    /// <summary>App identifier detected from this screen's capture (see <see cref="ScreenSnapshot.AppId"/>).
+    /// Carried through to <see cref="Reports.ScanReport.AppId"/> for run history grouping.</summary>
+    public string? AppId { get; init; }
+
+    /// <summary>
+    /// Record mode only: set when this capture replaced an earlier capture of the same screen within this same
+    /// run (see Swipewalk.Core.ScreenReader.ScreenIdentity.IsSameScreen) -- a newer capture of the same screen
+    /// replaces the older one, but only within the same run; separate runs are never merged. The earlier capture's
+    /// files are deleted and its findings are not kept, so they aren't counted twice; this timestamp is when
+    /// the newer (kept) capture was taken, so the report can still say the screen was scanned again and when.
+    /// Null for a screen's first (or only) capture in a run, and always null for a scan.
+    /// </summary>
+    public DateTimeOffset? RescannedAt { get; init; }
+}

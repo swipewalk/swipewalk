@@ -1,0 +1,11 @@
+<Project>
+  <!-- Shared by every project. Bump Version for each release (the desktop app's ApplicationDisplayVersion follows it). -->
+  <PropertyGroup>
+    <Version>0.2.0</Version>
+    <Authors>The Swipewalk Authors</Authors>
+    <Copyright>Copyright 2026 The Swipewalk Authors</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/swipewalk/swipewalk</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/swipewalk/swipewalk</RepositoryUrl>
+  </PropertyGroup>
+</Project>

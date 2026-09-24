@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Swipewalk.Desktop.Pages.ReportPage"
+             Title="Report">
+    <Grid RowDefinitions="Auto,*">
+        <HorizontalStackLayout Padding="16,10" Spacing="12">
+            <Label x:Name="TitleLabel" FontSize="{DynamicResource FontHeading}" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
+            <Button Text="Open in browser" Clicked="OnOpenInBrowser" SemanticProperties.Hint="Opens the report file in your web browser" />
+            <Button Text="Show in Finder" Clicked="OnShowFolder" SemanticProperties.Hint="Opens the folder with the report, results and screenshots" />
+        </HorizontalStackLayout>
+        <!-- The report is self-contained HTML (screenshots embedded), so it is loaded as a string.
+             No SemanticProperties.Description here: naming the web view makes it one accessibility element and
+             hides the whole report from screen readers (found by the desktop UI tests). -->
+        <WebView x:Name="Viewer" Grid.Row="1" />
+    </Grid>
+</ContentPage>

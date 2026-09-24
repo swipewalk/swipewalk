@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Swipewalk.Cli/Swipewalk.Cli.csproj" />
+    <Project Path="src/Swipewalk.Collectors/Swipewalk.Collectors.csproj" />
+    <Project Path="src/Swipewalk.Core/Swipewalk.Core.csproj" />
+    <Project Path="src/Swipewalk.Engine/Swipewalk.Engine.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Swipewalk.Core.Tests/Swipewalk.Core.Tests.csproj" />
+  </Folder>
+</Solution>

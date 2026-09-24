@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Swipewalk.Core\Swipewalk.Core.csproj" />
+    <ProjectReference Include="..\Swipewalk.Collectors\Swipewalk.Collectors.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Swipewalk.Core\Swipewalk.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The iOS harness source ships next to the assemblies, so installed copies (dotnet tool, desktop app) can build it. -->
+    <None Include="..\..\harness\ios\**\*" Exclude="..\..\harness\ios\**\xcuserdata\**;..\..\harness\ios\**\.DS_Store"
+          LinkBase="harness/ios" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <SwipewalkAndroidHarnessApk>..\..\harness\android\harness\build\outputs\apk\androidTest\debug\harness-debug-androidTest.apk</SwipewalkAndroidHarnessApk>
+    <SwipewalkAndroidTtsEngineApk>..\..\harness\android\ttsengine\build\outputs\apk\debug\ttsengine-debug.apk</SwipewalkAndroidTtsEngineApk>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The prebuilt Android ATF harness APK, built by CI (see .github/workflows/ci.yml and
+         release.yml, which run `./gradlew :harness:assembleDebugAndroidTest` before this) so a scan
+         needs only adb, not a JDK, Gradle or network access (see AndroidHarness.FindBundledApk).
+         Absent in a from-source checkout that hasn't built it yet; AndroidHarness then falls back to
+         building harness/android from source, the same as before this existed. -->
+    <None Include="$(SwipewalkAndroidHarnessApk)" Condition="Exists('$(SwipewalkAndroidHarnessApk)')"
+          Link="harness/android/harness-debug-androidTest.apk" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- The prebuilt standalone TTS-engine app (harness/android/ttsengine), only installed on a device
+         when the screen-reader capture option is used (see AndroidHarness.FindBundledTtsEngineApk); built
+         by CI the same way as the harness APK above (`./gradlew ... :ttsengine:assembleDebug`). -->
+    <None Include="$(SwipewalkAndroidTtsEngineApk)" Condition="Exists('$(SwipewalkAndroidTtsEngineApk)')"
+          Link="harness/android/ttsengine-debug.apk" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,9 @@
+<svg role="img" aria-label="Swipewalk" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 456 456" width="456" height="456">
+  <rect width="456" height="456" rx="100" fill="#174A7C"/>
+  <rect x="124" y="64" width="208" height="328" rx="40" fill="none" stroke="#FFFFFF" stroke-width="22"/>
+  <polyline points="186,144 272,224 186,304 246,352" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="216,356 250,356 250,322" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="186" cy="144" r="28" fill="#FFD166"/>
+  <circle cx="272" cy="224" r="25" fill="#FFFFFF"/>
+  <circle cx="186" cy="304" r="25" fill="#FFFFFF"/>
+</svg>

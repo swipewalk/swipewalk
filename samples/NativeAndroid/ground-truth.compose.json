@@ -1,0 +1,122 @@
+{
+  "description": "Verified 2026-09-23 against a live scan of the Android emulator (Android 16, API 36, sdk_gphone16k_arm64) running ComposeActivity, with Google's Accessibility Test Framework via the instrumentation harness. Expected Swipewalk findings for ComposeActivity (Jetpack Compose), single platform 'android' -- this app has no iOS build. Each finding is matched on rule, kind, role and label (label = accessible name or visible text). Also verified on a physical Pixel 4a (Android 13, API 33): the same pattern reproduced, plus one extra near-miss noted below. Several planted bugs (N3, N5, N8) did NOT produce the findings first expected of them; investigating why led to the KnownLimitations entry 'android-compose-merged-name' (a name set on a child Icon() or via Modifier.semantics can land on a separate, non-clickable node in the uiautomator dump rather than on the Button/IconButton's own clickable node). Re-verified 2026-09-23 after fixing the part of that gap Swipewalk could fix on its own: when exactly one non-focusable descendant carries a name and nothing else in the subtree is independently focusable, the clickable ancestor now takes that name as its own Label (UiAutomatorParser.TryMergeSingleDescendantName) -- see each affected entry's note below for what changed and what is still open. N7 also did not reproduce as designed -- see its own note.",
+  "screen": "Pay a parking ticket (Compose)",
+  "expected": [
+    {
+      "id": "N1",
+      "planted": true,
+      "element": "Icon-only search IconButton, contentDescription = null",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N2",
+      "planted": true,
+      "element": "Low-contrast helper text (#AAAAAA on white, about 2.3:1)",
+      "android": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "planted": true,
+      "element": "'Late fees apply after 30 days.' using with(LocalDensity.current) { 14.dp.toSp() }",
+      "note": "DID NOT REPRODUCE: a live large-text rescan (Android font scale 2.0) showed this text's bounds grow from 63dp to 126dp tall -- exactly proportional to the 200% scale, the same as an ordinary 14.sp literal would. Dp.toSp() computes its scaled-pixel value from the density conversion, but Compose still applies the CURRENT font scale when it lays out and draws that TextUnit, so this does not bypass font scaling the way the first version of this answer key assumed. This is a corrected assumption, not a Swipewalk detection gap -- there is currently no equivalent planted bug on the Compose screen for 'fixed text that ignores the system font size'. A real repro would need a different technique (for example forcing LocalDensity's fontScale to 1 for this text specifically), which was not attempted here.",
+      "android": null
+    },
+    {
+      "id": "N6",
+      "planted": true,
+      "element": "Bare TextField (plate number), no label, with an unassociated caption Text above it",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "OK3",
+      "planted": false,
+      "element": "TextField (ticket number) with a correctly associated label = { Text(...) }",
+      "note": "Confirmed clean, unlike the Views screen's OK3: Compose's TextField label parameter DOES populate the field's own accessible name in the exported tree (a real, positive framework difference from android:labelFor, which does not -- see ground-truth.views.json's OK3).",
+      "android": null
+    },
+    {
+      "id": "N3",
+      "planted": true,
+      "element": "'More info' IconButton, correct contentDescription, forced to a 20dp Modifier.size",
+      "note": "Compose accessibility-tree gap: the IconButton's clickable, focusable node was exposed with an EMPTY content-desc; the content description set on the inner Icon() showed up only on a separate node with clickable=\"false\" (confirmed in the raw uiautomator dump on both the emulator and a physical Pixel 4a). missing-name already reported nothing here even before the fix (it uses ScreenReaderPredictor.AccessibleName's descendant-walk fallback, which already found the merged name); the parser now also merges that single named, non-focusable descendant's content-desc directly onto the clickable node's own Label (see 'android-compose-merged-name'), which makes no difference to missing-name's own output but is what fixes identifier-name's role on N4 below. Still not reported for target-size, but confirmed for an unrelated reason: the clickable node's own bounds measured 48x48dp on the emulator (126x126px at 420dpi) -- IconButton pads the touch target up to Android's 48dp guideline regardless of the smaller Modifier.size(20.dp), which is on the IconButton itself here (not the inner Icon), similar to BuggyApp's B5 (there, MAUI enlarges the target to only 44dp, which still trips the platform advisory). 48x48dp is at the platform guideline and above the WCAG 24x24 minimum, so no target-size finding is expected either way on the emulator; this was not caused by the naming gap.",
+      "android": null
+    },
+    {
+      "id": "N8",
+      "planted": true,
+      "element": "'Help' IconButton, correct contentDescription on the inner Icon, low-contrast tint (#DDDDDD)",
+      "note": "Same Compose accessibility-tree gap as N3: the single named, non-focusable descendant's content-desc ('Help') now merges onto the clickable node's own Label the same way, though missing-name's own output is unchanged (it already found the merged name via the existing AccessibleName fallback). No icon-contrast finding either way -- IconContrastRule only runs on iOS (Android relies on Google's Accessibility Test Framework's ImageContrastCheck instead), and ATF also reported nothing for this icon here, unlike the equivalent Views screen icon it did catch (N8 there); why ATF didn't report it on the Compose screen was not determined -- not shown to be related to the naming merge. Still needs a manual contrast check (e.g. with a color picker).",
+      "android": null
+    },
+    {
+      "id": "N5",
+      "planted": true,
+      "element": "Button shows 'Pay' but Modifier.semantics { contentDescription = \"Submit\" }",
+      "note": "Same Compose accessibility-tree gap, but NOT fixed by the merge added for N3/N8/N4/OK2: the label 'Submit' and the visible text 'Pay' land on two SEPARATE non-clickable descendants of the Button's own clickable node (confirmed in the raw dump), so this is a several-named-descendants case, which UiAutomatorParser.TryMergeSingleDescendantName deliberately leaves alone (see 'android-compose-merged-name'). Seen 2026-09-23 with a real TalkBack capture (--screen-reader, emulator, TalkBack 16.0.0; see docs/case-study.md 'Real TalkBack capture, in five languages'): TalkBack announces 'Submit || Pay || Button' -- the content description, then the visible text, then the role. That is screen-reader output only: it does not show which name speech-input software (e.g. Voice Access) matches on, so WCAG 2.5.3 Label in Name is still unverified for this button. label-in-name (which needs both the name and the visible text on the same interactive element) still does not fire. Check with speech input. Unlike UIKit and SwiftUI on iOS (see samples/NativeiOS), where the equivalent mismatch IS detected via a UIButton/SwiftUI accessibilityLabel override on the interactive element itself.",
+      "android": null
+    },
+    {
+      "id": "N4",
+      "planted": true,
+      "element": "Email-receipt IconButton named 'img_btn_email_receipt' on the inner Icon",
+      "note": "Confirmed. Originally reported role \"group\" instead of \"button\", because identifier-name (which scans every named node regardless of clickability) matched only the non-clickable child carrying the name, not the Button itself (see the Compose accessibility-tree gap note on N3/N5/N8/OK2) -- this was the one Compose bug that still got caught, since identifier-name doesn't require the element to be interactive. Now reports role \"button\": the single named, non-focusable descendant's content-desc merges onto the clickable node (UiAutomatorParser.TryMergeSingleDescendantName), and the descendant's own content-desc is cleared at the same time so identifier-name reports it once, not twice.",
+      "android": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_btn_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "OK2",
+      "planted": false,
+      "element": "'Call support' IconButton with a correct contentDescription, forced to 44dp",
+      "note": "Not a planted bug -- included as a near-miss like the Views screen's OK2. Also affected by the Compose accessibility-tree gap (its name lands on a non-clickable child, now merged onto the clickable node the same way as N3/N8/N4), but that made no visible difference here either way: no target-size finding either way (measured 48x48dp on the emulator, the same IconButton auto-padding as N3, not the intended 44dp), so this entry can't independently confirm the gap or the fix the way N3/N4/N8 do.",
+      "android": null
+    },
+    {
+      "id": "T2",
+      "planted": false,
+      "element": "Screen exposes no pane title to screen readers",
+      "note": "Same limitation as samples/BuggyApp's T2 and the Views screen's T2: ComposeActivity's Material3 TopAppBar title does not set an Android accessibility pane title. Confirmed on both the emulator and the Pixel 4a -- unlike the Views screen, where the Pixel scan did NOT show this finding (see ground-truth.views.json's T2 note). Not fully explained; see README.md's Framework differences.",
+      "android": [
+        {
+          "rule": "page-titled",
+          "kind": "needsReview",
+          "role": "window",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "OK1",
+      "planted": false,
+      "element": "'View payment history' button, visible text matches its accessible name",
+      "note": "Clean on the emulator. This button's visible text is also its only named descendant, so the parser's merge (see 'android-compose-merged-name') now copies it onto the clickable node's own Label too -- with no visible effect here, since the visible text and the accessible name were already identical. On the physical Pixel 4a this same button triggered a target-size platform advisory (184x41 dp, below 48dp) -- not reproduced on the emulator, most likely a rendering/density difference between the two devices; not added to this file's normal expectations since it's device-specific, but noted here and in README.md.",
+      "android": null
+    }
+  ]
+}

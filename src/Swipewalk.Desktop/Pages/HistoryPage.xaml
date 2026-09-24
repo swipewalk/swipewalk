@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:engine="clr-namespace:Swipewalk.Engine;assembly=Swipewalk.Engine"
+             xmlns:controls="clr-namespace:Swipewalk.Desktop.Controls"
+             x:Class="Swipewalk.Desktop.Pages.HistoryPage"
+             x:DataType="engine:RunRecord"
+             Title="History">
+    <ContentPage.Resources>
+        <controls:RunAccessibleNameConverter x:Key="RunAccessibleNameConverter" />
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*" Padding="24,16">
+        <VerticalStackLayout Spacing="4">
+            <Label Text="History" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label x:Name="Summary" FontSize="{DynamicResource FontBody}" />
+        </VerticalStackLayout>
+        <CollectionView x:Name="Runs" Grid.Row="1" Margin="0,16,0,0" SelectionMode="Single" SelectionChanged="OnRunSelected">
+            <CollectionView.EmptyView>
+                <Label Text="No runs yet. Start one from New scan." FontSize="{DynamicResource FontBody}" Margin="0,24" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="engine:RunRecord">
+                    <!--
+                        The row itself carries no Description: the row also has a Delete button that must stay
+                        its own separately reachable, named control, and a Description on this outer Grid would
+                        hide it from screen readers. Instead, only the informational columns (name, date,
+                        platform, mode, counts, standard) are grouped into the inner Grid below, which gets the
+                        Description built by RunAccessibleNameConverter: it has no interactive children, so
+                        grouping it is safe. Delete stays outside that group, at this Grid's top level.
+                    -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16" Padding="12,10">
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="16"
+                              SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}}">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding App}" FontSize="{DynamicResource FontSubheading}" FontAttributes="Bold" />
+                                <Label FontSize="{DynamicResource FontCaption}">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span Text="{Binding StartedAt, StringFormat='{0:yyyy-MM-dd HH:mm}'}" />
+                                            <Span Text=" · " />
+                                            <Span Text="{Binding Platform}" />
+                                            <Span Text=" · " />
+                                            <Span Text="{Binding Mode}" />
+                                            <Span Text=" · " />
+                                            <Span Text="{Binding Counts.Screens, StringFormat='{0} screen(s)'}" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding Counts.WcagIssues, StringFormat='{0} WCAG issues'}" TextColor="{AppThemeBinding Light={StaticResource Issue}, Dark={StaticResource IssueDark}}" FontAttributes="Bold" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="{Binding Counts.NeedsReview, StringFormat='{0} to review'}" TextColor="{AppThemeBinding Light={StaticResource Review}, Dark={StaticResource ReviewDark}}" VerticalOptions="Center" />
+                            <Label Grid.Column="3" Text="{Binding StandardLabel}" VerticalOptions="Center" />
+                            <!--
+                                RecordingInProgress: a recording confirmed still running (here, or in another
+                                window); never offered Continue. CanContinue: an interrupted recording,
+                                including one whose owning process is gone (Swipewalk was force-quit or
+                                crashed); see RunHistory.List and RunRecord.AbandonedRecordingReason. Both are
+                                folded into the row's own Description above, for screen readers; these are the
+                                sighted equivalent.
+                            -->
+                            <Label Grid.Column="4" Text="In progress" IsVisible="{Binding RecordingInProgress}" VerticalOptions="Center" FontAttributes="Italic" />
+                            <Label Grid.Column="4" Text="Ended early" IsVisible="{Binding CanContinue}" VerticalOptions="Center" FontAttributes="Italic" />
+                        </Grid>
+                        <!--
+                            Only shown for a recording that ended early (RunRecord.CanContinue): a run that
+                            reached Finish has nothing ended-early to resume.
+                        -->
+                        <Button Grid.Column="1" Text="Continue" Clicked="OnContinue" CommandParameter="{Binding .}" IsVisible="{Binding CanContinue}"
+                                SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}, ConverterParameter=Continue}" />
+                        <Button Grid.Column="2" Text="Delete" Clicked="OnDelete" CommandParameter="{Binding .}"
+                                SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}, ConverterParameter=Delete}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

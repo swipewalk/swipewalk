@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # Built once here so `dotnet pack` below bundles the prebuilt APK (see
+      # Swipewalk.Collectors.csproj); the runner already has the Android SDK and a JDK (no download
+      # needed for either), so this only needs network access to Gradle's, Google's and Maven
+      # Central's servers for the Gradle distribution and dependencies -- not something a person
+      # running `swipewalk scan` needs, since the prebuilt APK ships with the package.
+      - name: Build Android harness APKs (bundled into the package)
+        run: .github/scripts/build-android-harness.sh
+      - run: dotnet build Swipewalk.slnx -c Release
+      - run: dotnet test Swipewalk.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"
+      - run: dotnet pack src/Swipewalk.Cli -c Release -o artifacts
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
+
+  # The desktop app is not in Swipewalk.slnx (it needs the MAUI workload, which the test job does not
+  # install), so nothing above would notice if a change to the rules or the engine broke it. This job
+  # builds it unsigned, for one architecture, as a compile check; signing and notarizing a universal
+  # release build is scripts/mac-release.sh, run locally. Advisory only: branch protection requires
+  # build-test, not this job, so read its result before merging.
+  build-desktop:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # So the desktop app's bundle also gets the prebuilt APK (see Swipewalk.Desktop's csproj);
+      # same reasoning as build-test's identical step.
+      - name: Build Android harness APKs (bundled into the app)
+        run: .github/scripts/build-android-harness.sh
+      - run: dotnet workload install maui
+      - run: >
+          dotnet build src/Swipewalk.Desktop -f net10.0-maccatalyst -c Release
+          -p:RuntimeIdentifier=maccatalyst-arm64 -p:CreatePackage=false -p:EnableCodeSigning=false
+
+  # Compile checks for the native (no MAUI) ground-truth sample apps used in
+  # tests/Swipewalk.Core.Tests/NativeSamplesGroundTruthTests.cs and docs/case-study.md. Neither is part
+  # of Swipewalk.slnx, so build-test wouldn't notice if one stopped compiling. Advisory only, same as
+  # build-desktop: branch protection requires build-test, not this job.
+  build-samples:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build samples/NativeAndroid
+        run: .github/scripts/build-native-android-sample.sh
+      # xcodegen isn't preinstalled on the macos-15 runner (confirmed 2026-09-23: "xcodegen: command not
+      # found"). Only build-native-ios-sample.sh needs it (it regenerates the project to catch project.yml
+      # changes); harness/ios's .xcodeproj is committed and used as is, so nothing else in CI needs this.
+      - name: Install xcodegen
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install xcodegen
+      - name: Build samples/NativeiOS (Simulator)
+        run: .github/scripts/build-native-ios-sample.sh

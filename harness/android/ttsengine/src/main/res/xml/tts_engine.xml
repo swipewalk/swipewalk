@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declares one voice per language this has been verified with (TalkBackTtsEngine itself accepts any
+     locale unconditionally: see its onIsLanguageAvailable/onLoadLanguage: these entries are only what
+     the system's own TTS engine metadata expects to enumerate). -->
+<tts-engine xmlns:ttsengine="http://schemas.android.com/apk/res-auto">
+    <voice ttsengine:name="swipewalk-en-us" ttsengine:locale="eng-USA" ttsengine:quality="300" ttsengine:latency="200" />
+    <voice ttsengine:name="swipewalk-es-es" ttsengine:locale="spa-ESP" ttsengine:quality="300" ttsengine:latency="200" />
+    <voice ttsengine:name="swipewalk-hi-in" ttsengine:locale="hin-IND" ttsengine:quality="300" ttsengine:latency="200" />
+    <voice ttsengine:name="swipewalk-ar-sa" ttsengine:locale="ara-SAU" ttsengine:quality="300" ttsengine:latency="200" />
+    <voice ttsengine:name="swipewalk-ja-jp" ttsengine:locale="jpn-JPN" ttsengine:quality="300" ttsengine:latency="200" />
+</tts-engine>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Swipewalk.Desktop.Controls"
+             xmlns:collectors="clr-namespace:Swipewalk.Collectors;assembly=Swipewalk.Collectors"
+             x:Class="Swipewalk.Desktop.Pages.AppPickerPage"
+             x:DataType="collectors:AppListing"
+             Title="Choose app">
+    <ContentPage.Resources>
+        <controls:IsNotNullConverter x:Key="IsNotNullConverter" />
+    </ContentPage.Resources>
+    <!--
+        A separate page rather than an inline suggestion list under the App field: MAUI's stock list/popup
+        controls report the wrong accessibility role on Mac Catalyst (the same problem CheckOption/SelectButton
+        work around for checkboxes and pickers), and a custom overlay popup risks the same, with no easy way to
+        confirm VoiceOver announces it correctly without a live device. A native CollectionView in its own page
+        keeps every element's role and keyboard behaviour (Tab to reach it, arrows to move, Enter to choose)
+        the one already verified for the History page's run list.
+    -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Padding="24,16" RowSpacing="8">
+        <Label x:Name="Heading" Text="Choose app" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+        <Label x:Name="Subtitle" Grid.Row="1" FontSize="{DynamicResource FontCaption}" />
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Border Style="{StaticResource FieldFrame}">
+                <Entry x:Name="SearchEntry" Placeholder="Filter by id or name" SemanticProperties.Description="Filter apps by id or name"
+                       SemanticProperties.Hint="Type to filter; Tab to move into the list below, arrow keys to move through it, Space to choose the focused one; Enter here accepts what you typed; Escape cancels" />
+            </Border>
+            <controls:CheckOption x:Name="ShowSystemOption" Grid.Column="1" Text="Show system apps" HeightRequest="28" VerticalOptions="Center" />
+        </Grid>
+
+        <HorizontalStackLayout Grid.Row="3" Spacing="12">
+            <ActivityIndicator x:Name="Busy" IsRunning="False" IsVisible="False" SemanticProperties.Description="Looking for installed apps" />
+            <Label x:Name="StatusLabel" FontSize="{DynamicResource FontCaption}" LineBreakMode="WordWrap" />
+        </HorizontalStackLayout>
+
+        <!-- CollectionView is its own scroller: a Grid row, not a ScrollView, gives it a bounded height. -->
+        <Grid Grid.Row="4" RowDefinitions="Auto,*">
+            <Label x:Name="EmptyLabel" FontSize="{DynamicResource FontBody}" IsVisible="False" Margin="0,12" />
+            <CollectionView x:Name="Apps" Grid.Row="1" SelectionMode="Single">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="collectors:AppListing">
+                        <!--
+                            Unlike HistoryPage's rows, there is no separate interactive control inside a row to
+                            preserve, so the row can be one named accessible element (SemanticProperties.Description):
+                            without it, VoiceOver/keyboard focus on the row (a UICollectionView cell) has no name of
+                            its own, only the nested, non-accessible text underneath (confirmed with the desktop
+                            UI test harness's accessibility dump; see the PR description).
+                        -->
+                        <VerticalStackLayout Padding="10,8" Spacing="1" SemanticProperties.Description="{Binding AccessibleName}">
+                            <Label Text="{Binding Label}" IsVisible="{Binding Label, Converter={StaticResource IsNotNullConverter}}" FontAttributes="Bold" />
+                            <Label Text="{Binding Id}" FontSize="{DynamicResource FontCaption}" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+        <Button Grid.Row="5" Text="Cancel" Clicked="OnCancel" HorizontalOptions="Start" />
+    </Grid>
+</ContentPage>

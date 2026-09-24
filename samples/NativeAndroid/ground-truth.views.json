@@ -1,0 +1,194 @@
+{
+  "description": "Verified 2026-09-23 against a live scan of the Android emulator (Android 16, API 36, sdk_gphone16k_arm64) running ViewsActivity, with Google's Accessibility Test Framework via the instrumentation harness. Expected Swipewalk findings for ViewsActivity (the classic Android View system screen), single platform 'android' -- this app has no iOS build. Each finding is matched on rule, kind, role and label (label = accessible name or visible text). 'android: null' means no finding is expected on a normal scan there; 'androidLargeText' is only checked by Swipewalk's large-text rescan (record mode or scan --large-text), confirmed with a live rescan (Android font scale 2.0). Rule ids follow docs/checks.md; 'atf:' rule ids come from Google's Accessibility Test Framework via the Android instrumentation harness (harness/android). Also verified on a physical Pixel 4a (Android 13, API 33): findings mostly match, with framework/OS-version differences noted per entry below and in README.md.",
+  "screen": "Pay a parking ticket (Views)",
+  "expected": [
+    {
+      "id": "N1",
+      "planted": true,
+      "element": "Icon-only search ImageButton with no contentDescription",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N2",
+      "planted": true,
+      "element": "Low-contrast helper text (#AAAAAA on white, about 2.3:1)",
+      "android": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "planted": true,
+      "element": "'Late fees apply after 30 days.' sized in px, not sp",
+      "note": "Confirmed with a live large-text rescan (Android font scale 2.0): the text's bounds stayed 16 dp tall (a px size does not scale), unlike an sp-sized text on the same screen. Only detectable with the large-text capture (record mode or scan --large-text).",
+      "android": null,
+      "androidLargeText": [
+        {
+          "rule": "text-resize",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Late fees apply after 30 days."
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "planted": true,
+      "element": "Plate number EditText, visible caption not associated (no labelFor, no hint, no contentDescription)",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        },
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "OK3",
+      "planted": false,
+      "element": "Ticket number EditText with a correctly associated label (android:labelFor)",
+      "note": "NOT clean, contrary to the first version of this answer key: uiautomator dump's XML has no attribute for the labelFor/getLabeledBy() relationship, so this field looks identical to N6's (empty content-desc, empty hint) and gets the exact same two findings. New limitation: KnownLimitations 'android-labelfor'. TalkBack is documented to announce the labelFor association; not tested with TalkBack here, so whether this field is actually named for a screen-reader user is unconfirmed.",
+      "android": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        },
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "planted": true,
+      "element": "'More info' icon button, correct name, drawn at 20dp",
+      "note": "Confirmed: reported at its drawn 20x20 bounds (no invisible hit-area padding), unlike samples/BuggyApp's B5 (a MAUI ImageButton, which the platform enlarges).",
+      "android": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "More info"
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "planted": true,
+      "element": "'Help' icon button, correct name, normal 48dp size, low-contrast tint (#DDDDDD on white)",
+      "note": "Confirmed via Google's Accessibility Test Framework's ImageContrastCheck (measured ratio 1.19). Swipewalk's own icon-contrast rule is iOS only (docs/checks.md); on Android this concern is covered only when the instrumentation harness runs.",
+      "android": [
+        {
+          "rule": "atf:ImageContrastCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "Help"
+        }
+      ]
+    },
+    {
+      "id": "N5",
+      "planted": true,
+      "element": "Button shows 'Pay' but its accessible name is 'Submit'",
+      "android": [
+        {
+          "rule": "label-in-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": "Submit"
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "planted": true,
+      "element": "Email-receipt icon button named 'img_btn_email_receipt'",
+      "android": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_btn_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "planted": false,
+      "element": "Email-receipt icon (default framework drawable ic_menu_send, no explicit tint) also measured low contrast by Google's Accessibility Test Framework",
+      "note": "Found without being planted: ATF's ImageContrastCheck measured about 2.88:1 for this icon (the platform's stock drawable, drawn with no android:tint override), below 1.4.11's 3:1. Not planted deliberately -- kept as its own entry, same spirit as samples/BuggyApp's OK1/T1, since it's a different concern (contrast) from N4's identifier-name finding on the same element.",
+      "android": [
+        {
+          "rule": "atf:ImageContrastCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "img_btn_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "OK2",
+      "planted": false,
+      "element": "'Call support' icon button, correct contentDescription, drawn at 44dp",
+      "note": "Not a planted bug, but 44dp is still below Android's 48dp guideline -- a realistic near-miss, same spirit as samples/BuggyApp's T1/T2. Also measured low contrast by Google's Accessibility Test Framework (about 2.88:1, same stock drawable as T1/N4) -- found without being planted.",
+      "android": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Call support"
+        },
+        {
+          "rule": "atf:ImageContrastCheck",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "Call support"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "planted": false,
+      "element": "Screen exposes no pane title to screen readers",
+      "note": "Same limitation as samples/BuggyApp's T2: ViewsActivity sets its title via supportActionBar?.title, which does not set an Android accessibility pane title (getPaneTitle()). Android only (needs the instrumentation harness). On the physical Pixel 4a (Android 13) this finding did NOT appear -- a device or OS-version difference, not yet explained; see README.md's Framework differences.",
+      "android": [
+        {
+          "rule": "page-titled",
+          "kind": "needsReview",
+          "role": "window",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "OK1",
+      "planted": false,
+      "element": "'View payment history' button, visible text matches its accessible name, 48dp tall",
+      "android": null
+    }
+  ]
+}

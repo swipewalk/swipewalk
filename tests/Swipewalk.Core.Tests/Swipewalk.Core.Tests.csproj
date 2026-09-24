@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="10.0.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\BuggyApp\ground-truth.json" Link="Fixtures\ground-truth.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\BuggyApp\swipewalk.json" Link="Fixtures\swipewalk.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\NativeAndroid\ground-truth.views.json" Link="Fixtures\ground-truth.native-android-views.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\NativeAndroid\ground-truth.compose.json" Link="Fixtures\ground-truth.native-android-compose.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\NativeiOS\ground-truth.uikit.json" Link="Fixtures\ground-truth.native-ios-uikit.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\samples\NativeiOS\ground-truth.swiftui.json" Link="Fixtures\ground-truth.native-ios-swiftui.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Swipewalk.Core\Swipewalk.Core.csproj" />
+    <ProjectReference Include="..\..\src\Swipewalk.Collectors\Swipewalk.Collectors.csproj" />
+    <ProjectReference Include="..\..\src\Swipewalk.Engine\Swipewalk.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

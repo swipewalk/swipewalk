@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Swipewalk.Desktop.Controls"
+             x:Class="Swipewalk.Desktop.Pages.NewScanPage"
+             Title="New scan">
+    <!-- Proportional columns so the page reflows when the text size grows. -->
+    <Grid ColumnDefinitions="3*,2*" ColumnSpacing="24" Padding="24,16">
+        <ScrollView>
+            <VerticalStackLayout Spacing="10">
+                <Label Text="New scan" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+
+                <Label Text="Platform" FontAttributes="Bold" />
+                <controls:SelectButton x:Name="PlatformPicker" SelectedIndexChanged="OnPlatformChanged" SemanticProperties.Description="Platform" HeightRequest="32" />
+
+                <Label Text="Device" FontAttributes="Bold" />
+                <controls:SelectButton x:Name="DevicePicker" EmptyText="No device found (see Devices)" PlaceholderText="Choose a device"
+                                       SemanticProperties.Description="Device" HeightRequest="32"
+                                       SelectedIndexChanged="OnDeviceChanged" />
+
+                <Label Text="App" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+                <Label Text="An installed app, identified by its Android package or iOS bundle id:" FontSize="{DynamicResource FontCaption}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Border Style="{StaticResource FieldFrame}">
+                        <Entry x:Name="AppIdEntry" Placeholder="org.example.app" SemanticProperties.Description="App package or bundle id" />
+                    </Border>
+                    <Button Grid.Column="1" x:Name="ChooseAppButton" Text="Choose app…" Clicked="OnChooseApp"
+                            SemanticProperties.Hint="Search recently scanned and installed apps on the selected device" />
+                </Grid>
+                <Label Text="Or install a build first (.apk, Simulator .app or .zip, device .ipa):" FontSize="{DynamicResource FontCaption}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Border Style="{StaticResource FieldFrame}">
+                        <Entry x:Name="BuildEntry" Placeholder="Path to a build file (optional)" SemanticProperties.Description="Build file to install" />
+                    </Border>
+                    <Button Grid.Column="1" Text="Choose…" Clicked="OnChooseBuild" SemanticProperties.Description="Choose a build file to install" />
+                </Grid>
+
+                <Label Text="Law or standard" FontAttributes="Bold" />
+                <controls:SelectButton x:Name="StandardPicker" SemanticProperties.Description="Law or standard" HeightRequest="32" />
+
+                <Label Text="What to scan" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+                <controls:SelectButton x:Name="ModePicker" SemanticProperties.Description="What to scan" HeightRequest="32" />
+                <controls:CheckOption x:Name="LargeTextOption" Text="Also check with large system text (Android 200%, iOS AX3)" IsChecked="True" HeightRequest="28" />
+                <!--
+                    Persistent reminder (shown for as long as a physical phone AND the large-text option are both
+                    selected: visibility is set from code-behind (NewScanPage.UpdatePhysicalDeviceLine), not a
+                    pure Binding, since it also depends on which Device is selected, which isn't a bindable path
+                    today (DevicePicker.SelectedIndex only names an index into _devices). Text is set in the
+                    constructor from PhysicalDeviceTextSizeNotice.Text, the same wording scan and record print
+                    before changing a physical phone's text size (ScanService.cs, Recorder.cs), so the fact
+                    reads the same everywhere.
+                -->
+                <Label x:Name="PhysicalDeviceTextSizeLabel" FontSize="{DynamicResource FontCaption}" IsVisible="False" />
+                <controls:CheckOption x:Name="MauiOption" Text="App built with .NET MAUI (fix examples in XAML)" HeightRequest="28" />
+                <controls:CheckOption x:Name="AutoScanOption" Text="Scan automatically when the screen changes" HeightRequest="28"
+                                       SemanticProperties.Hint="Record only: off by default, so a screen you're still navigating through is never captured on its own. When off, use Scan this screen now." />
+
+                <HorizontalStackLayout Spacing="12" Margin="0,8,0,0">
+                    <Button x:Name="StartButton" Text="Start" StyleClass="primary" Clicked="OnStart" SemanticProperties.Hint="Installs the build if given, checks the device, then scans" />
+                    <Button x:Name="ScanNowButton" Text="Scan this screen now" Clicked="OnScanNow" IsVisible="False" />
+                    <Button x:Name="FinishButton" Text="Finish" Clicked="OnFinish" IsVisible="False" SemanticProperties.Hint="Stops recording and opens the report" />
+                </HorizontalStackLayout>
+                <!-- Visible only while Start (and Choose app…) are disabled for lack of a chosen device;
+                     see NewScanPage.UpdateDeviceRequiredControls. -->
+                <Label x:Name="NoDeviceHintLabel" Text="Choose a device above before starting." FontSize="{DynamicResource FontCaption}" IsVisible="False" />
+                <Label x:Name="LargeTextRestartLabel" Text="When checking larger text needs the app restarted:" Margin="0,8,0,0"
+                       IsVisible="{Binding Source={x:Reference LargeTextOption}, Path=IsChecked}" />
+                <controls:SelectButton x:Name="LargeTextRestartPicker" HeightRequest="32"
+                                       SelectedIndexChanged="OnLargeTextRestartPolicyChanged"
+                                       SemanticProperties.Description="When checking larger text needs the app restarted"
+                                       SemanticProperties.Hint="For a recording, can be changed at any time while it's running"
+                                       IsVisible="{Binding Source={x:Reference LargeTextOption}, Path=IsChecked}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <Label Text="Progress" FontSize="{DynamicResource FontHeading}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" />
+            <CollectionView x:Name="LogView" Grid.Row="1" Margin="0,8,0,0">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Label Text="{Binding .}" FontSize="{DynamicResource FontCaption}" Padding="0,2" LineBreakMode="WordWrap" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>

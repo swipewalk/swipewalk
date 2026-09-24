@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell x:Class="Swipewalk.Desktop.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:Swipewalk.Desktop.Pages"
+       Title="Swipewalk"
+       FlyoutBehavior="Locked"
+       FlyoutWidth="220">
+
+    <Shell.FlyoutHeader>
+        <VerticalStackLayout Padding="16,20,16,12" Spacing="2">
+            <Label Text="Swipewalk" FontSize="{DynamicResource FontSubheading}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Accessibility scanner" FontSize="{DynamicResource FontCaption}" TextColor="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource Gray300}}" />
+        </VerticalStackLayout>
+    </Shell.FlyoutHeader>
+
+    <FlyoutItem Title="Dashboard">
+        <ShellContent ContentTemplate="{DataTemplate pages:DashboardPage}" Route="dashboard" />
+    </FlyoutItem>
+    <FlyoutItem Title="New scan">
+        <ShellContent ContentTemplate="{DataTemplate pages:NewScanPage}" Route="scan" />
+    </FlyoutItem>
+    <FlyoutItem Title="Devices">
+        <ShellContent ContentTemplate="{DataTemplate pages:DevicesPage}" Route="devices" />
+    </FlyoutItem>
+    <FlyoutItem Title="History">
+        <ShellContent ContentTemplate="{DataTemplate pages:HistoryPage}" Route="history" />
+    </FlyoutItem>
+</Shell>

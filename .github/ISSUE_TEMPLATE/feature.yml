@@ -1,0 +1,14 @@
+name: Idea or request
+description: A new check, platform, framework or report feature.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Related WCAG criteria or platform guidelines (if any)

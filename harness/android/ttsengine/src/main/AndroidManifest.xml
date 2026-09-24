@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A standalone app, not part of the androidTest APK: see build.gradle.kts's remarks on why a TTS
+  engine has to be a real installed app. Requests WRITE_SECURE_SETTINGS (never auto-granted; the C# side
+  grants it once via `adb shell pm grant`, the same way instrumentation test frameworks do) so the safety
+  timer below can restore accessibility settings entirely on-device, with no adb/host connection needed:
+  see SafetyTimerReceiver's remarks.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- For the safety timer's exact alarm (see SafetyTimerReceiver's remarks); granted via
+         `adb shell appops set ... SCHEDULE_EXACT_ALARM allow`, not a normal runtime permission request,
+         since this app has no UI to ask from. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <application
+        android:label="Swipewalk TalkBack capture"
+        android:allowBackup="false"
+        android:icon="@android:drawable/ic_dialog_info">
+
+        <!-- android:label here is what a person would see in Settings > Accessibility > Text-to-speech
+             output > Preferred engine, if they ever looked: named plainly so it's obviously not for
+             everyday use. See TalkBackTtsEngine.kt's remarks for what it does. -->
+        <service
+            android:name=".TalkBackTtsEngine"
+            android:label="Swipewalk (testing only)"
+            android:permission="android.permission.BIND_TEXT_TO_SPEECH"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.TTS_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech.tts"
+                android:resource="@xml/tts_engine" />
+        </service>
+
+        <!-- Exported (verified: even adb shell's own `am broadcast` cannot reach a non-exported
+             receiver, so exported="false" would also block the instrumentation test that needs to arm
+             and disarm this) but gated on WRITE_SECURE_SETTINGS: this app keeps that permission after a
+             capture (see EnsureTtsEngineInstalledAsync's remarks), so without this gate any other app on
+             the device could send it an arbitrary ACTION_ARM/ACTION_RESTORE_NOW and change accessibility
+             settings with no adb involved at all: a real risk, not a hypothetical one, since the
+             permission is a lasting side effect of installing this app. WRITE_SECURE_SETTINGS is
+             pre-granted to the shell UID on every Android build (how `adb shell settings put secure ...`
+             already works without this app), so `adb shell am broadcast`, which is how
+             TalkBackCollector.kt's armSafetyTimer/disarmSafetyTimer reach this receiver, still works;
+             a normal app cannot acquire this permission for itself. -->
+        <receiver
+            android:name=".SafetyTimerReceiver"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS"
+            android:exported="true" />
+
+    </application>
+</manifest>

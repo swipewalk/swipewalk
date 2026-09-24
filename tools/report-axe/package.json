@@ -1,0 +1,10 @@
+{
+  "name": "swipewalk-report-axe",
+  "private": true,
+  "description": "Development check: run axe-core on generated Swipewalk reports (not shipped).",
+  "type": "module",
+  "dependencies": {
+    "axe-core": "^4.10.0",
+    "puppeteer-core": "^25.11.0"
+  }
+}

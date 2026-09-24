@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ground-truth screen for Swipewalk, built with the classic Android View system. Bugs are
+  deliberate; each is tagged with an id (N1..N8) that matches ground-truth.views.json in this
+  sample's root folder. Elements tagged OK are negative controls.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Heading; not part of the ground truth. -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/screen_heading"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_dark"
+            android:layout_marginBottom="12dp" />
+
+        <!-- N1: icon-only search button, no contentDescription at all. -->
+        <ImageButton
+            android:id="@+id/buttonSearch"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_search" />
+
+        <!-- N2: low-contrast helper text (#AAAAAA on white, about 2.3:1). -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/helper_text"
+            android:textSize="14sp"
+            android:textColor="@color/low_contrast_gray"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N7: text size given in px, not sp, so it ignores the system font-size setting.
+             (32px is roughly a 14sp look at common densities; the point is the unit, not the
+             number.) Only shows up on Swipewalk's large-text rescan - see androidLargeText in
+             ground-truth.views.json. -->
+        <TextView
+            android:id="@+id/textLateFees"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/late_fees_text"
+            android:textSize="32px"
+            android:textColor="@color/text_dark"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N6: caption TextView that is NOT associated with the EditText below (no labelFor,
+             and the EditText has no hint or contentDescription either). -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plate_number_label"
+            android:textSize="14sp"
+            android:textColor="@color/text_dark" />
+        <EditText
+            android:id="@+id/editPlateNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textCapCharacters"
+            android:layout_marginBottom="16dp" />
+
+        <!-- OK3: text field with a correctly associated label (labelFor on the TextView). -->
+        <TextView
+            android:id="@+id/labelTicketNumber"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ticket_number_label"
+            android:textSize="14sp"
+            android:textColor="@color/text_dark"
+            android:labelFor="@id/editTicketNumber" />
+        <EditText
+            android:id="@+id/editTicketNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N3: icon button with a correct accessible name, but drawn at 20dp - well under
+             Android's 48dp touch-target guideline. (Some launchers/frameworks pad a small icon's
+             touch target back up; this is the source size a real developer would set, same
+             caveat as BuggyApp's B5.) -->
+        <ImageButton
+            android:id="@+id/buttonMoreInfo"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="@null"
+            android:src="@android:drawable/ic_menu_info_details"
+            android:contentDescription="@string/more_info_description"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N8: icon button with a correct name and normal 48dp size, but a very light tint -
+             a contrast bug, not a naming bug. -->
+        <ImageButton
+            android:id="@+id/buttonHelp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_help"
+            android:tint="@color/icon_low_contrast"
+            android:contentDescription="@string/help_description"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N5: visible text "Pay" but the accessible name is "Submit" (label-in-name mismatch). -->
+        <Button
+            android:id="@+id/buttonPay"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="@string/pay_button_text"
+            android:contentDescription="Submit"
+            android:backgroundTint="@color/brand_blue"
+            android:textColor="@color/white"
+            android:layout_marginBottom="16dp" />
+
+        <!-- N4: accessible name copied from a developer identifier. -->
+        <ImageButton
+            android:id="@+id/buttonEmailReceipt"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_send"
+            android:contentDescription="img_btn_email_receipt"
+            android:layout_marginBottom="16dp" />
+
+        <!-- OK2: icon button with a correct contentDescription; drawn at 44dp, a realistic
+             near-miss below Android's 48dp guideline - not a planted bug, but honestly may still
+             trip the target-size platform advisory (documented in ground-truth.views.json). -->
+        <ImageButton
+            android:id="@+id/buttonCall"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_call"
+            android:contentDescription="@string/call_description"
+            android:layout_marginBottom="16dp" />
+
+        <!-- OK1: normal button, visible text matches its accessible name, 48dp tall. -->
+        <Button
+            android:id="@+id/buttonHistory"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/history_button_text"
+            android:backgroundTint="@color/light_panel"
+            android:textColor="@color/text_dark" />
+
+    </LinearLayout>
+</ScrollView>

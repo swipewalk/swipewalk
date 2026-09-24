@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>swipewalk</AssemblyName>
+    <RootNamespace>Swipewalk.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Swipewalk.Core\Swipewalk.Core.csproj" />
+    <ProjectReference Include="..\Swipewalk.Collectors\Swipewalk.Collectors.csproj" />
+    <ProjectReference Include="..\Swipewalk.Engine\Swipewalk.Engine.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- .NET tool package: dotnet tool install -g Swipewalk -->
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>swipewalk</ToolCommandName>
+    <PackageId>Swipewalk</PackageId>
+    <Description>Accessibility scanner for running Android and iOS apps, with first-class .NET MAUI support. Wraps Apple's accessibility audit and Google's Accessibility Test Framework, can drive real TalkBack capture on Android, maps findings to WCAG 2.2, and writes JSON and HTML reports. Automated checks find only some issues; manual testing is still required.</Description>
+    <PackageTags>accessibility;a11y;wcag;android;ios;maui;dotnet-maui;talkback;screen-reader;testing</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\NOTICE;..\..\DISCLAIMER.md;..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

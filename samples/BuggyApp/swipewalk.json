@@ -1,0 +1,18 @@
+{
+  // Example run configuration: swipewalk run --config samples/BuggyApp/swipewalk.json
+  // Scans the sample on the only connected Android device and the booted iOS Simulator.
+  "app": {
+    "android": { "package": "org.swipewalk.buggyapp" },   // or "install": "path/to/app-release.apk"
+    "ios": { "bundleId": "org.swipewalk.buggyapp" }       // or "install": "path/to/App.app" / "App.ipa"
+  },
+  "targets": [
+    { "platform": "android" },
+    { "platform": "ios", "device": "booted" }
+  ],
+  "mode": "scan",                  // "record" to walk through screens yourself; "auto" is planned
+  "standard": "ada-title-ii",      // focus counts and exit code on one standard (optional)
+  "framework": "maui",
+  "largeText": true,
+  "failOn": "wcag-issues",         // exit code 3 when WCAG issues are found (for CI); "never" to always exit 0
+  "avoid": ["Pay", "Delete"]       // reserved for auto-navigation: never tapped
+}

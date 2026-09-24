@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Second ground-truth screen, reached from "View payment history". Used to test record mode.
+     With the default MAUI template, changing the Android text size restarts the app and returns to
+     MainPage, so record mode cannot run the large-text check here (framework note). -->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BuggyApp.HistoryPage"
+             Title="Payment history"
+             BackgroundColor="White">
+
+    <VerticalStackLayout Padding="20,12" Spacing="12">
+        <!-- OK: heading. -->
+        <Label Text="Your payments" FontSize="20" TextColor="#1F1F1F" SemanticProperties.HeadingLevel="Level1" />
+
+        <!-- OK: rows of plain text. -->
+        <Label Text="Ticket A1234 · $45.00 · Paid on Sep 2" FontSize="16" TextColor="#1F1F1F" />
+        <Label Text="Ticket B5678 · $30.00 · Paid on Aug 14" FontSize="16" TextColor="#1F1F1F" />
+    </VerticalStackLayout>
+</ContentPage>

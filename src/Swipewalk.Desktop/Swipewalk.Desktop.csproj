@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Desktop only: Mac Catalyst, plus Windows when built on Windows. -->
+		<TargetFrameworks>net10.0-maccatalyst</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+
+		<!-- Note for MacCatalyst:
+		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
+		When specifying both architectures, use the plural <RuntimeIdentifiers> instead of the singular <RuntimeIdentifier>.
+		The Mac App Store will NOT accept apps with ONLY maccatalyst-arm64 indicated;
+		either BOTH runtimes must be indicated or ONLY macatalyst-x64. -->
+		<!-- For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers> -->
+
+		<OutputType>Exe</OutputType>
+		<RootNamespace>Swipewalk.Desktop</RootNamespace>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!-- Enable XAML source generation for faster build times and improved performance.
+		     This generates C# code from XAML at compile time instead of runtime inflation.
+		     To disable, remove this line.
+		     For individual files, you can override by setting Inflator metadata:
+		       <MauiXaml Update="MyPage.xaml" Inflator="Default" /> (reverts to defaults: Runtime for Debug, XamlC for Release)
+		       <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
+		<MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+		<!-- Display name -->
+		<ApplicationTitle>Swipewalk</ApplicationTitle>
+
+		<!-- App Identifier -->
+		<ApplicationId>org.swipewalk.desktop</ApplicationId>
+
+		<!-- Versions -->
+		<ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
+		<!-- macOS expects the build number to increase with every release, or an update can look older than
+		     what is installed. Derived from Version so one bump in Directory.Build.props covers both. -->
+		<ApplicationVersion>$(Version.Replace('.', ''))</ApplicationVersion>
+
+		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+		<WindowsPackageType>None</WindowsPackageType>
+
+		<!-- .NET for iOS/Mac Catalyst 26.5 requires Xcode 26.5; allow newer Xcode until a stable workload supports it. -->
+		<ValidateXcodeVersion>false</ValidateXcodeVersion>
+
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- App Icon -->
+		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" ForegroundScale="0.8" Color="#174A7C" />
+
+		<!-- Splash Screen -->
+		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#174A7C" BaseSize="128,128" />
+
+		<!-- Images -->
+		<MauiImage Include="Resources\Images\*" />
+		
+		<!-- Custom Fonts -->
+		<MauiFont Include="Resources\Fonts\*.ttf" />
+
+		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Swipewalk.Engine\Swipewalk.Engine.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="$(TargetFramework.Contains('maccatalyst'))">
+		<!-- The iOS scanning harness source, built on first iOS scan (Contents/Resources/harness/ios). -->
+		<BundleResource Include="..\..\harness\ios\**\*" Exclude="..\..\harness\ios\**\xcuserdata\**;..\..\harness\ios\**\.DS_Store"
+		                LogicalName="harness/ios/%(RecursiveDir)%(Filename)%(Extension)" />
+		<!-- The prebuilt Android ATF harness APK (Contents/Resources/harness/android), built by CI
+		     before packing/publishing (see Swipewalk.Collectors.csproj); absent in a from-source
+		     checkout that hasn't built it, in which case AndroidHarness falls back to building
+		     harness/android from source. -->
+		<BundleResource Include="..\..\harness\android\harness\build\outputs\apk\androidTest\debug\harness-debug-androidTest.apk"
+		                Condition="Exists('..\..\harness\android\harness\build\outputs\apk\androidTest\debug\harness-debug-androidTest.apk')"
+		                LogicalName="harness/android/harness-debug-androidTest.apk" />
+		<!-- The prebuilt standalone TTS-engine app (harness/android/ttsengine), only installed on a
+		     device when the screen-reader capture option is used; same reasoning as the harness APK above. -->
+		<BundleResource Include="..\..\harness\android\ttsengine\build\outputs\apk\debug\ttsengine-debug.apk"
+		                Condition="Exists('..\..\harness\android\ttsengine\build\outputs\apk\debug\ttsengine-debug.apk')"
+		                LogicalName="harness/android/ttsengine-debug.apk" />
+	</ItemGroup>
+
+</Project>

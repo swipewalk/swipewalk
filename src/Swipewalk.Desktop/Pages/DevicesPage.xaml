@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Swipewalk.Desktop.Pages.DevicesPage"
+             Title="Devices">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,16" Spacing="12">
+            <Label Text="Devices" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Android phones and emulators (over adb), iOS Simulators and iPhones connected to this Mac." FontSize="{DynamicResource FontBody}" />
+            <HorizontalStackLayout Spacing="12">
+                <Button Text="Refresh" Clicked="OnRefresh" SemanticProperties.Hint="Looks for connected devices again" />
+                <ActivityIndicator x:Name="Busy" IsRunning="False" IsVisible="False" SemanticProperties.Description="Looking for devices" />
+            </HorizontalStackLayout>
+            <VerticalStackLayout x:Name="DeviceList" Spacing="10" />
+            <Label Text="Readiness" FontSize="{DynamicResource FontHeading}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level2" Margin="0,12,0,0" />
+            <Label Text="Choose Check on a device to see whether it is ready to scan, and how to fix what isn't." FontSize="{DynamicResource FontBody}" />
+            <VerticalStackLayout x:Name="CheckList" Spacing="6" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,184 @@
+{
+  "description": "Verified 2026-09-23 against a live scan of the iPhone 17 Simulator (iOS 26.5) showing ViewsScreenViewController, launched directly with the -views launch argument (see README.md). Expected Swipewalk findings for the UIKit screen, single platform 'ios' (this app has no Android build). Each finding is matched on rule, kind, role and label (label = accessible name or visible text). null means no finding is expected. Also verified on a physical iPhone (iOS 27.0): the same findings reproduced, plus one extra WCAG issue on a negative control -- see OK1's note. N1 did NOT reproduce as designed -- see its note and the new KnownLimitations entry 'ios-sf-symbol-default-label' this uncovered.",
+  "screen": "Pay a parking ticket (Views screen)",
+  "expected": [
+    {
+      "id": "N1",
+      "planted": true,
+      "element": "Icon-only search button (magnifyingglass) with no accessibilityLabel set",
+      "note": "DID NOT REPRODUCE: UIImage(systemName: \"magnifyingglass\") carries Apple's own built-in accessibility description, and UIButton exposes it as the button's accessible name (\"Search\") even though no accessibilityLabel was set in code. Confirmed in the captured tree: the button's label is \"Search\". This is a genuine iOS/Android difference -- Android's ImageButton/Icon has no equivalent default -- and a real limitation of this bug class on iOS with a common, well-known SF Symbol: missing-name does not fire. See the new KnownLimitations entry 'ios-sf-symbol-default-label'.",
+      "ios": null
+    },
+    {
+      "id": "N2",
+      "planted": true,
+      "element": "Helper label 'Payments post within 2 business days.' tinted UIColor(white: 0.67), about 2.3:1 on white",
+      "ios": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "planted": true,
+      "element": "'Clear form' icon button constrained to 20x20",
+      "note": "Confirmed present at 20x20, but as a platform advisory, not a WCAG issue: the button sits alone at the trailing end of its row with enough surrounding space that WCAG 2.5.8's spacing exception applies, so it is below Apple's 44pt guideline but not treated as a 2.5.8 failure. Corrects the first version of this answer key's guess of wcagIssue.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Clear form"
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "planted": true,
+      "element": "Email receipt icon button named 'img_btn_email_receipt'",
+      "ios": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_btn_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "N5",
+      "planted": true,
+      "element": "Button shows 'Pay' but its accessibilityLabel is 'Submit'",
+      "note": "Confirmed. UIKit keeps the button's visible title as a child staticText node (\"Pay\") alongside the button's own accessibilityLabel (\"Submit\"), so label-in-name can compare the two -- unlike SwiftUI's equivalent button (see ground-truth.swiftui.json's N5), where .accessibilityLabel() replaces the accessible subtree and the visible text is not independently exposed.",
+      "ios": [
+        {
+          "rule": "label-in-name",
+          "kind": "wcagIssue",
+          "role": "button",
+          "label": "Submit"
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "planted": true,
+      "element": "Plate number UITextField with no placeholder and no accessibilityLabel; the caption above it is a plain UILabel, not associated",
+      "note": "Also below Apple's 44pt guideline at its rendered 362x34 (same near-miss height as the labelled Ticket number field -- see T1).",
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        },
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "planted": true,
+      "element": "'Late fees apply after 30 days.' label, fixed UIFont.systemFont(ofSize: 14), adjustsFontForContentSizeCategory left false",
+      "note": "Confirmed on a normal scan: Apple's own accessibility audit (engine:dynamicType) names this element among those with unsupported Dynamic Type font sizes -- no large-text rescan was needed to catch it, unlike Android's px/dp.toSp() versions of this bug, which only show up on the large-text rescan. This iOS large-text/Dynamic-Type rescan itself was not run here (matches samples/BuggyApp's own note that there is no saved iOS large-text fixture yet).",
+      "ios": null,
+      "iosLargeText": [
+        {
+          "rule": "text-resize",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Late fees apply after 30 days."
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "planted": true,
+      "element": "Help icon button (questionmark.circle) with a correct accessibilityLabel 'Help', tinted UIColor(white: 0.87) on white",
+      "ios": [
+        {
+          "rule": "icon-contrast",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "Help"
+        }
+      ]
+    },
+    {
+      "id": "A1",
+      "planted": false,
+      "element": "Screen-wide: fixed point-size text (N7) and the Ticket number field's default font not following Dynamic Type",
+      "note": "Confirmed, but the exact element list differs from the first guess: Apple's audit named \"Cancel\", \"Ticket number\" (the UITextField itself, not its caption -- its font was never set explicitly, so it defaults to a non-scaling system font) and \"Late fees apply after 30 days.\" (N7) -- 3 elements, not just N7.",
+      "ios": [
+        {
+          "rule": "engine:dynamicType",
+          "kind": "needsReview",
+          "role": "screen",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "planted": false,
+      "element": "'Ticket number' UITextField (OK, correctly labelled), rendered 362x34",
+      "note": "Found without being planted: a plain UITextField's default height (34pt) is below Apple's 44pt guideline, same spirit as samples/BuggyApp's near-miss controls. Same 362x34 near-miss also applies to N6's field (documented on N6's own entry above).",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": "Ticket number"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "planted": false,
+      "element": "'Cancel' text button (OK, visible text matches accessible name), rendered 302x30",
+      "note": "Found without being planted: a plain UIButton(type: .system) with only setTitle stretched to fill its UIStackView row (no explicit width constraint) and is 30pt tall, below Apple's 44pt guideline. Also flagged for text contrast (about 3.52:1, the default UIKit tint blue #0088FF on white) and for Dynamic Type support (see A1) -- three separate, unplanned findings on one negative control, all worth reviewing.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Cancel"
+        },
+        {
+          "rule": "text-contrast",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Cancel"
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "planted": false,
+      "element": "'City of Exampleville' heading, scaled UIFontMetrics font next to the search button",
+      "note": "Found without being planted: Apple's own accessibility audit reports this heading's text as clipped (engine:textClipped), most likely the header row's UIStackView not leaving enough room next to the search button at the current text size. No WCAG criterion is mapped for this check (see docs/checks.md).",
+      "ios": [
+        {
+          "rule": "engine:textClipped",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "City of Exampleville"
+        }
+      ]
+    },
+    {
+      "id": "OK1",
+      "planted": false,
+      "element": "'View payment history' button, visible text matches its accessible name",
+      "note": "Clean on the Simulator. On the physical iPhone (iOS 27.0) this same button (a UIButton.Configuration.gray() button) additionally measured a WCAG text-contrast issue (about 1.48:1, white text on a light gray #D4D4D6 background) that the Simulator (iOS 26.5) did not show. Not explained; possibly the same Dark Mode setting noted for the SwiftUI screen's N7 (a configuration button's colors can follow the system appearance even where a view's own background is forced white) -- not confirmed, since the phone's appearance setting wasn't checked. Not reproduced here as part of this file's normal expectations since it's device-specific. See README.md's Framework differences.",
+      "ios": null
+    }
+  ]
+}

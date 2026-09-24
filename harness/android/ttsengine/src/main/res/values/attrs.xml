@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The public Android SDK does not expose the framework's own tts-engine/voice attributes for
+     AttributeSet parsing, so tts_engine.xml declares its own local styleable with the same names:
+     the system reads these itself when populating Settings > Text-to-speech output's engine list; this
+     app never parses tts_engine.xml itself. Verified working on TalkBack 16 and 17. -->
+<resources>
+    <declare-styleable name="TtsEngine">
+        <attr name="name" format="string" />
+        <attr name="locale" format="string" />
+        <attr name="quality" format="integer" />
+        <attr name="latency" format="integer" />
+    </declare-styleable>
+</resources>

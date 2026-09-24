@@ -1,0 +1,188 @@
+{
+  "description": "Verified 2026-09-23 against a live scan of the iPhone 17 Simulator (iOS 26.5) showing SwiftUIScreenView, launched directly with the -swiftui launch argument (see README.md). Expected Swipewalk findings for the SwiftUI screen, single platform 'ios' (this app has no Android build). Each finding is matched on rule, kind, role and label (label = accessible name or visible text). null means no finding is expected. Also verified on a physical iPhone (iOS 27.0): most findings reproduced, but with a screen-wide background-color difference that changed one finding -- see N7's note; possibly the device being in Dark Mode at the time (its appearance setting wasn't checked, and this run didn't change it). N1 and N5 did NOT reproduce as designed -- see their notes.",
+  "screen": "Pay a parking ticket (SwiftUI screen)",
+  "expected": [
+    {
+      "id": "N1",
+      "planted": true,
+      "element": "Icon-only search button (magnifyingglass) with no .accessibilityLabel",
+      "note": "DID NOT REPRODUCE, same reason as the UIKit screen's N1: the SF Symbol \"magnifyingglass\" carries Apple's own built-in accessibility description (\"Search\"), which SwiftUI's Button/Image exposes even with no explicit label. See ground-truth.uikit.json's N1 and the new KnownLimitations entry 'ios-sf-symbol-default-label'.",
+      "ios": null
+    },
+    {
+      "id": "N2",
+      "planted": true,
+      "element": "Helper text 'Payments post within 2 business days.' with foregroundColor(Color(white: 0.67))",
+      "ios": [
+        {
+          "rule": "text-contrast",
+          "kind": "wcagIssue",
+          "role": "text",
+          "label": "Payments post within 2 business days."
+        }
+      ]
+    },
+    {
+      "id": "N3",
+      "planted": true,
+      "element": "'Clear form' icon button, .frame(width: 20, height: 20)",
+      "note": "Confirmed present (20x19 dp/pt -- SwiftUI's hit-testing frame rounds slightly differently from the requested 20x20), as a platform advisory like the UIKit screen's N3, not a WCAG issue (same spacing-exception reasoning).",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Clear form"
+        }
+      ]
+    },
+    {
+      "id": "N4",
+      "planted": true,
+      "element": "Email receipt icon button, .accessibilityLabel(\"img_btn_email_receipt\")",
+      "ios": [
+        {
+          "rule": "identifier-name",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "img_btn_email_receipt"
+        }
+      ]
+    },
+    {
+      "id": "N5",
+      "planted": true,
+      "element": "Button(\"Pay\") { ... }.accessibilityLabel(\"Submit\")",
+      "note": "DID NOT REPRODUCE as label-in-name: the button is still reported (as a 52x34 target, below Apple's 44pt guideline -- a platform advisory), and its accessible name is 'Submit', but the visible text 'Pay' is not independently exposed anywhere in the captured tree once .accessibilityLabel() is applied -- SwiftUI's accessibilityLabel() replaces the element's accessible representation rather than layering over it, unlike UIKit (see ground-truth.uikit.json's N5, where the same mismatch IS detected because UIKit keeps the visible title as a separate child node). label-in-name has nothing to compare the accessible name against, so it can't fire. This is a real detection gap for this SwiftUI pattern specifically -- see the new KnownLimitations entry 'ios-swiftui-accessibility-label-hides-text'.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Submit"
+        }
+      ]
+    },
+    {
+      "id": "N6",
+      "planted": true,
+      "element": "Bare TextField(\"\", text: $plateNumber) with an unassociated caption Text above it",
+      "ios": [
+        {
+          "rule": "missing-name",
+          "kind": "wcagIssue",
+          "role": "textfield",
+          "label": null
+        },
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N7",
+      "planted": true,
+      "element": "'Late fees apply after 30 days.' with .font(.system(size: 14))",
+      "note": "Confirmed on a normal scan via Apple's accessibility audit (engine:dynamicType), the only element it names here -- unlike the UIKit screen, where 3 elements are named (see ground-truth.uikit.json's A1). SwiftUI's other text on this screen uses built-in Dynamic-Type-aware styles (.subheadline, .footnote, .title2), which support Dynamic Type automatically without an explicit opt-in, unlike UIKit's UILabel/UITextField, which each need adjustsFontForContentSizeCategory set individually -- a real, positive framework difference. On the physical iPhone, this same text also measured a WCAG text-contrast issue (about 1.27:1, #1F1F1F on a #000000 background) that the Simulator did not show: the SwiftUI screen never sets an explicit background color (unlike the UIKit screen, which forces view.backgroundColor = .white), so it follows the system appearance -- possibly the phone was in Dark Mode at the time (its appearance setting wasn't checked, and this run didn't change it); see README.md's Framework differences. No large-text/Dynamic-Type rescan was run here (matches samples/BuggyApp's own note that there is no saved iOS large-text fixture yet).",
+      "ios": null,
+      "iosLargeText": [
+        {
+          "rule": "text-resize",
+          "kind": "needsReview",
+          "role": "text",
+          "label": "Late fees apply after 30 days."
+        }
+      ]
+    },
+    {
+      "id": "A1",
+      "planted": false,
+      "element": "Screen-wide: fixed point-size text (N7) not following Dynamic Type",
+      "note": "Confirmed: Apple's audit names only 1 element here (\"Late fees apply after 30 days.\"), unlike the UIKit screen's 3 -- see N7's note above for why.",
+      "ios": [
+        {
+          "rule": "engine:dynamicType",
+          "kind": "needsReview",
+          "role": "screen",
+          "label": null
+        }
+      ]
+    },
+    {
+      "id": "N8",
+      "planted": true,
+      "element": "Help icon button, .foregroundColor(Color(white: 0.87)), .accessibilityLabel(\"Help\")",
+      "ios": [
+        {
+          "rule": "icon-contrast",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "Help"
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "planted": false,
+      "element": "'Ticket number' TextField (OK, correctly labelled via .accessibilityLabel), rendered 362x34",
+      "note": "Found without being planted, same near-miss as the UIKit screen's T1 (default text field height below 44pt). Same 362x34 near-miss also applies to N6's field.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "textfield",
+          "label": "Ticket number"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "planted": false,
+      "element": "'Cancel' text button (OK, visible text matches accessible name), rendered 53x20",
+      "note": "Found without being planted: below Apple's 44pt guideline, and Apple's own audit separately reports its text contrast as 'nearly passed' (engine:contrast) -- unlike the UIKit screen, where the same button was measured by Swipewalk's own text-contrast rule instead (about 3.52:1). Different measurement methods (Swipewalk's screenshot-pixel measurement vs Apple's own audit) can disagree about which side of a threshold the same visible color falls on.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "Cancel"
+        },
+        {
+          "rule": "engine:contrast",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "Cancel"
+        }
+      ]
+    },
+    {
+      "id": "OK1",
+      "planted": false,
+      "element": "'View payment history' button (.buttonStyle(.bordered)), visible text matches its accessible name",
+      "note": "NOT clean, unlike the UIKit screen's equivalent negative control: SwiftUI's .bordered button style renders at 188x34 (below Apple's 44pt guideline -- platform advisory), and its blue text/tint against the style's light gray background measured about 2.90:1 by Swipewalk's icon-contrast rule (which reads the dominant foreground color of an interactive control and can end up measuring a text button's tint this way, not only true icons -- flagged here as a possible over-broad match rather than fixed, since the fix isn't obviously trivial) and also flagged by Apple's own audit (engine:contrast, needs review) too. A different bordered-button rendering from UIKit's plain .gray() configuration button, which stayed clean on the Simulator.",
+      "ios": [
+        {
+          "rule": "target-size",
+          "kind": "platformAdvisory",
+          "role": "button",
+          "label": "View payment history"
+        },
+        {
+          "rule": "icon-contrast",
+          "kind": "needsReview",
+          "role": "button",
+          "label": "View payment history"
+        },
+        {
+          "rule": "engine:contrast",
+          "kind": "needsReview",
+          "role": "element",
+          "label": "View payment history"
+        }
+      ]
+    }
+  ]
+}
