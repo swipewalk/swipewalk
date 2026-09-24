@@ -241,10 +241,11 @@ Each screen also shows:
   a finding that measures as "needs review" in one appearance and a clear failure in the other is
   kept as two separate, correctly-labeled findings rather than one that hides the worse result. If
   the second capture looks the same as the first (checked from the screenshot and the accessibility
-  tree, not just the theme setting), the report says the app may not have picked up the appearance
-  change (some apps only read the theme at launch) instead of labeling findings by appearance at
-  all — large-text and captured-screen-reader findings are never labeled by appearance either,
-  since the second capture doesn't repeat those checks.
+  tree, not just the theme setting), the report says so instead of labeling findings by appearance
+  at all — an app may force one theme regardless of the system setting, use fixed colors instead of
+  theme-aware ones, or only read the theme at launch, and a scan from the outside can't tell which.
+  Large-text and captured-screen-reader findings are never labeled by appearance either, since the
+  second capture doesn't repeat those checks.
 - **Lost navigation place (Android)** — on Android, when the very first attempt at the larger text
   size showed a different screen (typically the app's first) instead of the one being checked, the
   report also adds a platform advisory on that screen (the one where Swipewalk actually saw it

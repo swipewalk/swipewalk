@@ -190,10 +190,11 @@ public sealed record ScreenResult
     /// <summary>
     /// True when the other-appearance capture looked the same as the primary one -- same accessibility tree,
     /// near-identical screenshot brightness (see <see cref="Model.AppearanceChangeDetector"/>) -- meaning the
-    /// app most likely did not pick up the appearance change (some frameworks only read the theme at launch,
-    /// the same restart requirement some apps have for a larger text size). Findings from that capture are
-    /// still reported, since automated checks did run against it, but the report says the check may not
-    /// reflect the other appearance. Null when not checked, or when a real change was seen.
+    /// screen most likely did not visibly change appearance. This can't say why: the app may force one theme
+    /// regardless of the system setting, use fixed colors, or only read the theme at launch and need a
+    /// restart. Findings from that capture are still reported, since automated checks did run against it, but
+    /// the report says the check may not reflect the other appearance. Null when not checked, or when a real
+    /// change was seen.
     /// </summary>
     public bool? AppearanceUnchanged { get; init; }
 }
