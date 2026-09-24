@@ -4,6 +4,7 @@ using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using Swipewalk.Core.Imaging;
 using Swipewalk.Core.Model;
+using Swipewalk.Core.Reports;
 using Swipewalk.Core.Rules;
 using Swipewalk.Core.ScreenReader;
 
@@ -480,6 +481,16 @@ public static class IosCollector
         return TextSizeState.Parse(result.GetValueOrDefault("state"));
     }
 
+    /// <summary>
+    /// The Simulator's current dark/light appearance ("dark" or "light"), via `xcrun simctl ui &lt;udid&gt;
+    /// appearance`. Simulator only -- there is no equivalent for a physical iPhone yet (see
+    /// <see cref="AppearanceLabels.PhysicalIphoneNotSupportedReason"/> and docs/limitations.md).
+    /// </summary>
+    public static async Task<string> ReadAppearanceAsync(string udid) => (await Simctl("ui", udid, "appearance")).Trim();
+
+    /// <summary>Sets the Simulator's appearance ("dark" or "light").</summary>
+    public static Task SetAppearanceAsync(string udid, string appearance) => Simctl("ui", udid, "appearance", appearance);
+
     /// <summary>The pure decision behind <see cref="CaptureLargeTextAsync"/>, once a capture attempt has finished
     /// (or never succeeded): no snapshot means the app never came back to front; a snapshot of a different screen
     /// means it restarted or navigated away.</summary>
@@ -855,7 +866,10 @@ public static class IosCollector
         }
     }
 
-    internal static async Task<string?> BootedSimulatorAsync()
+    /// <summary>The UDID of the currently booted Simulator, or null if none is booted. Public so callers
+    /// outside this assembly (e.g. <c>ScanService</c>'s appearance rescan) can resolve the same device
+    /// <see cref="CaptureAsync"/> would default to, before it captures anything.</summary>
+    public static async Task<string?> BootedSimulatorAsync()
     {
         var info = new ProcessStartInfo("xcrun") { RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var arg in new[] { "simctl", "list", "devices", "booted", "-j" })

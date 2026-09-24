@@ -132,10 +132,10 @@ public static class KnownLimitations
         {
             Id = "device-settings",
             Area = LimitationArea.Coverage,
-            Title = "Scans use the device's current orientation, theme and settings",
-            Description = "Each scan captures the screen in the device's current orientation and color theme.",
-            Impact = "1.4.10 Reflow and 1.3.4 Orientation are not tested, dark-mode contrast is only tested if the device is in dark mode, and 1.4.4 Resize Text is tested only partly: in record mode and scan --large-text, by comparing the screen at the OS text-size setting (Android font scale 2.0, exactly the 200% 1.4.4 asks for; iOS accessibility size AX3, about 235%, beyond it), and otherwise only where Apple's audit reports it. Text that does not grow is always reported against 1.4.4 regardless of which of those two levels was tested, since it implies text can't reach 200% either way; clipping or overlap seen only on iOS at AX3 (above 200%) is reported as a platform advisory against Apple's Dynamic Type guidance instead of a WCAG finding. Other resize mechanisms and 1.4.10 Reflow are not tested.",
-            ManualCheck = "Repeat key screens at 200% text size (and your platform's largest setting), in landscape, and in dark mode; also check any in-app text size controls.",
+            Title = "Scans use the device's current orientation and settings",
+            Description = "Each scan captures the screen in the device's current orientation. `scan --appearance both` captures the screen in the device's other dark/light appearance too and runs every check on it (Android `cmd uimode night`; iOS Simulator `simctl ui appearance`; not yet supported on a physical iPhone), restoring the device's original appearance afterward; without it, only the device's current appearance is checked.",
+            Impact = "1.4.10 Reflow and 1.3.4 Orientation are not tested. Contrast is checked in both dark and light appearance only when `--appearance both` was used; otherwise only the device's current appearance is checked -- why that matters: on 2026-09-23, Microsoft's WeatherTwentyOne sample scanned clean on one device in dark mode but had 5 genuine WCAG 1.4.3 contrast failures on another device in light mode (see docs/case-study.md). 1.4.4 Resize Text is tested only partly: in record mode and scan --large-text, by comparing the screen at the OS text-size setting (Android font scale 2.0, exactly the 200% 1.4.4 asks for; iOS accessibility size AX3, about 235%, beyond it), and otherwise only where Apple's audit reports it. Text that does not grow is always reported against 1.4.4 regardless of which of those two levels was tested, since it implies text can't reach 200% either way; clipping or overlap seen only on iOS at AX3 (above 200%) is reported as a platform advisory against Apple's Dynamic Type guidance instead of a WCAG finding. Other resize mechanisms and 1.4.10 Reflow are not tested.",
+            ManualCheck = "Repeat key screens at 200% text size (and your platform's largest setting) and in landscape; also check any in-app text size controls. Pass --appearance both to check both dark and light appearance automatically instead of by hand.",
         },
         new()
         {
@@ -292,6 +292,17 @@ public static class KnownLimitations
             Description = "On a physical iPhone, scan --large-text and record set Larger Text to AX3 (about 235%) through the Settings app, return to the app, and restore the original setting afterwards. This takes a couple of minutes per screen and needs the phone unlocked. The Settings layout can change between iOS versions; if the path isn't found, Swipewalk uses a per-app text-size launch setting instead, and otherwise skips the check with a reason.",
             Impact = "On a new iOS version the check may fall back or be skipped until Swipewalk is updated; the report says which method was used or why the check was skipped.",
             ManualCheck = "If the check was skipped, set Settings > Accessibility > Display & Text Size > Larger Text to a large size and check each screen by hand.",
+        },
+        new()
+        {
+            Id = "appearance-physical-iphone",
+            Area = LimitationArea.Coverage,
+            Platforms = [Platform.iOS],
+            Title = "The appearance rescan doesn't support a physical iPhone yet",
+            Description = "scan --appearance both works on the iOS Simulator (via `simctl ui appearance`) and on Android, real device or emulator (via `cmd uimode night`), but Swipewalk doesn't switch a physical iPhone's appearance yet, so the check is skipped there with a reason.",
+            Impact = "On a physical iPhone, only the device's current appearance is checked; a contrast failure that only shows up in the other appearance is missed unless the phone is switched by hand and scanned again.",
+            ManualCheck = "On a physical iPhone, switch Settings > Display & Brightness between Light and Dark by hand and scan again in each.",
+            Planned = "Switching appearance on a physical iPhone",
         },
         new()
         {

@@ -371,6 +371,36 @@ inside a forecast cell that already has its own accessible name, so Swipewalk's 
 treats the icon as part of that named row rather than as an unlabeled image needing review (the same
 fix described under "What this study changed in Swipewalk" in section 2).
 
+### Automating both scans: `scan --appearance both`
+
+The two WeatherTwentyOne scans above were two separate runs, on two separate devices, compared by
+hand. `scan --appearance both` does this in one run instead: it captures the screen as the device
+is, switches the device to the other dark/light appearance (Android `cmd uimode night`; iOS
+Simulator `simctl ui appearance`), captures again, runs every check on both captures, and restores
+the device's original appearance afterward. Verified with real runs, each confirmed restored to its
+starting appearance afterward:
+
+- **BuggyApp (MAUI)**, light-to-dark on an Android emulator, dark-to-light on a Pixel 4a, and
+  light-to-dark on the iOS Simulator: in all three, the second screenshot was byte-identical to the
+  first (confirmed by comparing the two capture files directly) -- the app did not visibly respond
+  to the appearance change on any of the three platforms tested, so `--appearance both` reported the
+  screen as unchanged rather than silently repeating the same findings under two labels.
+- **samples/NativeAndroid** (Views), on the same emulator and Pixel 4a: also byte-identical between
+  the two captures.
+- **samples/NativeiOS** (UIKit "Pay a parking ticket" screen), on the iOS Simulator: this one *did*
+  visibly change -- the second capture found one additional WCAG 1.4.3 Contrast (Minimum) (AA)
+  failure not present in the first ("View payment history", about 1.48:1, white text on a light
+  gray background, only visible once the appearance actually switched to dark). The report labels
+  that finding "Only in dark appearance"; the 12 findings seen in both captures are labeled "Found
+  in both appearances".
+
+Not supported yet on a physical iPhone -- Swipewalk doesn't switch a physical iPhone's appearance
+yet. A scan attempted on a physical iPhone with `--appearance both` in this verification failed
+before it reached that step, for an unrelated reason (the phone needed a Face ID/passcode approval
+for UI automation that a person has to give); it never touched the device's appearance setting and
+left no appearance-restore marker behind, but the skip message itself was not observed on hardware
+in this pass.
+
 ### What Google's Accessibility Test Framework added
 
 Running Google's Accessibility Test Framework (ATF) alongside Swipewalk's own rules, on three

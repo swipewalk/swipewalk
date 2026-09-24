@@ -28,6 +28,10 @@ public sealed record RunConfig
     public string? Standard { get; init; }
     public bool LargeText { get; init; } = true;
 
+    /// <summary>scan only for now: also capture and check the device's other dark/light appearance -- see
+    /// Swipewalk.Engine.ScanOptions.AppearanceBoth. Off by default.</summary>
+    public bool Appearance { get; init; }
+
     /// <summary>record: scan automatically when the screen changes; off by default, matching the CLI/desktop
     /// default -- see Swipewalk.Engine.ScanOptions.AutoScanOnScreenChange.</summary>
     public bool AutoScanOnScreenChange { get; init; }
@@ -88,6 +92,10 @@ public sealed record RunConfig
             throw new InvalidOperationException($"Unknown standard \"{Standard}\".");
         if (LargeTextRestart is not (null or "ask" or "always" or "never"))
             throw new InvalidOperationException($"\"largeTextRestart\" must be \"ask\", \"always\" or \"never\", not \"{LargeTextRestart}\".");
+        if (Appearance && Mode == "record")
+            // Not wired into Recorder yet (see ScanOptions.AppearanceBoth); reject rather than silently do
+            // nothing, so nobody thinks a recording checked both appearances when it didn't.
+            throw new InvalidOperationException("\"appearance\" is scan only for now; record does not support it yet.");
         foreach (var target in Targets)
         {
             if (target.Platform is not ("android" or "ios"))
@@ -124,6 +132,7 @@ public sealed record RunConfig
             Framework = Framework is null ? null : Enum.Parse<AppFramework>(Framework, ignoreCase: true),
             Standard = Standard,
             LargeText = LargeText,
+            AppearanceBoth = Appearance,
             AutoScanOnScreenChange = AutoScanOnScreenChange,
             LargeTextRestartPolicy = LargeTextRestart is null
                 ? LargeTextRestartPolicies.Default(interactive: false, recordMode: Mode == "record")

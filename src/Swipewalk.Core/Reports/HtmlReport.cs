@@ -253,7 +253,12 @@ public static class HtmlReport
             var atfNote = s.Platform == Platform.Android && !s.AtfRan
                 ? $", Google's accessibility checks did not run: {E(s.AtfSkippedReason ?? "not recorded")}"
                 : "";
-            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}</span></li>""");
+            var appearanceNote = s.AppearanceUnchanged == true
+                ? $", {E(s.OtherAppearance)} appearance did not visibly change"
+                : s.OtherAppearance is not null
+                    ? $", also checked in {E(s.OtherAppearance)} appearance"
+                    : s.AppearanceSkippedReason is { } appearanceReason ? $", other appearance not checked: {E(appearanceReason)}" : "";
+            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}{appearanceNote}</span></li>""");
         }
         html.Append("</ol>");
         if (report.MissingScreens.Count > 0)
@@ -298,10 +303,13 @@ public static class HtmlReport
 
     private sealed record Shot(string Id, int Width, int Height, double Scale);
 
-    /// <summary>The normal screenshot and, in record mode, the one at enlarged text size.</summary>
-    private sealed record Shots(Shot? Normal, Shot? LargeText)
+    /// <summary>The normal screenshot, the one at enlarged text size, and -- when the appearance rescan ran
+    /// (see <c>ScanOptions.AppearanceBoth</c>) -- the one in the other dark/light appearance.</summary>
+    private sealed record Shots(Shot? Normal, Shot? LargeText, Shot? Appearance = null, string? OtherAppearance = null)
     {
-        public Shot? For(Finding f) => IsLargeText(f) ? LargeText : Normal;
+        public Shot? For(Finding f) => IsLargeText(f) ? LargeText
+            : f.Appearance is { } a && OtherAppearance is not null && a == OtherAppearance ? Appearance
+            : Normal;
     }
 
     private static bool IsLargeText(Finding f) => f.Details.GetValueOrDefault("screenshot") == "largeText";
@@ -322,6 +330,29 @@ public static class HtmlReport
             <figcaption class="large-caption">With {E(screen.LargeTextSetting)}{E(MethodSuffix(screen))}</figcaption>
             <div class="stage large">
               <svg viewBox="0 0 {large.Width} {large.Height}" role="img" aria-label="Screenshot of {E(screen.ScreenName)} with {E(screen.LargeTextSetting)}"><use href="#{large.Id}"/>{boxes}</svg>
+            </div>
+            """;
+    }
+
+    /// <summary>The screenshot captured in the screen's other dark/light appearance (see
+    /// <c>ScanOptions.AppearanceBoth</c>), with boxes only for findings seen only in that appearance --
+    /// findings also seen in the primary capture are already numbered there, so they aren't repeated here.</summary>
+    private static string AppearanceFigure(ScreenResult screen, Shot other, List<(int Number, Finding Finding)> numbered)
+    {
+        var s = other.Scale;
+        var boxes = string.Concat(numbered.Where(n => n.Finding.Appearance == screen.OtherAppearance && n.Finding.Bounds.Width > 0).Select(n =>
+        {
+            var b = n.Finding.Bounds;
+            return $"""
+                <g class="box review"><rect x="{N(b.X * s)}" y="{N(b.Y * s)}" width="{N(b.Width * s)}" height="{N(b.Height * s)}" rx="6"/>
+                <rect class="tag" x="{N(b.X * s)}" y="{N(b.Y * s)}" width="{24 + 20 * n.Number.ToString().Length}" height="44" rx="6"/>
+                <text x="{N(b.X * s)}" y="{N(b.Y * s)}" dx="12" dy="32">{n.Number}</text></g>
+                """;
+        }));
+        return $"""
+            <figcaption class="large-caption">In {E(screen.OtherAppearance)} appearance</figcaption>
+            <div class="stage large">
+              <svg viewBox="0 0 {other.Width} {other.Height}" role="img" aria-label="Screenshot of {E(screen.ScreenName)} in {E(screen.OtherAppearance)} appearance"><use href="#{other.Id}"/>{boxes}</svg>
             </div>
             """;
     }
@@ -355,6 +386,7 @@ public static class HtmlReport
         var numbered = screen.Findings.Select((f, i) => (Number: i + 1, Finding: f)).ToList();
         var shot = EmbedScreenshot(html, screen.ScreenshotPath, screen.PixelScale, $"{id}-shot");
         var largeShot = EmbedScreenshot(html, screen.LargeTextScreenshotPath, screen.LargeTextPixelScale, $"{id}-large");
+        var appearanceShot = EmbedScreenshot(html, screen.OtherAppearanceScreenshotPath, screen.OtherAppearancePixelScale, $"{id}-appearance");
 
         html.Append($"""
             <section class="screen" id="{id}" aria-labelledby="{id}-title">
@@ -379,6 +411,14 @@ public static class HtmlReport
             html.Append(LargeTextFigure(screen, largeShot, numbered));
         else if (screen.LargeTextSkippedReason is { } skippedReason)
             html.Append($"""<p class="hint">Large-text check not done: {E(skippedReason)}. Check this screen at 200% text size by hand (iOS: Settings > Accessibility > Display &amp; Text Size > Larger Text; Android: Settings > Display > Font size).</p>""");
+        if (appearanceShot is not null)
+        {
+            html.Append(AppearanceFigure(screen, appearanceShot, numbered));
+            if (screen.AppearanceUnchanged == true)
+                html.Append($"""<p class="hint">The screen looked the same after switching to {E(screen.OtherAppearance)} appearance, so the app may not have picked up the change; these findings may not reflect that appearance.</p>""");
+        }
+        else if (screen.AppearanceSkippedReason is { } appearanceSkippedReason)
+            html.Append($"""<p class="hint">Appearance check not done: {E(appearanceSkippedReason)}. Check this screen in the other appearance by hand.</p>""");
         html.Append($"""
                 </figure>
                 <div class="panel">
@@ -396,7 +436,7 @@ public static class HtmlReport
         if (numbered.Count == 0)
             html.Append("<p class=\"empty\">Automated checks found no issues on this screen. Manual testing is still required.</p>");
 
-        var shots = new Shots(shot, largeShot);
+        var shots = new Shots(shot, largeShot, appearanceShot, screen.OtherAppearance);
         FindingGroup(html, screen, shots, id, "WCAG issues", "issue",
             numbered.Where(n => n.Finding.Kind == FindingKind.WcagIssue && report.InFocus(n.Finding)).ToList(), byCriterion: true);
         FindingGroup(html, screen, shots, id, "Needs review", "review",
@@ -566,6 +606,10 @@ public static class HtmlReport
         }
         foreach (var engine in f.Source == Finding.DefaultSource ? f.AlsoReportedBy : [f.Source, .. f.AlsoReportedBy])
             chips += $"""<span class="chip source">{(f.Source == engine ? "Reported by" : "Also reported by")} {E(engine)}</span>""";
+        if (f.Appearance is { } appearance)
+            chips += appearance == AppearanceLabels.Both
+                ? """<span class="chip appearance">Found in both appearances</span>"""
+                : $"""<span class="chip appearance">Only in {E(appearance)} appearance</span>""";
 
         var element = f.Label is null ? E(f.Role) : $"{E(f.Role)} “{E(f.Label)}”";
         html.Append($"""

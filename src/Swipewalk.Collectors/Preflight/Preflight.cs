@@ -69,6 +69,13 @@ public static class Preflight
                 && BaselineTextSize.IsAndroidEnlarged(currentScale))
                 results.Add(new("Text size", CheckStatus.Warn, BaselineTextSize.Warning($"font_scale {currentFontScale}")));
         }
+        if (AppearanceRestore.Pending(chosen) is { } appearance)
+        {
+            await AndroidAppearance.SetAsync(chosen, appearance);
+            AppearanceRestore.Forget(chosen);
+            results.Add(new("Appearance", CheckStatus.Pass, $"restored to {appearance}; an interrupted appearance check had left it switched"));
+        }
+
         var window = await adb.RunAsync("shell", "dumpsys", "window");
         results.Add(AndroidCollector.IsAwakeAndUnlocked(await adb.RunAsync("shell", "dumpsys", "power"), window)
             ? new("Screen", CheckStatus.Pass, "awake and unlocked")
@@ -231,6 +238,15 @@ public static class Preflight
             var currentContentSize = (await IosCollector.Simctl("ui", udid, "content_size")).Trim();
             if (BaselineTextSize.IsSimulatorEnlarged(currentContentSize))
                 results.Add(new("Text size", CheckStatus.Warn, BaselineTextSize.Warning(currentContentSize)));
+        }
+
+        // Appearance rescan (scan --appearance both), Simulator only for now -- see Reports.AppearanceLabels
+        // .PhysicalIphoneNotSupportedReason; a physical iPhone never gets an AppearanceRestore marker.
+        if (!device.IsPhysical && AppearanceRestore.Pending(udid) is { } appearance)
+        {
+            await IosCollector.SetAppearanceAsync(udid, appearance);
+            AppearanceRestore.Forget(udid);
+            results.Add(new("Appearance", CheckStatus.Pass, $"restored to {appearance}; an interrupted appearance check had left it switched"));
         }
 
         if (device.IsPhysical)

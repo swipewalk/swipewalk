@@ -30,6 +30,10 @@ check on a phone someone relies on every day. What happens:
   Settings steps to change it back by hand.
 - Emulators and the iOS Simulator have their text size changed the same way, but it's a virtual
   device setting, not something anyone's own phone depends on day to day.
+- **`scan --appearance both`** switches the device between dark and light appearance the same way
+  (Android `cmd uimode night`; iOS Simulator `simctl ui appearance`) to check both, then restores
+  the original appearance afterwards — the same interrupted-run recovery applies. Not supported yet
+  on a physical iPhone.
 
 See [section 2](#2-set-up-a-device) and [section 5](#5-record-mode-and-the-large-text-check) for
 the full detail on each platform.
@@ -148,6 +152,12 @@ you've already confirmed everything yourself). Pass `--screen "Login"` to name t
 report (default: "Screen 1") — useful when you scan several screens one at a time and want each
 report to say which screen it is.
 
+Pass `--appearance both` to also capture and check the screen in the device's other dark/light
+appearance — a contrast failure that only shows up in one theme is easy to miss otherwise (see
+[docs/case-study.md](case-study.md): the same app's first screen scanned clean on one device in
+dark mode but had 5 real contrast failures on another device in light mode). Off by default; not
+supported yet on a physical iPhone, where the report says why it was skipped.
+
 When it finishes, open `report/report.html` in a browser.
 
 ## 4. Reading a report
@@ -223,6 +233,18 @@ Each screen also shows:
   the front at the larger size, or — on a physical iPhone only — the scanning harness couldn't be
   signed to change the phone's text size, or driving Settings failed and the per-app fallback also
   failed.
+- **The other appearance** (with `--appearance both`) — the report shows the screenshot from the
+  other dark/light appearance alongside the normal one, and labels each finding "Found in both
+  appearances" or "Only in dark/light appearance" so a theme-only issue isn't confused with one
+  that always shows. The kind and WCAG mapping a finding gets doesn't depend on which appearance it
+  came from — a contrast failure is a WCAG issue in either theme, since a user can pick either one;
+  a finding that measures as "needs review" in one appearance and a clear failure in the other is
+  kept as two separate, correctly-labeled findings rather than one that hides the worse result. If
+  the second capture looks the same as the first (checked from the screenshot and the accessibility
+  tree, not just the theme setting), the report says the app may not have picked up the appearance
+  change (some apps only read the theme at launch) instead of labeling findings by appearance at
+  all — large-text and captured-screen-reader findings are never labeled by appearance either,
+  since the second capture doesn't repeat those checks.
 - **Lost navigation place (Android)** — on Android, when the very first attempt at the larger text
   size showed a different screen (typically the app's first) instead of the one being checked, the
   report also adds a platform advisory on that screen (the one where Swipewalk actually saw it
@@ -457,6 +479,8 @@ For a repeatable, scriptable run, describe it once in a `swipewalk.json` file an
   "largeText": true,
   "largeTextRestart": "never",     // record only; "ask"/"always"/"never" -- see section 5. Defaults to
                                     // "never" so an unattended run never blocks waiting for an answer.
+  "appearance": false,             // scan only for now; true = also check the other dark/light appearance
+                                    // (the CLI's --appearance both; here it's a plain boolean)
   "failOn": "wcag-issues"          // exit code 3 when WCAG issues are found; "never" to always exit 0
 }
 ```

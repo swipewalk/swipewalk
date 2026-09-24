@@ -274,6 +274,11 @@ public static partial class AndroidCollector
     /// scanned when none was named with --package.</summary>
     public static Task<string?> ForegroundPackageAsync(string? serial = null) => ForegroundPackageAsync(new Adb(serial));
 
+    /// <summary>The device to use: <paramref name="serial"/>, or the only connected device -- see
+    /// <see cref="Adb.ResolveSerialAsync"/>. Public so callers outside this assembly (e.g. <c>ScanService</c>'s
+    /// appearance rescan) can resolve it once and reuse it for several adb calls against the same device.</summary>
+    public static Task<string> ResolveSerialAsync(string? serial = null) => new Adb(serial).ResolveSerialAsync();
+
     /// <summary>
     /// Brings <paramref name="package"/> to the front before a scan or the start of a recording, so pre-flight's
     /// "another app is in front" is no longer a dead end when the app is installed (see <see cref="BringToFront"/>).

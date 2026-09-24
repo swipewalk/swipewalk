@@ -230,6 +230,39 @@ public sealed class ScanService(IProgress<string> log)
             screen = screen with { BaselineTextSizeNote = baselineTextSizeNote };
         if (appLaunchedNote is not null)
             screen = screen with { AppLaunchedNote = appLaunchedNote };
+
+        if (options.AppearanceBoth && options.FromCapture is null)
+        {
+            var (other, primaryAppearance, otherAppearance, appearanceSkippedReason, appearanceUnchanged) =
+                await RunAppearanceRescanAsync(ios, options, snapshot, captureDir, cancellationToken);
+            if (other is not null && primaryAppearance is not null && otherAppearance is not null)
+            {
+                // Unchanged: the two captures are the same screen with barely different pixels, so nothing
+                // was actually tested under the other appearance -- don't tag findings "both"/"only in X"
+                // (AppearanceMerge would, since it has no way to tell "genuinely absent" from "never tried"),
+                // just attach the other screenshot and say so.
+                if (appearanceUnchanged)
+                {
+                    screen = screen with
+                    {
+                        Appearance = primaryAppearance,
+                        OtherAppearance = otherAppearance,
+                        OtherAppearanceScreenshotPath = other.ScreenshotPath,
+                        OtherAppearancePixelScale = other.PixelScale,
+                        AppearanceUnchanged = true,
+                    };
+                    log.Report($"The screen looked the same after switching to {otherAppearance} appearance; the app may not have picked it up.");
+                }
+                else
+                    screen = AppearanceMerge.Merge(screen, primaryAppearance, other, otherAppearance);
+            }
+            else if (appearanceSkippedReason is not null)
+            {
+                screen = screen with { AppearanceSkippedReason = appearanceSkippedReason };
+                log.Report($"Appearance check not done: {appearanceSkippedReason}.");
+            }
+        }
+
         var report = new ScanReport
         {
             ToolVersion = ToolVersion,
@@ -242,6 +275,84 @@ public sealed class ScanService(IProgress<string> log)
         };
         var (html, json) = await ReportWriter.WriteAsync(report, outDir);
         return new RunResult(report, html, json);
+    }
+
+    /// <summary>
+    /// <see cref="ScanOptions.AppearanceBoth"/>: captures the screen again in the device's other dark/light
+    /// appearance and runs every rule on it, restoring the device's original appearance afterward no matter
+    /// what happens (an error, a cancellation, or a clean finish) -- the same before-anything-changes,
+    /// finally-restores shape as the large-text check's <see cref="AppearanceRestore"/> (mirroring
+    /// <c>Swipewalk.Collectors.TextSizeRestore</c>). Not supported yet on a physical iPhone -- returns a skip
+    /// reason instead of touching the device -- see <see cref="AppearanceLabels.PhysicalIphoneNotSupportedReason"/>.
+    /// The other capture is already run through <see cref="RuleRunner"/>, so <see cref="ScanAsync"/> only has
+    /// to merge the two <see cref="ScreenResult"/>s (see <see cref="AppearanceMerge"/>).
+    /// </summary>
+    /// <returns>
+    /// The other appearance's rule results and the two appearance labels (all three non-null together, on
+    /// success); a skip reason when nothing was captured; whether the two captures looked the same (see
+    /// <see cref="AppearanceChangeDetector"/>) -- meaning the app most likely did not respond to the change.
+    /// </returns>
+    private async Task<(ScreenResult? Other, string? Appearance, string? OtherAppearance, string? SkippedReason, bool Unchanged)> RunAppearanceRescanAsync(
+        bool ios, ScanOptions options, ScreenSnapshot snapshot, string captureDir, CancellationToken cancellationToken)
+    {
+        var otherCaptureDir = Path.Combine(captureDir, "appearance");
+        if (ios)
+        {
+            var deviceId = options.Device ?? await IosCollector.BootedSimulatorAsync();
+            var device = deviceId is null ? null : (await Devices.IosAsync()).FirstOrDefault(d => d.Id == deviceId);
+            if (device is null || device.IsPhysical)
+                return (null, null, null, AppearanceLabels.PhysicalIphoneNotSupportedReason, false);
+            var udid = device.Id;
+
+            var original = await IosCollector.ReadAppearanceAsync(udid);
+            if (original is not (AppearanceLabels.Dark or AppearanceLabels.Light))
+                return (null, null, null, $"could not read the Simulator's current appearance (\"{original}\")", false);
+
+            AppearanceRestore.Remember(udid, original);
+            try
+            {
+                var otherAppearance = original == AppearanceLabels.Dark ? AppearanceLabels.Light : AppearanceLabels.Dark;
+                log.Report($"Switching to {otherAppearance} appearance and capturing again...");
+                await IosCollector.SetAppearanceAsync(udid, otherAppearance);
+                await IosCollector.CaptureAsync(otherCaptureDir, options.BundleId!, udid, options.HarnessProject, options.Team,
+                    options.ForceResultBundle, options.Profile, options.HarnessBundlePrefix, log: log);
+                var otherSnapshot = IosCollector.Load(otherCaptureDir, options.ScreenName);
+                var otherScreen = new RuleRunner(DefaultRules.All).Run(otherSnapshot);
+                return (otherScreen, original, otherAppearance, null, AppearanceChangeDetector.LooksUnchanged(snapshot, otherSnapshot));
+            }
+            finally
+            {
+                await IosCollector.SetAppearanceAsync(udid, original);
+                AppearanceRestore.Forget(udid);
+            }
+        }
+        else
+        {
+            var serial = await AndroidCollector.ResolveSerialAsync(options.Device);
+            var original = await AndroidAppearance.ReadAsync(serial);
+            AppearanceRestore.Remember(serial, original);
+            try
+            {
+                var otherAppearance = original == AppearanceLabels.Dark ? AppearanceLabels.Light : AppearanceLabels.Dark;
+                log.Report($"Switching to {otherAppearance} appearance and capturing again...");
+                await AndroidAppearance.SetAsync(serial, otherAppearance);
+                if (options.Package is not null)
+                    await AndroidCollector.EnsureAppInFrontAsync(options.Package, serial, log, cancellationToken);
+                // captureScreenReader is always false here: a full TalkBack walk is expensive (roughly 1-2s
+                // per element) and --screen-reader already opts into it once for the primary capture; doubling
+                // it silently for the appearance rescan would surprise a run that only asked for one of them.
+                await AndroidCollector.CaptureAsync(otherCaptureDir, serial, maskStatusBar: !options.KeepStatusBar,
+                    expectedPackage: options.Package, androidHarnessDir: options.AndroidHarnessDir, captureScreenReader: false);
+                var otherSnapshot = AndroidCollector.Load(otherCaptureDir, options.ScreenName, options.Package);
+                var otherScreen = new RuleRunner(DefaultRules.All).Run(otherSnapshot);
+                return (otherScreen, original, otherAppearance, null, AppearanceChangeDetector.LooksUnchanged(snapshot, otherSnapshot));
+            }
+            finally
+            {
+                await AndroidAppearance.SetAsync(serial, original);
+                AppearanceRestore.Forget(serial);
+            }
+        }
     }
 
     /// <summary>

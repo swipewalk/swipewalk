@@ -47,4 +47,14 @@ public sealed class RgbaImage
         var i = (y * Width + x) * 4;
         return new Rgb(Pixels[i], Pixels[i + 1], Pixels[i + 2]);
     }
+
+    /// <summary>Mean perceptual brightness (ITU-R BT.709 luma) across every pixel, 0-255. Used to tell a
+    /// dark-appearance screenshot from a light one, e.g. by <see cref="Model.AppearanceChangeDetector"/>.</summary>
+    public double AverageLuminance()
+    {
+        double sum = 0;
+        for (var i = 0; i < Pixels.Length; i += 4)
+            sum += 0.2126 * Pixels[i] + 0.7152 * Pixels[i + 1] + 0.0722 * Pixels[i + 2];
+        return sum / (Width * Height);
+    }
 }
