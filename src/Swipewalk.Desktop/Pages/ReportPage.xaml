@@ -8,6 +8,7 @@
             <Label x:Name="TitleLabel" FontSize="{DynamicResource FontHeading}" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
             <Button Text="Open in browser" Clicked="OnOpenInBrowser" SemanticProperties.Hint="Opens the report file in your web browser" />
             <Button Text="Show in Finder" Clicked="OnShowFolder" SemanticProperties.Hint="Opens the folder with the report, results and screenshots" />
+            <Button Text="Guided checks" Clicked="OnGuidedChecks" SemanticProperties.Hint="Walks this run's screens with step-by-step WCAG questions" />
         </HorizontalStackLayout>
         <!-- The report is self-contained HTML (screenshots embedded), so it is loaded as a string.
              No SemanticProperties.Description here: naming the web view makes it one accessibility element and

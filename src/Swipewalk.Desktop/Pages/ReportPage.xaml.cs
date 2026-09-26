@@ -41,6 +41,9 @@ public partial class ReportPage : ContentPage
 
 	private void OnShowFolder(object? sender, EventArgs e) => Open(_folder);
 
+	private async void OnGuidedChecks(object? sender, EventArgs e) =>
+		await Shell.Current.GoToAsync($"guide?folder={Uri.EscapeDataString(_folder)}");
+
 	private static void Open(string path) =>
 		Process.Start(new ProcessStartInfo(OperatingSystem.IsWindows() ? "explorer" : "open", $"\"{path}\"") { UseShellExecute = false });
 }

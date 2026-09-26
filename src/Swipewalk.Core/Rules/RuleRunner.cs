@@ -1,3 +1,4 @@
+using Swipewalk.Core.Coverage;
 using Swipewalk.Core.Model;
 using Swipewalk.Core.Reports;
 using Swipewalk.Core.ScreenReader;
@@ -23,6 +24,9 @@ public sealed class RuleRunner(IEnumerable<IRule> rules)
 
         return new ScreenResult
         {
+            // The only place a genuinely new ScreenResult is constructed -- see ScreenResult.ScreenId's
+            // remarks on why this is assigned explicitly here rather than left to the property's own default.
+            ScreenId = Guid.NewGuid().ToString(),
             Platform = snapshot.Platform,
             ScreenName = snapshot.ScreenName,
             Framework = snapshot.Framework,
@@ -47,6 +51,7 @@ public sealed class RuleRunner(IEnumerable<IRule> rules)
             AppId = snapshot.AppId,
             AtfRan = snapshot.AtfRan,
             AtfSkippedReason = snapshot.AtfSkippedReason,
+            ProposedNotApplicable = ApplicabilityRules.Evaluate(snapshot.Root).Proposed,
         };
     }
 

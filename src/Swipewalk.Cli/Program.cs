@@ -31,6 +31,10 @@ const string Usage = """
       swipewalk history [--history <dir>]                           List saved runs
       swipewalk compare <earlier> <later>                           What changed between two runs (run folders
                                                                        or results.json files)
+      swipewalk guide <run> [--screen <name>] [--criterion <number>] [--history <dir>]
+                                                                       Ask the guided-check questions for a
+                                                                       saved run, one screen and criterion at a
+                                                                       time; needs an interactive terminal
       swipewalk --version
 
     Scan options:
@@ -244,6 +248,9 @@ if (args is ["compare", var earlierPath, var laterPath])
     Console.WriteLine("\n\"No longer found\" means the automated checks didn't report it this time; check by hand whether the issue is gone.");
     return 0;
 }
+
+if (args is ["guide", ..])
+    return await Swipewalk.Cli.GuidedCheckCli.RunAsync(args[1..]);
 
 if (args is ["run", ..])
 {

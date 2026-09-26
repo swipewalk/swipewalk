@@ -1096,6 +1096,58 @@ public class RecorderContinuationAndRescanTests
             Assert.All(report.Screens, s => Assert.Null(s.RescannedAt));
             Assert.True(Directory.Exists(Path.Combine(dir, "screens", "01")));
             Assert.True(Directory.Exists(Path.Combine(dir, "screens", "02")));
+            // Guided-check answers key off ScreenId, never list position -- two different screens must never
+            // collide on the same id.
+            Assert.NotEqual(report.Screens[0].ScreenId, report.Screens[1].ScreenId);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SameScreenRescan_KeepsTheSameScreenId()
+    {
+        // A guided-check answer recorded against the earlier capture (see ScreenResult.ScreenId's remarks)
+        // must still resolve to the rescanned one -- verified here by reading results.json between the two
+        // scans, rather than only the final report, so both ids are actually captured and compared.
+        var dir = TempDir();
+        try
+        {
+            var source = new FakeScreenSource();
+            var control = new RecorderControl();
+            var recorder = MakeRecorder(source, dir, control: control);
+            var run = recorder.RunAsync(CancellationToken.None);
+            await Task.Delay(200);
+            control.RequestScanNow();
+            var resultsPath = Path.Combine(dir, "results.json");
+            // Wait for results.json to exist AND be fully written/parseable with a screen in it -- the
+            // capture.marker file (written earlier, by the capture step itself) is not proof of that, and
+            // reading too early raced with the save in practice (FileNotFoundException/empty read).
+            string? firstScreenId = null;
+            await TestWait.UntilAsync(() =>
+            {
+                try
+                {
+                    var report = File.Exists(resultsPath) ? Swipewalk.Core.Reports.JsonReport.Deserialize(File.ReadAllText(resultsPath)) : null;
+                    firstScreenId = report?.Screens.Count > 0 ? report.Screens[0].ScreenId : null;
+                    return firstScreenId is not null;
+                }
+                catch (IOException)
+                {
+                    return false; // still being written
+                }
+            }, "the first capture's results.json to be written with a screen id");
+            Assert.False(string.IsNullOrEmpty(firstScreenId));
+
+            control.RequestScanNow(); // rescan of the identical screen
+            await TestWait.UntilAsync(() => source.CaptureCount >= 2, "the rescan capture");
+            control.Stop();
+            var report = await run;
+
+            Assert.Single(report.Screens);
+            Assert.Equal(firstScreenId, report.Screens[0].ScreenId);
         }
         finally
         {

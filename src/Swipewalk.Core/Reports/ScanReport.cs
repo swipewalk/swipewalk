@@ -11,8 +11,12 @@ namespace Swipewalk.Core.Reports;
 public sealed record ScanReport
 {
     /// <summary>0.2: "coverage" now holds the full 55-criterion WCAG 2.2 A/AA run coverage (see
-    /// <see cref="Coverage"/>) instead of the per-rule list, which moved to <see cref="RuleCoverage"/>.</summary>
-    public const string CurrentSchemaVersion = "0.2";
+    /// <see cref="Coverage"/>) instead of the per-rule list, which moved to <see cref="RuleCoverage"/>.
+    /// 0.3: adds <see cref="GuidedAnswers"/> (loaded from guided-answers.json, the only new field actually
+    /// stored on this record -- everything else guided checks add is computed, like <see cref="Coverage"/>
+    /// already was) and <see cref="ScreenResult.ScreenId"/>/<see cref="ScreenResult.ProposedNotApplicable"/> on
+    /// each screen.</summary>
+    public const string CurrentSchemaVersion = "0.3";
 
     public const string Disclaimer =
         "Automated checks find only some accessibility issues. Results are not a statement of conformance " +
@@ -117,4 +121,34 @@ public sealed record ScanReport
 
     public bool InFocus(Finding f) =>
         FocusStandard is null || f.Kind == FindingKind.PlatformAdvisory || f.RelevantStandards.Contains(FocusStandard);
+
+    /// <summary>
+    /// Guided-check answers a tester recorded for this run (loaded from guided-answers.json -- see
+    /// <c>Engine.GuidedAnswerStore</c>). Unlike everything else on this record, these can't be recomputed from
+    /// the screens, so they're the one guided-checks field actually stored here rather than computed.
+    /// </summary>
+    public IReadOnlyList<GuidedAnswer> GuidedAnswers { get; init; } = [];
+
+    /// <summary>Per screen, per WCAG 2.2 A/AA criterion, what Swipewalk automated and what a tester recorded --
+    /// see <see cref="Coverage.ScreenCoverageBuilder"/>. Computed, not stored, exactly like <see cref="Coverage"/>.</summary>
+    public IReadOnlyList<ScreenCriterionReport> ScreenCoverage => ScreenCoverageBuilder.Build(Screens, GuidedAnswers);
+
+    /// <summary>One status per criterion across the whole run, worst case wins -- see <see cref="GuidedRollupBuilder"/>.</summary>
+    public IReadOnlyList<GuidedCriterionRollup> GuidedRollup => GuidedRollupBuilder.Build(ScreenCoverage);
+
+    /// <summary>
+    /// Guided answers that disagree with an automated finding, or with an earlier answer for the same (screen,
+    /// criterion) -- see <see cref="Coverage.ContradictionChecker"/>. The CLI (<c>swipewalk guide</c>) and the
+    /// desktop Guided checks page both show a contradiction immediately when it happens; the HTML report
+    /// (<see cref="HtmlReport"/>) renders this same list in a "Flagged" section near the top, never buried
+    /// inside one screen's row only.
+    /// </summary>
+    public IReadOnlyList<CoverageContradiction> Contradictions => ContradictionChecker.Find(Screens, GuidedAnswers);
+
+    /// <summary>
+    /// Gap check: recorded screens with no guided answer at all yet, listed by name (not just a count) so a
+    /// tester can jump straight to them.
+    /// </summary>
+    public IReadOnlyList<ScreenResult> ScreensWithNoGuidedAnswers =>
+        [.. Screens.Where(s => !GuidedAnswers.Any(a => a.ScreenId == s.ScreenId))];
 }

@@ -52,4 +52,11 @@ public partial class HistoryPage : ContentPage
 			return;
 		await Shell.Current.GoToAsync($"//scan?continue={Uri.EscapeDataString(run.Id)}");
 	}
+
+	private async void OnGuidedChecks(object? sender, EventArgs e)
+	{
+		if ((sender as Button)?.CommandParameter is not RunRecord run)
+			return;
+		await Shell.Current.GoToAsync($"guide?folder={Uri.EscapeDataString(run.Folder)}");
+	}
 }

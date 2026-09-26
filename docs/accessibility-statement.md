@@ -51,6 +51,13 @@ Every change is checked with:
 - The notice shown when a physical phone is selected (large-text checks change the phone's own text size) is a
   native system alert rather than a page in the app. On a Mac with VoiceOver, the notice's title and body were
   read, and a real Escape key closed it.
+- The Guided checks page (walks a run's screens with step-by-step WCAG questions) sets an accessible name via
+  `SemanticProperties` on every interactive control -- the screen and assistive-technology pickers, each
+  criterion's result choice, the evidence/reason/note/tester fields and the Save button -- and marks each
+  criterion's title as a heading. The evidence and reason fields' accessible names repeat "required for pass"/
+  "required" (their placeholder text alone would not be heard once a screen reader announces the field's own
+  Description). It has not yet been checked with VoiceOver (see Known issues); one known gap that check would
+  likely find: the Save button doesn't say why it's disabled while it is.
 
 ## Known issues
 
@@ -62,6 +69,7 @@ Every change is checked with:
 | Contrast of control borders, checkbox and focus indicators has not been measured; only text-field outlines are tested. | 1.4.11 Non-text Contrast (AA) | — | Extend the palette test or measure from screenshots. |
 | The app has not yet been tested by a person using VoiceOver, Voice Control or Switch Control for a whole task. The UI tests use the same accessibility interface, but they are not a substitute. | — (not yet tested) | — | Planned: testing with people who use assistive technology. We welcome feedback in the meantime (see below). |
 | Progress messages in the log are only announced for key events, not every line. | 4.1.3 Status Messages (AA) | Review the Progress list after a scan. | Review with screen reader users. |
+| On the Guided checks page, the Save button becomes enabled once a valid answer is entered, but nothing announces why it was disabled before that. | 3.3.2 Labels or Instructions (A) | Fill in the required evidence/reason field; Save enables once it's non-empty. | Announce the requirement when Save is pressed while still disabled, or state it up front. |
 | The Windows version has not been built or tested. | — (not yet tested) | — | Windows collector and desktop build (roadmap). |
 
 ## Feedback

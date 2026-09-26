@@ -381,11 +381,22 @@ public sealed class RunHistory(string? root = null)
     public static ReportComparison? Compare(RunRecord earlier, RunRecord later) =>
         Load(earlier) is { } before && Load(later) is { } after ? ReportComparison.Compare(before, after) : null;
 
+    /// <summary>
+    /// Loads a run's results.json, with any recorded guided-check answers merged in from guided-answers.json
+    /// (see <see cref="GuidedAnswerStore"/>) -- a separate sidecar file, never embedded in results.json itself,
+    /// so <see cref="ScanReport.GuidedAnswers"/> (and everything computed from it: <see cref="ScanReport.ScreenCoverage"/>,
+    /// <see cref="ScanReport.Contradictions"/>, <see cref="ScanReport.ScreensWithNoGuidedAnswers"/>) would
+    /// otherwise silently read as empty for every run loaded this way, even one with answers on disk.
+    /// </summary>
     public static ScanReport? Load(RunRecord run)
     {
         try
         {
-            return JsonReport.Deserialize(File.ReadAllText(run.ResultsPath));
+            var report = JsonReport.Deserialize(File.ReadAllText(run.ResultsPath));
+            if (report is null)
+                return null;
+            var guidedAnswers = GuidedAnswerStore.Load(run.Folder)?.Answers;
+            return guidedAnswers is null ? report : report with { GuidedAnswers = guidedAnswers };
         }
         catch (Exception ex) when (ex is IOException or JsonException)
         {

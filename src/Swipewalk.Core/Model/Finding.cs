@@ -80,6 +80,21 @@ public sealed record Finding
 /// <summary>The findings for one scanned screen.</summary>
 public sealed record ScreenResult
 {
+    /// <summary>
+    /// Stable id for this screen within its run, assigned once when the screen is first captured (see
+    /// <see cref="Rules.RuleRunner.Run"/>, the only place that constructs a genuinely new
+    /// <see cref="ScreenResult"/>) and kept across a same-screen replacement (record mode's
+    /// rescan-keeps-the-newer-capture behavior -- see <c>Engine.Recorder</c>) and across
+    /// <c>record --continue</c>. Guided-check answers key off this, never off list position or
+    /// <see cref="ScreenName"/> (names repeat: two screens titled "Home", or the same app's first screen
+    /// appearing again after a restart). Defaults to empty, never a random id: a fresh capture gets a real one
+    /// explicitly from <see cref="Rules.RuleRunner.Run"/>; a results.json saved before this field existed has
+    /// none on disk, and <see cref="Reports.JsonReport.Deserialize"/> fills that gap deterministically (by
+    /// screen position) instead -- a random default here would hand the SAME old file a DIFFERENT id on every
+    /// separate load, silently orphaning guided-check answers saved against an earlier one.
+    /// </summary>
+    public string ScreenId { get; init; } = "";
+
     public required Platform Platform { get; init; }
     public required string ScreenName { get; init; }
     public AppFramework Framework { get; init; } = AppFramework.Unknown;
@@ -246,4 +261,14 @@ public sealed record ScreenResult
     /// that couldn't be made is reported as not done, never guessed.
     /// </summary>
     public bool? OrientationUnchanged { get; init; }
+
+    /// <summary>
+    /// Tree-based suggestions (never a verdict) that some WCAG criteria might not apply to this screen, from
+    /// <see cref="Coverage.ApplicabilityRules.Evaluate"/> at capture time -- see
+    /// <see cref="Coverage.ProposedNotApplicable"/>. Shown to the tester in the guided-checks UI/CLI as a
+    /// prompt to confirm or dismiss; only becomes a final <see cref="Coverage.ScreenCriterionStatus.NotApplicableHere"/>
+    /// once a <see cref="Coverage.GuidedAnswer"/> with <see cref="Coverage.GuidedAnswerResult.ConfirmedNotApplicable"/>
+    /// exists for the same (screen, criterion).
+    /// </summary>
+    public IReadOnlyList<Coverage.ProposedNotApplicable> ProposedNotApplicable { get; init; } = [];
 }

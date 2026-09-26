@@ -21,6 +21,9 @@ public sealed class RunAccessibleNameConverter : IValueConverter
     /// ended early -- see <see cref="RunRecord.CanContinue"/>) its own name.</summary>
     public const string ContinueParameter = "Continue";
 
+    /// <summary>ConverterParameter "GuidedChecks" gives the Guided checks button its own name.</summary>
+    public const string GuidedChecksParameter = "GuidedChecks";
+
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not RunRecord run)
@@ -31,6 +34,9 @@ public sealed class RunAccessibleNameConverter : IValueConverter
 
         if (string.Equals(parameter as string, ContinueParameter, StringComparison.Ordinal))
             return $"Continue the run of {run.App} from {run.StartedAt:yyyy-MM-dd HH:mm}, which ended early";
+
+        if (string.Equals(parameter as string, GuidedChecksParameter, StringComparison.Ordinal))
+            return $"Guided checks for the run of {run.App} from {run.StartedAt:yyyy-MM-dd HH:mm}";
 
         // RecordingInProgress here means a live recording -- here or in another window; see RunHistory.List,
         // which only leaves it true when the owning process is confirmed still running, and otherwise reads a

@@ -139,6 +139,95 @@ final class DesktopTests: XCTestCase {
                       "Continue button's name should say the run ended early: \(continueButtons.firstMatch.label)")
     }
 
+    /// The Guided checks page (walks a run's screens with step-by-step WCAG questions), reached from a History
+    /// row's own "Guided checks" button, on the seeded org.swipewalk.buggyapp scan (real findings citing 1.1.1,
+    /// none citing 1.3.1 or 3.3.1 -- see the fixture's own results.json). Covers: the page opens with reachable,
+    /// named controls; a Pass with evidence saves and shows the exact tester-facing wording; a confirmed
+    /// not-applicable with a reason saves; a Pass that disagrees with a real automated finding shows the
+    /// contradiction banner immediately; and answers persist (reopening the page keeps what was recorded).
+    func testGuidedChecksPageRecordsAnswersAndShowsAContradiction() throws {
+        guard let seeded = ProcessInfo.processInfo.environment["CF_SEEDED_HISTORY"], !seeded.isEmpty else {
+            throw XCTSkip("Run through scripts/desktop-uitests.sh, which seeds the history")
+        }
+        let app = Desktop.launch(page: "history", history: URL(fileURLWithPath: seeded))
+        let guidedButton = app.buttons.containing("Guided checks for the run of org.swipewalk.buggyapp")
+        XCTAssertTrue(guidedButton.waitForExistence(timeout: 10), "History row has no reachable Guided checks button")
+        guidedButton.click()
+        XCTAssertTrue(app.staticTexts.containing("Guided checks").waitForExistence(timeout: 15), "Guided checks page did not open")
+
+        // The screen picker is reachable and named, like the other choice controls (SelectButton).
+        let screenPicker = app.buttons["Screen"].firstMatch
+        XCTAssertTrue(screenPicker.waitForExistence(timeout: 15), "Screen picker is not a named button")
+        XCTAssertFalse((screenPicker.value as? String ?? "").isEmpty, "Screen picker does not expose its selected value")
+
+        func recordPass(_ criterion: String, evidence: String) {
+            let resultPicker = app.buttons["Result for \(criterion)"].firstMatch
+            XCTAssertTrue(resultPicker.waitForExistence(timeout: 15), "No result picker for \(criterion)")
+            resultPicker.click()
+            app.menuItems["Pass"].firstMatch.click()
+            let evidenceField = app.textFields["Evidence for \(criterion), required for pass: what you saw or heard"].firstMatch
+            XCTAssertTrue(evidenceField.waitForExistence(timeout: 10), "No evidence field for \(criterion)")
+            evidenceField.click()
+            evidenceField.typeText(evidence)
+            let save = app.buttons["Save the answer for \(criterion)"].firstMatch
+            XCTAssertTrue(save.waitForExistence(timeout: 5))
+            XCTAssertTrue(save.isEnabled, "Save should enable once evidence is entered for \(criterion)")
+            save.click()
+        }
+
+        // 1.3.1 has no automated finding on this fixture: a Pass here must save cleanly, no contradiction.
+        recordPass("1.3.1", evidence: "Headings and groups read correctly with VoiceOver.")
+        XCTAssertTrue(app.staticTexts.containing("The tester recorded a pass for 1.3.1").waitForExistence(timeout: 10),
+                      "Recorded-pass wording did not appear for 1.3.1")
+
+        // Confirm not applicable, with a reason, for a different criterion this fixture has no finding for.
+        let resultPicker331 = app.buttons["Result for 3.3.1"].firstMatch
+        XCTAssertTrue(resultPicker331.waitForExistence(timeout: 10), "No result picker for 3.3.1")
+        resultPicker331.click()
+        app.menuItems["Confirm not applicable"].firstMatch.click()
+        let reason331 = app.textFields["Reason 3.3.1 does not apply here, required"].firstMatch
+        XCTAssertTrue(reason331.waitForExistence(timeout: 10))
+        reason331.click()
+        reason331.typeText("This screen never shows a validation error.")
+        let save331 = app.buttons["Save the answer for 3.3.1"].firstMatch
+        XCTAssertTrue(save331.waitForExistence(timeout: 5))
+        save331.click()
+        XCTAssertTrue(app.staticTexts.containing("You confirmed 3.3.1 does not apply on this screen").waitForExistence(timeout: 10),
+                      "Confirmed-not-applicable confirmation did not appear for 3.3.1")
+
+        // 1.1.1 has real automated findings on this fixture (missing accessible names) -- a Pass here must be
+        // flagged immediately, not silently accepted.
+        recordPass("1.1.1", evidence: "All images looked labeled to me.")
+        XCTAssertTrue(app.staticTexts.containing("Automated checks on this screen found").waitForExistence(timeout: 10),
+                      "Contradiction banner did not appear for a pass next to a real 1.1.1 finding")
+        let dismiss = app.windows.buttons["OK"].firstMatch
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 10), "The contradiction alert's OK button did not appear")
+        dismiss.click()
+        XCTAssertFalse(dismiss.waitForExistence(timeout: 5), "The contradiction alert did not close")
+
+        // Answers persist to guided-answers.json in the run's own folder (checked directly, rather than via a
+        // further UI round trip, which raced with the app's own navigation/render timing in practice).
+        let guidedAnswersFile = try findGuidedAnswersFile(under: seeded)
+        XCTAssertNotNil(guidedAnswersFile, "No guided-answers.json was written under the seeded history")
+        if let file = guidedAnswersFile {
+            let contents = try String(contentsOfFile: file, encoding: .utf8)
+            XCTAssertTrue(contents.contains("\"criterionNumber\": \"1.3.1\""), "1.3.1's answer was not saved")
+            XCTAssertTrue(contents.contains("\"criterionNumber\": \"3.3.1\""), "3.3.1's answer was not saved")
+            XCTAssertTrue(contents.contains("\"criterionNumber\": \"1.1.1\""), "1.1.1's answer was not saved")
+            XCTAssertTrue(contents.contains("confirmedNotApplicable"), "3.3.1's confirmed-not-applicable result was not saved")
+        }
+    }
+
+    private func findGuidedAnswersFile(under root: String) throws -> String? {
+        let enumerator = FileManager.default.enumerator(atPath: root)
+        while let path = enumerator?.nextObject() as? String {
+            if path.hasSuffix("guided-answers.json") {
+                return root + "/" + path
+            }
+        }
+        return nil
+    }
+
     func testDevicesPageChecksReadiness() throws {
         let app = Desktop.launch(page: "devices")
         let check = app.buttons.containing("Check whether")

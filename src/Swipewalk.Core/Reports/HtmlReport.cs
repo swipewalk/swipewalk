@@ -48,13 +48,20 @@ public static class HtmlReport
                 {E(string.Join("; ", report.StaleRuleSources.Select(r => $"{r.Name} (reviewed {r.CheckedOn})")))}. Check the sources for changes, or update Swipewalk.</p>
                 """);
 
+        // Computed once here, not per screen/per row: both are pure functions over the whole run (see
+        // ScreenCoverageBuilder/ContradictionChecker), so recomputing them inside a per-screen or per-criterion
+        // loop would redo the same O(screens x criteria) work for every row instead of once for the report.
+        var screenCoverage = report.ScreenCoverage;
+        var contradictions = report.Contradictions;
+
         RenderWcagGaps(html, report);
+        RenderGuidedChecks(html, report, contradictions);
         RenderStandards(html, report);
         RenderBeyondWcag(html, report);
         RenderCoverage(html, report);
 
         for (var i = 0; i < report.Screens.Count; i++)
-            RenderScreen(html, report, report.Screens[i], i);
+            RenderScreen(html, report, report.Screens[i], i, screenCoverage, contradictions);
 
         RenderLimitations(html, report);
         RenderWcagCoverage(html, report);
@@ -125,6 +132,67 @@ public static class HtmlReport
             html.Append($"""<li><strong>{E($"{e.Number} {e.Name} ({e.Level})")}</strong> — {E(e.Label)}</li>""");
         html.Append("""
               </ul>
+            </section>
+            """);
+    }
+
+    /// <summary>
+    /// What a tester recorded with <c>swipewalk guide</c>/the desktop Guided checks page, at the run level:
+    /// any contradiction with an automated finding or an earlier answer (flagged first, same "never buried"
+    /// treatment as <see cref="RenderWcagGaps"/>), which recorded screens have no guided answers yet, and one
+    /// roll-up row per criterion that has at least one answer (worst case across screens wins -- see
+    /// <see cref="GuidedRollupBuilder"/>). Renders nothing when no guided answers exist for this run, so a plain
+    /// scan/record report looks exactly as it did before this section existed.
+    /// </summary>
+    /// <param name="contradictions">Computed once in <see cref="Render"/>, not recomputed here.</param>
+    private static void RenderGuidedChecks(StringBuilder html, ScanReport report, IReadOnlyList<CoverageContradiction> contradictions)
+    {
+        if (report.GuidedAnswers.Count == 0)
+            return;
+
+        if (contradictions.Count > 0)
+        {
+            html.Append($"""
+                <section class="wcag-gaps guided-contradictions" aria-labelledby="guided-contradictions-title">
+                  <h2 id="guided-contradictions-title">Flagged: guided answers that disagree with automated findings or with an earlier answer <span class="count">{contradictions.Count}</span></h2>
+                  <ul>
+                """);
+            foreach (var c in contradictions)
+                html.Append($"""<li>{E(c.Description)}</li>""");
+            html.Append("""
+                  </ul>
+                </section>
+                """);
+        }
+
+        html.Append("""
+            <section class="guided-checks" aria-labelledby="guided-checks-title">
+              <h2 id="guided-checks-title">Guided checks</h2>
+              <p class="hint">Answers a tester recorded with <code>swipewalk guide</code> or the desktop app's Guided checks page. Never a pass/fail verdict for the app as a whole: this is what a person recorded, per screen, alongside what automation found.</p>
+            """);
+
+        var missing = report.ScreensWithNoGuidedAnswers;
+        if (missing.Count > 0)
+            html.Append($"""
+                <p class="hint missing"><strong>{E(GuidedChecksDisplay.ScreensWithNoGuidedAnswers(missing.Count, report.Screens.Count))}</strong> {E(string.Join(", ", missing.Select(s => s.ScreenName)))}.</p>
+                """);
+
+        var rollup = report.GuidedRollup.Where(r => report.GuidedAnswers.Any(a => a.CriterionNumber == r.Number)).ToList();
+        if (rollup.Count > 0)
+        {
+            html.Append("""
+                <table class="coverage guided-rollup">
+                  <caption>Per criterion, across every screen a tester answered</caption>
+                  <thead><tr><th scope="col">Criterion</th><th scope="col">Across this run</th></tr></thead>
+                  <tbody>
+                """);
+            foreach (var r in rollup)
+                html.Append($"""<tr><td>{E($"{r.Number} {r.Name} ({r.Level})")}</td><td>{E(GuidedChecksDisplay.RollupLabel(r.Status))}</td></tr>""");
+            html.Append("""
+                  </tbody></table>
+                """);
+        }
+        html.Append("""
             </section>
             """);
     }
@@ -450,7 +518,12 @@ public static class HtmlReport
         _ => "",
     };
 
-    private static void RenderScreen(StringBuilder html, ScanReport report, ScreenResult screen, int index)
+    /// <param name="screenCoverage">The whole run's per-screen, per-criterion status list -- computed once in
+    /// <see cref="Render"/>, not recomputed per screen.</param>
+    /// <param name="contradictions">The whole run's flagged answers -- computed once in <see cref="Render"/>.</param>
+    private static void RenderScreen(
+        StringBuilder html, ScanReport report, ScreenResult screen, int index,
+        IReadOnlyList<ScreenCriterionReport> screenCoverage, IReadOnlyList<CoverageContradiction> contradictions)
     {
         var id = $"s{index}";
         var numbered = screen.Findings.Select((f, i) => (Number: i + 1, Finding: f)).ToList();
@@ -507,6 +580,9 @@ public static class HtmlReport
             """);
         if (screen.ScreenReaderCapture is { Items.Count: > 0 })
             html.Append($"""<button type="button" role="tab" class="tab" id="{id}-tab-captured" aria-controls="{id}-panel-captured" aria-selected="false" tabindex="-1" data-tab="captured">Screen reader (captured)</button>""");
+        var guidedRows = screenCoverage.Where(r => r.ScreenId == screen.ScreenId && (r.Answer is not null || r.Status == ScreenCriterionStatus.NotApplicableHere)).ToList();
+        if (guidedRows.Count > 0)
+            html.Append($"""<button type="button" role="tab" class="tab" id="{id}-tab-guided" aria-controls="{id}-panel-guided" aria-selected="false" tabindex="-1" data-tab="guided">Guided checks</button>""");
         html.Append($"""
                   </div>
                   <div class="tabpanel" role="tabpanel" id="{id}-panel-findings" aria-labelledby="{id}-tab-findings" data-tab="findings">
@@ -545,6 +621,49 @@ public static class HtmlReport
                 """);
             AppendCapturedTranscript(html, screen);
             html.Append("""
+                      </div>
+                """);
+        }
+        if (guidedRows.Count > 0)
+        {
+            html.Append($"""
+                      <div class="tabpanel" role="tabpanel" id="{id}-panel-guided" aria-labelledby="{id}-tab-guided" data-tab="guided" hidden>
+                        <p class="hint">Answers a tester recorded for this screen with <code>swipewalk guide</code> or the desktop app's Guided checks page.</p>
+                        <ul class="limit-list guided-list">
+                """);
+            foreach (var r in guidedRows)
+            {
+                var flagged = r.Contradicted ? """ <span class="chip">Flagged</span>""" : "";
+                html.Append($"""<li><p class="limit-title">{E($"{r.Number} {r.Name} ({r.Level})")} <span class="chip">{E(GuidedChecksDisplay.StatusLabel(r.Status))}</span>{flagged}</p>""");
+                if (r.AutomatedSummary is not null)
+                    html.Append($"""<p>{E(r.AutomatedSummary)}</p>""");
+                if (r.Status == ScreenCriterionStatus.NotApplicableHere && r.Answer is { } notApplicable)
+                    html.Append($"""<p><strong>Reason it doesn't apply here:</strong> {E(notApplicable.NotApplicableReason ?? "")} (confirmed on {notApplicable.AnsweredAt:yyyy-MM-dd} by {E(notApplicable.Tester)}).</p>""");
+                else if (r.Answer is { } answer)
+                {
+                    var text = answer.Result == GuidedAnswerResult.Pass
+                        ? $"{GuidedChecksDisplay.ReportFacingPass(r.Number, screen.ScreenName, string.Join("; ", answer.Evidence.Select(e => e.Description)))} (recorded on {answer.AnsweredAt:yyyy-MM-dd} by {answer.Tester})"
+                        : $"The tester recorded {GuidedChecksDisplay.ResultWord(answer.Result)} on {answer.AnsweredAt:yyyy-MM-dd} by {answer.Tester}.";
+                    html.Append($"""<p>{E(text)}</p>""");
+                    if (answer.Note is { } note)
+                        html.Append($"""<p><strong>Note:</strong> {E(note)}</p>""");
+                }
+                if (screen.RescannedAt is { } guidedRescannedAt && r.Answer is { } a && a.AnsweredAt < guidedRescannedAt)
+                    html.Append($"""<p class="hint">{E(GuidedChecksDisplay.AnsweredBeforeRescan(guidedRescannedAt))}</p>""");
+                if (r.Contradicted)
+                    foreach (var c in contradictions.Where(c => c.ScreenId == screen.ScreenId && c.CriterionNumber == r.Number))
+                        html.Append($"""<p class="hint">{E(c.Description)}</p>""");
+                if (r.OlderAnswers.Count > 0)
+                {
+                    html.Append($"""<details><summary>Earlier answers ({r.OlderAnswers.Count})</summary><ul>""");
+                    foreach (var older in r.OlderAnswers)
+                        html.Append($"""<li>{E(GuidedChecksDisplay.AnswerOneLine(older))}</li>""");
+                    html.Append("</ul></details>");
+                }
+                html.Append("</li>");
+            }
+            html.Append("""
+                        </ul>
                       </div>
                 """);
         }

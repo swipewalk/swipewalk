@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:Swipewalk.Desktop.Controls"
+             x:Class="Swipewalk.Desktop.Pages.GuidedChecksPage"
+             Title="Guided checks">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,16" Spacing="12">
+            <Label x:Name="TitleLabel" Text="Guided checks" FontSize="{DynamicResource FontTitle}" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
+            <Label x:Name="GapLabel" FontSize="{DynamicResource FontBody}" IsVisible="False" />
+
+            <Border x:Name="BeforeYouStartPanel" Padding="14,10" StrokeShape="RoundRectangle 8">
+                <VerticalStackLayout x:Name="BeforeYouStartList" Spacing="4" />
+            </Border>
+            <Button x:Name="ToggleBeforeYouStart" Text="Hide before-you-start notes" Clicked="OnToggleBeforeYouStart"
+                    SemanticProperties.Hint="Shows or hides the before-you-start notes" HorizontalOptions="Start" />
+
+            <HorizontalStackLayout Spacing="16">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Screen" FontSize="{DynamicResource FontCaption}" />
+                    <controls:SelectButton x:Name="ScreenPicker" SelectedIndexChanged="OnScreenChanged"
+                                            SemanticProperties.Description="Screen" HeightRequest="32" WidthRequest="280" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Testing with" FontSize="{DynamicResource FontCaption}" />
+                    <controls:SelectButton x:Name="AssistiveTechnologyPicker"
+                                            SemanticProperties.Description="Assistive technology you are testing with"
+                                            HeightRequest="32" WidthRequest="180" />
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+
+            <Label x:Name="SummaryLabel" FontSize="{DynamicResource FontBody}" />
+
+            <VerticalStackLayout x:Name="CriteriaList" Spacing="14" Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
