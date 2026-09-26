@@ -25,8 +25,9 @@ public class ScreenReaderCaptureComparerTests
 
     private static ScreenReaderCapture Capture(
         ScreenReaderSource source, IReadOnlyList<ScreenReaderCaptureItem> items, bool complete = true,
-        string? notCompleteReason = null, string? language = null) =>
-        new(source, "test", DateTimeOffset.UtcNow, items, complete, notCompleteReason, language);
+        string? notCompleteReason = null, string? language = null,
+        ScreenReaderCaptureScope scope = ScreenReaderCaptureScope.AllElements) =>
+        new(source, "test", DateTimeOffset.UtcNow, items, complete, notCompleteReason, language, scope);
 
     [Fact]
     public void TalkBack_RealButtonAloneAgainstPredictedUnlabeledButton_IsNotAMismatch()
@@ -121,6 +122,26 @@ public class ScreenReaderCaptureComparerTests
 
         Assert.Equal(ScreenReaderDifferenceKind.Missing, diff.Kind);
         Assert.Equal(predicted[1], diff.Predicted);
+    }
+
+    [Fact]
+    public void FocusableElementsOnlyScope_PredictedNamedStopNeverReported_IsNeverMissing_EvenWhenComplete()
+    {
+        // Regression for the real bug this fix addresses: real TalkBack captures are always
+        // ScreenReaderCaptureScope.FocusableElementsOnly, and the harness has no way today to say WHICH
+        // exact focusable elements it walked, only how many items it captured -- so treating a
+        // predicted-but-uncaptured stop as a real gap there would risk a false 4.1.2 citation from a
+        // node-identity mismatch, not genuine evidence (see ScreenReaderCaptureScope's own remarks). Missing
+        // is never reported for this scope, complete or not.
+        var predicted = new[]
+        {
+            new Announcement(1, "0/0", "Save, Button", AnyBounds, HasName: true),
+            new Announcement(2, "0/1", "Cancel, Button", AnyBounds, HasName: true),
+        };
+        var capture = Capture(ScreenReaderSource.TalkBack, [TalkBackItem(1, "Save. Button.", "0/0")],
+            complete: true, scope: ScreenReaderCaptureScope.FocusableElementsOnly);
+
+        Assert.Empty(ScreenReaderCaptureComparer.Compare(predicted, capture));
     }
 
     [Fact]

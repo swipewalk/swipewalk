@@ -27,9 +27,9 @@ namespace Swipewalk.Core.Rules;
 /// <see cref="ScreenReaderCaptureComparer.NamesMatch"/>'s whole-word, cross-language forgiveness -- which this
 /// rule needs, since its own "predicted" side (a control's visible text) is never empty -- is only established
 /// for TalkBack; for any other source it falls back to exact equality only, which would over-report on a real
-/// name that legitimately contains extra words. No collector produces a non-TalkBack
-/// <see cref="ScreenSnapshot.ScreenReaderCapture"/> today, so this is a safeguard for when one does, not a
-/// live restriction.
+/// name that legitimately contains extra words. iOS's Accessibility Inspector route now produces a
+/// non-TalkBack <see cref="ScreenSnapshot.ScreenReaderCapture"/> (<c>ScreenReaderSource.AccessibilityInspector</c>),
+/// so this guard is live, not just a safeguard for a future source.
 ///
 /// Doesn't duplicate <see cref="LabelInNameRule"/>: when a node's OWN visible text is what's being checked
 /// (not a descendant's) and it already has a <see cref="AccessibilityNode.Label"/> that fails to contain it,
@@ -44,10 +44,13 @@ public sealed class ScreenReaderLabelInNameRule : IRule
 
     public IEnumerable<Finding> Evaluate(ScreenSnapshot snapshot)
     {
-        // Bail entirely on an incomplete capture (device disconnected, walk timed out, order wrapped -- see
-        // ScreenReaderCapture.Complete) or one with nothing in it: a capture that didn't cover the whole
-        // screen is too unreliable a basis for a per-element WCAG citation, even for the elements it did
-        // reach, since where and why it stopped isn't accounted for here.
+        // Bail entirely on an incomplete capture or one with nothing in it: a capture that hit a real
+        // problem is too unreliable a basis for a per-element WCAG citation, even for the elements it did
+        // reach, since where and why it stopped isn't accounted for here. For this rule's only real source
+        // today (TalkBack, guarded below), "incomplete" means the per-capture element cap was reached or
+        // TalkBack said nothing for one or more focused elements -- not "device disconnected, walk timed
+        // out, order wrapped", which are the Accessibility Inspector route's own failure reasons (see
+        // ScreenReaderCapture.Complete's remarks); this rule is TalkBack-only, so those never apply here.
         if (snapshot.ScreenReaderCapture is not { Items.Count: > 0, Complete: true } capture)
             yield break;
 

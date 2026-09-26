@@ -66,7 +66,8 @@ public static class ScreenReaderCoverageEvidence
         var compared = ComparedCount(capture);
         var differ = DifferCount(screen, WcagCriteria.NameRoleValue);
         var text = capture.Source == ScreenReaderSource.TalkBack
-            ? $"Swipewalk moved TalkBack's focus to {n} element{Plural(n)} on this screen and recorded what it said. " +
+            ? $"Swipewalk moved TalkBack's focus to {n} focusable or interactive element{Plural(n)} on this " +
+              "screen and recorded what it said (plain text was not captured). " +
               $"{compared} could be matched to an element confidently enough to compare its name and role with " +
               $"Swipewalk's prediction; {differ} difference{Plural(differ)} {WasWere(differ)} flagged for review. " +
               "Values and states were not compared; manual check still needed."
@@ -105,6 +106,8 @@ public static class ScreenReaderCoverageEvidence
 
         if (capture.Source == ScreenReaderSource.AccessibilityInspector)
             text += " VoiceOver itself was not turned on.";
+        else
+            text += " Swipewalk's TalkBack capture only moves focus to focusable or interactive elements, so an image that isn't focusable itself (decorative or informative) was not captured here.";
         text = AppendIncomplete(text, capture);
         return AppendOverlap(text, screen, WcagCriteria.NonTextContent);
     }
@@ -185,36 +188,18 @@ public static class ScreenReaderCoverageEvidence
         return screen.Findings.Count(f => IsCaptureFinding(f) && f.Criteria.Contains(criterion) && otherPaths.Contains(f.NodePath));
     }
 
-    /// <summary>The exact reason TalkBack's harness (<c>harness/android/.../TalkBackCollector.kt</c>) records
-    /// on every ordinary, fully-successful capture -- every single one of that collector's return paths
-    /// passes <c>complete = false</c>, always, because its walk only ever covers focusable/interactive
-    /// elements (never plain informational text, to keep the per-element cost down), not because anything
-    /// went wrong or was cut short. So <see cref="ScreenReaderCapture.Complete"/> being false for a TalkBack
-    /// capture with exactly this reason is the NORMAL case, not a real early stop -- unlike every other
-    /// TalkBack reason (the app not in front, the per-capture element cap reached, TalkBack refusing to
-    /// speak through Swipewalk's engine, more than half the elements silent, or an exception), which IS a
-    /// genuine problem worth a caveat, and unlike the Accessibility Inspector route, where
-    /// <see cref="ScreenReaderCapture.Complete"/> really does mean "the walk actually finished" (a device
-    /// disconnect, a timeout or an order wrap are real early stops there). Comparing this exact literal
-    /// (rather than folding it into the generic incomplete-capture wording below) is what stops the
-    /// "capture stopped before the end of this screen" caveat from appearing on literally every TalkBack
-    /// capture ever made, including ones that walked every focusable element without incident. No automated
-    /// cross-check against the Kotlin string exists: that harness runs outside dotnet test's reach.</summary>
-    internal const string TalkBackFocusableElementsOnlyReason =
-        "only focusable/interactive elements were captured, not plain informational text (to keep the capture fast)";
-
-    /// <summary>Whether an incomplete capture's own reason is worth telling the reader about here -- see
-    /// <see cref="TalkBackFocusableElementsOnlyReason"/>'s remarks for why TalkBack's own, expected
-    /// not-complete reason is excluded.</summary>
-    private static bool IsGenuineEarlyStop(ScreenReaderCapture capture) =>
-        !capture.Complete && !(capture.Source == ScreenReaderSource.TalkBack
-            && capture.NotCompleteReason == TalkBackFocusableElementsOnlyReason);
-
+    /// <summary>Appends a caveat when this capture hit a real problem -- gated on <see cref="ScreenReaderCapture.Complete"/>
+    /// alone: for a TalkBack capture, Complete now genuinely means "every focusable/interactive element this
+    /// walk found was reached and said something" (the harness's own scope, always
+    /// <see cref="ScreenReaderCaptureScope.FocusableElementsOnly"/>, is stated separately in the sentences
+    /// above, not treated as a reason to caveat here), so this only fires for a real early stop or refusal --
+    /// never on every TalkBack capture the way an earlier version of this method did before Complete's own
+    /// meaning for TalkBack was fixed (see the harness's own history for that bug).</summary>
     private static string AppendIncomplete(string text, ScreenReaderCapture capture) =>
-        IsGenuineEarlyStop(capture)
-            ? text + $" The capture stopped before the end of this screen ({capture.NotCompleteReason ?? "reason not recorded"}), " +
-                     "so later elements were not compared."
-            : text;
+        capture.Complete
+            ? text
+            : text + $" The capture did not cover everything on this screen ({capture.NotCompleteReason ?? "reason not recorded"}), " +
+                     "so some elements were not compared.";
 
     private static string AppendOverlap(string text, ScreenResult screen, WcagCriterion criterion)
     {

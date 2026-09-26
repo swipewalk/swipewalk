@@ -196,17 +196,20 @@ internal object TalkBackCollector {
             val candidates = mutableListOf<AccessibilityNodeInfo>()
             collectStops(root, candidates)
             val walked = candidates.take(MaxElements)
-            // Never "complete": this walk only covers focusable/interactive elements (see collectStops),
-            // not every stop Swipewalk's own predicted transcript includes -- ScreenReaderPredictor.Predict
-            // also stops at plain informational text with a name, which this capture deliberately skips to
-            // keep the per-element cost down. Reported as incomplete (with why) rather than "complete", so
-            // ScreenReaderCaptureComparer's Missing check -- gated on Complete, precisely for "the capture
-            // may simply not have reached this stop" -- never treats an un-walked text stop as TalkBack
-            // having failed to announce something it was never asked about.
-            var reason = if (candidates.size > MaxElements)
-                "screen has more focusable/interactive elements (${candidates.size}) than the capture limit ($MaxElements), and plain informational text was not captured either"
-            else
-                "only focusable/interactive elements were captured, not plain informational text (to keep the capture fast)"
+            val capped = candidates.size > MaxElements
+            // This walk only ever covers focusable/interactive elements (see collectStops), never plain
+            // informational text -- ScreenReaderPredictor.Predict also stops at plain named text, which
+            // this capture deliberately skips to keep the per-element cost down. That's a property of the
+            // SCOPE this route captures (Swipewalk.Core.Model.ScreenReaderCaptureScope.FocusableElementsOnly,
+            // set on the C# side in AndroidCollector.LoadScreenReaderCapture -- not carried through this
+            // JSON, since it never varies per capture), not a reason any ONE capture is incomplete, so it
+            // no longer disqualifies `complete` below on its own: `complete` now means "every
+            // focusable/interactive element this walk found was actually reached and said something",
+            // which is genuinely sometimes true. ScreenReaderCaptureComparer's own Missing-diff check still
+            // never fires for this scope at all, complete or not (see ScreenReaderCaptureScope's remarks):
+            // this harness has no way today to say WHICH exact elements it walked, only how many items it
+            // captured, so treating an un-walked predicted stop as a real gap would risk a false 4.1.2
+            // citation from a node-identity mismatch, not genuine evidence.
 
             // Warm-up: focus the root itself first so the window-entry announcement (TalkBack speaks the
             // app/window name whenever a window with accessibility focus changes) is out of the way
@@ -232,10 +235,20 @@ internal object TalkBackCollector {
                 order++
                 items.add(Item(order, utterances.joinToString(UtteranceJoinSeparator), nodeKey(node)))
             }
-            if (missingCount > walked.size / 2)
-                reason = "$reason; TalkBack said nothing for $missingCount of ${walked.size} elements, more than half -- it may have been briefly unavailable during this capture"
+            // complete requires BOTH: the cap wasn't hit (every focusable/interactive element found was
+            // actually attempted) AND TalkBack said something for every one of them (missingCount == 0) --
+            // deliberately simple/strict rather than tolerating a few silent elements: a single timeout is
+            // common enough (this study saw one caption lag ~0.6 s) that a softer threshold risks quietly
+            // treating a capture with real gaps as trustworthy for the 2.5.3 real-evidence check that
+            // depends on `complete`. The cost is that one silent element turns that check off for this
+            // whole screen, not just for the element that stayed silent.
+            val reason = when {
+                capped -> "screen has more focusable/interactive elements (${candidates.size}) than the capture limit ($MaxElements), and plain informational text was not captured either"
+                missingCount > 0 -> "TalkBack said nothing for $missingCount of ${walked.size} element(s) it focused -- it may have been briefly unavailable during this capture"
+                else -> null
+            }
             notCompleteReason = reason
-            return Result(talkBackVersion, items, missingCount, complete = false, notCompleteReason, language)
+            return Result(talkBackVersion, items, missingCount, complete = reason == null, notCompleteReason, language)
         } catch (e: Exception) {
             return Result(talkBackVersion, items, missingCount, false, "the TalkBack capture failed: ${e.message ?: e.javaClass.simpleName}", language)
         } finally {
@@ -427,7 +440,9 @@ internal object TalkBackCollector {
 
     /** Narrower than `Swipewalk.Core.ScreenReader.ScreenReaderPredictor`'s own stops: the predictor also
      * stops at plain informational text with a name, which this walk deliberately skips to keep the
-     * per-element cost down (see the always-incomplete result this collector returns). */
+     * per-element cost down -- a fixed scope for this whole route
+     * (`Swipewalk.Core.Model.ScreenReaderCaptureScope.FocusableElementsOnly`, set on the C# side), not
+     * something `complete` on the result below reflects any more. */
     private fun collectStops(node: AccessibilityNodeInfo, out: MutableList<AccessibilityNodeInfo>) {
         if (node.isImportantForAccessibility && node.isVisibleToUser &&
             (node.isClickable || node.isLongClickable || node.isCheckable || node.isFocusable || node.isEditable))

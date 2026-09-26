@@ -261,10 +261,11 @@ public static class CoverageCatalog
             "Swipewalk also checks this against what TalkBack actually said -- this could report a control " +
             "whose visible text is only on a child node (a shape the tree-only check can't see at all, since " +
             "it needs the text on the control's own node -- see \"android-compose-merged-name\"), when " +
-            "TalkBack's announcement leaves that text out. On the one such control captured so far " +
-            "(samples/NativeAndroid's Compose bug N5), TalkBack's announcement included the visible text " +
-            "alongside its overriding name, so nothing was reported there -- either way, this still isn't " +
-            "proof of what speech-input software matches, so check by hand regardless.",
+            "TalkBack's announcement leaves that text out. On samples/NativeAndroid's Compose bug N5, " +
+            "TalkBack's announcement included the visible text alongside its overriding name, so this check " +
+            "reports nothing there -- either way, this still isn't proof of what speech-input software " +
+            "matches, so check by hand regardless. This specific check runs whenever the capture reached " +
+            "every focusable or interactive element it found and TalkBack said something for each.",
             "label-in-name"),
         Manual(WcagCriteria.MotionActuation,
             "If a feature is triggered by shaking or tilting the device, check there is also a standard " +

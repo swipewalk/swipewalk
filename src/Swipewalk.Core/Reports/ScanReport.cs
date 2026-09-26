@@ -18,8 +18,12 @@ public sealed record ScanReport
     /// each screen.
     /// 0.4: <see cref="Coverage.ScreenCriterionReport"/> (part of <see cref="ScreenCoverage"/>, still
     /// computed, not stored) adds CapturedEvidenceSummary/CapturedEvidenceSource for real screen-reader
-    /// evidence that exercises a criterion on a screen.</summary>
-    public const string CurrentSchemaVersion = "0.4";
+    /// evidence that exercises a criterion on a screen.
+    /// 0.5: <see cref="Model.ScreenReaderCapture"/> adds Scope (<see cref="Model.ScreenReaderCaptureScope"/>);
+    /// <see cref="JsonReport.Deserialize"/> forces it to FocusableElementsOnly for any TalkBack capture in an
+    /// older file that has no "scope" property at all, so old results.json data doesn't silently read back
+    /// as the wrong scope.</summary>
+    public const string CurrentSchemaVersion = "0.5";
 
     public const string Disclaimer =
         "Automated checks find only some accessibility issues. Results are not a statement of conformance " +

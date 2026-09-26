@@ -729,6 +729,36 @@ concerns people who operate controls by voice, and this capture doesn't show whi
 software such as Voice Access matches on, so whether saying "Pay" activates this button wasn't
 tested. `label-in-name` still reports nothing for this button; check it by hand with speech input.
 
+### `screen-reader-label-in-name`, checked against real captures for the first time
+
+Until RulesetVersion 2026.09.30, `screen-reader-label-in-name` (WCAG 2.5.3 checked against what TalkBack
+actually said) could never evaluate a genuine `--screen-reader` capture at all: the harness that drives
+TalkBack marked every single capture as not having covered the whole screen, always, because its walk
+only ever visits focusable/interactive elements and never plain text -- a fixed, honest fact about what
+it captures, not a real problem with any one run, but the rule's own gate required a capture that
+covered everything, so it silently never ran. Fixed by giving that fact its own field (what a capture
+ever attempts) separate from whether one specific run succeeded, so a capture that reaches every
+focusable element it found can now honestly be called complete.
+
+Re-running both apps above with the fixed harness, on the physical Pixel (TalkBack 17.0.1) and the
+Android emulator (TalkBack 16.0.0) alike: BuggyApp's first screen (10 focusable elements) and the
+NativeAndroid Compose screen (9 elements) all four came back `complete: true` for the first time, with
+identical findings on both devices. On the Compose screen, `screen-reader-label-in-name` now genuinely
+evaluates the N5 button described above. TalkBack's exact wording still depends on its own version, as
+section 6 already found: on the Pixel (TalkBack 17.0.1) it announced the button in one utterance,
+"Submit. Pay. Button"; on the emulator (TalkBack 16.0.0) it still split it into three, "Submit || Pay ||
+Button", matching that earlier finding. Both contain "Pay" as its own word, so the check reports nothing
+for this button on either device, exactly as expected. On BuggyApp's first screen, the check reported
+nothing for the "Submit"/"Pay" button (bug B6) too, but for a different reason: that button's own tree
+label already fails to contain its visible text, so `label-in-name` (the tree-only check) already
+reports it there, and `screen-reader-label-in-name` deliberately skips a control the tree-only check has
+already flagged, rather than reporting the same problem twice. Neither result is a new finding; the real
+change is that the report's WCAG coverage for 2.5.3 now shows real evidence at all -- on BuggyApp, next
+to `label-in-name`'s existing tree finding for B6, the coverage row adds "Swipewalk compared what
+TalkBack said for this screen's controls with their visible text, for controls matched confidently
+enough; 0 controls were flagged for review because TalkBack's announcement didn't include that text. ...
+manual check still needed", where it previously said nothing at all.
+
 Two apps not built with .NET MAUI were also checked outside this repo's own test fixtures — one
 using Jetpack Compose, one using classic Views — and worked the same way on both; their detailed
 results aren't included here because they aren't Swipewalk's own test fixtures.
