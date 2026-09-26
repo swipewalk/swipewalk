@@ -255,8 +255,9 @@ Each screen also shows:
   one-time setup step is only asked once per recording session, not once per screen (continuing a
   recording later — `record --continue` — asks again): Swipewalk says so up front, and every later
   "Scan this screen now" reuses the answer silently; if a later screen's own walk comes back short or
-  incomplete, that one screen is reported as not covered, with the same prompt to click an element in
-  the Inspector and scan again — declining once doesn't ask again for the rest of that session.
+  incomplete, that one screen is reported as not covered, with why (usually a prompt to click an
+  element in the Inspector and scan again) — declining once doesn't ask again for the rest of that
+  session.
   Because the Inspector reports no on-screen position for each element, a
   captured item is matched to the scanned tree by its identifier, then its accessible name, then
   position alone as a last resort — recorded per item in results.json as Exact/Likely/Weak/unmatched,
@@ -790,7 +791,7 @@ pages:
   what changes and that TalkBack stays silent while Swipewalk listens; choosing Continue is
   remembered on this Mac so you're not asked again, and Cancel stops the run before anything changes
   (asked again next time). Use a test device.
-  For iOS, "Read Accessibility Inspector evidence (what VoiceOver would read)" is hidden for
+  For iOS, "Read Accessibility Inspector evidence (properties VoiceOver uses)" is hidden for
   Android and **off by default** — unlike TalkBack, it needs you present every time it's used, so it
   can't run unattended. This reads real accessibility evidence from Xcode's Accessibility Inspector;
   VoiceOver itself does not run and does not speak. Turning it on and pressing Start shows two

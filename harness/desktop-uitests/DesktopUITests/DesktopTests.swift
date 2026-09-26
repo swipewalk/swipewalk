@@ -954,13 +954,13 @@ final class DesktopTests: XCTestCase {
         XCTAssertTrue(reportHTML.contains("Screen reader (captured)"), "report.html should show the captured TalkBack section")
     }
 
-    /// "Read Accessibility Inspector evidence (what VoiceOver would read)" (NewScanPage.InspectorOption) is
+    /// "Read Accessibility Inspector evidence (properties VoiceOver uses)" (NewScanPage.InspectorOption) is
     /// iOS only (NewScanPage.OnPlatformChanged hides it for Android) and **off by default**, unlike TalkBack:
     /// it needs a person present every time it's used (Services/InspectorNotice), so it can't run unattended.
     func testInspectorOptionIsIOSOnlyAndOffByDefault() throws {
         let app = Desktop.launch(page: "scan")
         defer { app.terminate() }
-        let inspector = app.switches["Read Accessibility Inspector evidence (what VoiceOver would read)"].firstMatch
+        let inspector = app.switches["Read Accessibility Inspector evidence (properties VoiceOver uses)"].firstMatch
         XCTAssertFalse(inspector.waitForExistence(timeout: 3), "Inspector option should be hidden on Android (the default platform)")
 
         app.buttons["Platform"].firstMatch.click()
@@ -1007,7 +1007,7 @@ final class DesktopTests: XCTestCase {
         guard simulatorItem.waitForExistence(timeout: 10) else { throw XCTSkip("No iOS Simulator connected") }
         simulatorItem.click()
 
-        let inspector = app.switches["Read Accessibility Inspector evidence (what VoiceOver would read)"].firstMatch
+        let inspector = app.switches["Read Accessibility Inspector evidence (properties VoiceOver uses)"].firstMatch
         XCTAssertTrue(inspector.waitForExistence(timeout: 10))
         inspector.click()
         let appId = app.textFields["App package or bundle id"].firstMatch

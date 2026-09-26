@@ -2,7 +2,7 @@ namespace Swipewalk.Desktop.Services;
 
 /// <summary>
 /// Remembers whether the person has already confirmed New scan's Accessibility Inspector permission notice
-/// (Services/InspectorNotice: turning on "Read Accessibility Inspector evidence (what VoiceOver would read)"
+/// (Services/InspectorNotice: turning on "Read Accessibility Inspector evidence (properties VoiceOver uses)"
 /// on iOS uses the macOS Accessibility permission), so a returning person isn't shown that explanation again --
 /// only the first time, as with Services/TalkBackNoticePreference. This does NOT cover the device-and-click
 /// setup step InspectorNotice also shows: that one is asked every time, since nothing can confirm it was

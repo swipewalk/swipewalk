@@ -51,7 +51,7 @@ Every change is checked with:
 - The notice shown when a physical phone is selected (large-text checks change the phone's own text size) is a
   native system alert rather than a page in the app. On a Mac with VoiceOver, the notice's title and body were
   read, and a real Escape key closed it.
-- New scan's "Read Accessibility Inspector evidence (what VoiceOver would read)" option (iOS only) shows the
+- New scan's "Read Accessibility Inspector evidence (properties VoiceOver uses)" option (iOS only) shows the
   same kind of native system alert -- the macOS Accessibility permission explanation, then the one-time
   Inspector setup step -- as the physical-phone and TalkBack notices above. It has not yet been checked with
   VoiceOver directly (covered by the general "not yet tested by a person using VoiceOver" row in Known issues
