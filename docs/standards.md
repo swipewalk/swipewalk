@@ -13,7 +13,7 @@
 | [EN 301 549 v4.1.1](https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf) (`en-301-549-v4`) | European Union (and EEA) | WCAG 2.2 AA | Published by ETSI in September 2026, with clauses 9 to 11 aligned to WCAG 2.2. It confers a presumption of conformity only once cited in the EU Official Journal; that citation was not verified when this entry was checked. Check which version your contract or regulator references. | 2026-09 |
 | [Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018](https://www.gov.uk/guidance/accessibility-requirements-for-public-sector-websites-and-apps) (`uk-public-sector`) | United Kingdom | WCAG 2.2 AA | Public sector websites, and mobile apps developed for use by the public (apps for specific groups such as employees or students are not covered). The regulations do not name a WCAG version; GOV.UK guidance tells public sector bodies to meet WCAG 2.2 AA. | 2026-09 |
 
-## Rule sources (ruleset 2026.09.21)
+## Rule sources (ruleset 2026.09.22)
 
 Reports record these versions. Later changes to WCAG, laws or platform guidelines are not reflected until Swipewalk is updated; reports warn when a mapping was last reviewed more than a year earlier.
 

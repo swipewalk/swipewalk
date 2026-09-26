@@ -19,12 +19,13 @@ public sealed record RuleSource(string Name, string Version, string CheckedOn, s
 /// </summary>
 public static class RuleSources
 {
-    // Bumped from 2026.09.16 for the offscreen-unreachable rule (interactive controls or text positioned
-    // wholly or mostly outside the visible screen at normal text size, with no scrollable ancestor -- mapped
-    // to WCAG 1.4.10 Reflow) and the accompanying change of 1.4.10's CoverageCatalog status from Manual to
-    // PartlyAutomated. Several other branches also reserved versions in this range (.17-.19, .25); this one
-    // uses .21, assigned to keep merges from colliding.
-    public const string RulesetVersion = "2026.09.21";
+    // Bumped from 2026.09.16 to 2026.09.21 for the offscreen-unreachable rule (interactive controls or
+    // text positioned wholly or mostly outside the visible screen at normal text size, with no scrollable
+    // ancestor -- mapped to WCAG 1.4.10 Reflow) and the accompanying change of 1.4.10's CoverageCatalog
+    // status from Manual to PartlyAutomated (merged first), then to 2026.09.22 for this rule
+    // (screen-reader-label-in-name: WCAG 2.5.3 checked against real screen-reader capture, opt-in with
+    // --screen-reader), rebased on top of it.
+    public const string RulesetVersion = "2026.09.22";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);

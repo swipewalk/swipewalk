@@ -152,6 +152,23 @@ public static class ScreenActivityBuilder
                 ? "screen-reader capture is Android-only for now"
                 : "screen-reader capture not requested for this run (pass --screen-reader)";
 
+        // screen-reader-label-in-name (ScreenReaderLabelInNameRule) reads the same
+        // ScreenSnapshot.ScreenReaderCapture as screen-reader-capture above, but -- unlike that rule --
+        // bails out entirely (reports nothing at all) on a capture that didn't cover the whole screen (see
+        // that rule's own remarks), so an incomplete-but-non-empty capture is its own skip reason here
+        // rather than "ran": otherwise the coverage table would say this rule ran and confirmed nothing,
+        // when it actually never evaluated anything for this screen.
+        if (screen.ScreenReaderCapture is { Items.Count: > 0, Complete: true })
+            ran.Add("screen-reader-label-in-name");
+        else if (screen.ScreenReaderCapture is { Items.Count: > 0 } incompleteCapture)
+            skipped["screen-reader-label-in-name"] = incompleteCapture.NotCompleteReason ?? "the screen-reader capture did not cover the whole screen";
+        else if (screen.ScreenReaderCapture is { } emptyCapture2)
+            skipped["screen-reader-label-in-name"] = emptyCapture2.NotCompleteReason ?? "no screen-reader output was captured";
+        else
+            skipped["screen-reader-label-in-name"] = screen.Platform == Platform.iOS
+                ? "screen-reader capture is Android-only for now"
+                : "screen-reader capture not requested for this run (pass --screen-reader)";
+
         return new ScreenActivity(ran, skipped, screen.Findings);
     }
 

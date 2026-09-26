@@ -35,11 +35,15 @@ public static class AppearanceMerge
     /// appearance rescan collects for the second capture. A finding from one of these says nothing about
     /// whether the OTHER appearance has the same issue -- it was simply never tested there -- so tagging it
     /// "only in dark/light appearance" would be a claim the scan never checked. Left with
-    /// <see cref="Finding.Appearance"/> null instead: same list ReportComparison.CheckDidNotRun uses for the
-    /// same reason (a check that didn't run this time isn't "no longer found" either).
+    /// <see cref="Finding.Appearance"/> null instead -- the same reason ReportComparison.CheckDidNotRun
+    /// avoids treating its own large-text/contrast/engine/screen-reader-capture cases as "no longer found"
+    /// when the check behind them didn't run (not the identical set of rule ids: that list also covers
+    /// text-contrast and engine, which don't need excluding here since the appearance rescan's second
+    /// capture does take a screenshot and can run the platform engine).
     /// </summary>
     private static readonly HashSet<string> NotPartOfAppearanceComparison =
-        ["text-resize", "text-resize-live", "text-resize-navigation", "large-text-lost-content", "screen-reader-capture"];
+        ["text-resize", "text-resize-live", "text-resize-navigation", "large-text-lost-content",
+            "screen-reader-capture", "screen-reader-label-in-name"];
 
     /// <summary>
     /// <paramref name="primary"/> keeps its own screenshot, transcript and every other per-screen field;

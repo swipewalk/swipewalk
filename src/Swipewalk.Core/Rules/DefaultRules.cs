@@ -28,6 +28,7 @@ public static class DefaultRules
         // Swipewalk.Collectors.Android.AndroidHarness.RunScreenReaderCaptureAsync) can actually set
         // ScreenSnapshot.ScreenReaderCapture, opt-in via --screen-reader.
         new ScreenReaderCaptureRule(),
+        new ScreenReaderLabelInNameRule(),
     ];
 
     public static IReadOnlyList<RuleCoverage> Coverage { get; } =
@@ -66,6 +67,8 @@ public static class DefaultRules
             // order, not a real navigation order (see ScreenReaderCaptureRule's remarks), so an order
             // difference is never reported for it today.
             [WcagCriteria.NameRoleValue, WcagCriteria.NonTextContent]),
+        new("screen-reader-label-in-name", "WCAG 2.5.3 Label in Name checked against what TalkBack actually said, for an interactive control with visible text (its own, or its only descendant's -- see KnownLimitations \"android-compose-merged-name\"): reported for review when the spoken name doesn't contain that text (Android only for now, opt-in with --screen-reader; see KnownLimitations \"android-screen-reader-capture\")",
+            [WcagCriteria.LabelInName]),
     ];
 
     /// <summary>The WCAG criteria at least one rule maps findings to, in catalog order.</summary>
