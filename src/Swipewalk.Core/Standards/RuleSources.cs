@@ -61,7 +61,7 @@ public static class RuleSources
     // (Apple 44 pt, Android 48 dp) are unchanged.
     // Then to 2026.09.30 for the new auto-updating-content rule (scan --auto-update-content; WCAG 2.2.2
     // Pause, Stop, Hide, moved from Manual to PartlyAutomated in CoverageCatalog).
-    // Then to 2026.10.01 (main was at .30, and September has no 31st) for the Jetpack Compose
+    // Then to 2026.09.31 (a counter, not a date) for the Jetpack Compose
     // several-named-descendants merge (UiAutomatorParser.TryMergeDescendantName, KnownLimitations
     // "android-compose-merged-name"): a clickable node with exactly one descendant carrying only a
     // content-desc and exactly one other carrying only plain visible text now merges both onto the
@@ -74,7 +74,7 @@ public static class RuleSources
     // is what actually lets screen-reader-label-in-name run on N5 at all now; this change's own tree-level
     // merge is what lets the tree-only label-in-name evaluate N5 too, a separate, narrower fix -- see
     // KnownLimitations "android-compose-merged-name" for both, merged.
-    public const string RulesetVersion = "2026.10.01";
+    public const string RulesetVersion = "2026.09.31";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);
