@@ -14,7 +14,8 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
 {
     public async Task<IReadOnlyList<TargetOutcome>> RunAsync(
         RunConfig config, RecorderControl? control = null, LargeTextRestartAsker? largeTextRestartAsk = null,
-        RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null, CancellationToken cancellationToken = default)
+        RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null, CancellationToken cancellationToken = default,
+        bool saveToHistory = true)
     {
         var outcomes = new List<TargetOutcome>();
         foreach (var target in config.Targets)
@@ -36,9 +37,13 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
 
                 options = options with
                 {
-                    OutputDirectory = config.Out is null
+                    // --no-history writes to a local folder instead of the history, like scan/record's own
+                    // --no-history; unlike them, each target gets a timestamped, app-named subfolder under
+                    // "out" (or "swipewalk-report") so several targets don't overwrite each other's output --
+                    // see LocalOutputDirectory.
+                    OutputDirectory = saveToHistory && config.Out is null
                         ? history.NewRunFolder(options.AppId)
-                        : Path.Combine(config.Out, $"{DateTime.Now:yyyyMMdd-HHmmss}-{options.AppId}"),
+                        : LocalOutputDirectory(config.Out, options.AppId),
                 };
                 var checks = await service.CheckAsync(options);
                 foreach (var check in checks.Where(c => c.Status != CheckStatus.Pass))
@@ -50,7 +55,7 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
                 }
 
                 var mode = config.Mode == "record" ? "record" : "run";
-                if (config.Mode == "record")
+                if (saveToHistory && config.Mode == "record")
                     // Written before the first screen, not just after it: a process killed before it captures
                     // anything still leaves this run in History marked "in progress" -- see
                     // RunHistory.StartRecordingAsync.
@@ -61,17 +66,23 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
                     // Save after every screen, not just at the end: a recording this loop's own catch below
                     // can't reach (a killed device, the whole process stopped) still ends up in
                     // History/Dashboard with whatever it captured -- see RunHistory.OnScreenSaved.
+                    // --no-history skips this the same way scan/record's own --no-history does: Recorder still
+                    // writes report.html/results.json to options.OutputDirectory after every screen regardless.
                     ? await service.RecordAsync(options, control ?? new RecorderControl(), cancellationToken,
-                        onScreen: history.OnScreenSaved(options, mode, started, options.OutputDirectory, log), largeTextRestartAsk: largeTextRestartAsk,
-                        revisitSkippedScreensAsk: revisitSkippedScreensAsk)
+                        onScreen: saveToHistory ? history.OnScreenSaved(options, mode, started, options.OutputDirectory, log) : null,
+                        largeTextRestartAsk: largeTextRestartAsk, revisitSkippedScreensAsk: revisitSkippedScreensAsk)
                     : await service.ScanAsync(options, cancellationToken, largeTextRestartAsk: largeTextRestartAsk);
-                var run = await history.SaveAsync(result, options, mode, started);
+                // --no-history: build the same record (for the exit code and the ended-early reason below)
+                // without writing it into the history, or copying the output there -- see RunHistory.Build.
+                var run = saveToHistory
+                    ? await history.SaveAsync(result, options, mode, started)
+                    : RunHistory.Build(result, options, mode, started, options.OutputDirectory);
                 log.Report(ReportWriter.Summary(result.Report));
                 log.Report($"  {result.HtmlPath}");
-                // A recording that ended early (cancelled, or an error mid-capture) is still saved above with
-                // whatever it captured, but the target still counts as not fully scanned for CI purposes --
-                // see ExitCode -- while keeping Run set so the partial report is still reachable, unlike a
-                // pre-flight failure above.
+                // A recording that ended early (cancelled, or an error mid-capture) is still written above with
+                // whatever it captured (and saved to history unless --no-history), but the target still counts
+                // as not fully scanned for CI purposes -- see ExitCode -- while keeping Run set so the partial
+                // report is still reachable, unlike a pre-flight failure above.
                 outcomes.Add(new TargetOutcome(target, run, run.EndedEarlyReason));
             }
             catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
@@ -88,4 +99,16 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
         outcomes.Any(o => o.Error is not null) ? 2
         : config.FailOn == "wcag-issues" && outcomes.Any(o => o.Run?.Counts.WcagIssues > 0) ? 3
         : 0;
+
+    /// <summary>
+    /// Where a target's output goes when it isn't going into the run history: <paramref name="configOut"/>
+    /// (swipewalk.json's "out", already resolved to an absolute path by <see cref="RunConfig.Validate"/>) if
+    /// given, else a "swipewalk-report" folder relative to the current directory -- the same default folder
+    /// name <c>scan</c>/<c>record</c> use (see Program.cs's <c>ToScanOptions</c>), though they write straight
+    /// into it since there's only ever one target. A timestamped, app-named subfolder under it keeps multiple
+    /// targets (or repeated runs) from overwriting each other's output here, the same as the history's own
+    /// <see cref="RunHistory.NewRunFolder"/>.
+    /// </summary>
+    public static string LocalOutputDirectory(string? configOut, string appId) =>
+        Path.Combine(configOut ?? "swipewalk-report", $"{DateTime.Now:yyyyMMdd-HHmmss}-{appId}");
 }

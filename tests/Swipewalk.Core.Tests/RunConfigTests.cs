@@ -92,6 +92,36 @@ public class RunConfigTests
         Assert.Equal(2, Runner.ExitCode(failing, [new TargetOutcome(target, null, "device missing")]));
     }
 
+    // Covers Runner.LocalOutputDirectory: where `swipewalk run --no-history` (or a config with "out" set)
+    // writes its output instead of a folder under the run history -- see Runner.RunAsync's OutputDirectory line.
+
+    [Fact]
+    public void LocalOutputDirectory_NoOutGiven_DefaultsToSwipewalkReport()
+    {
+        var dir = Runner.LocalOutputDirectory(null, "org.example.app");
+
+        Assert.StartsWith("swipewalk-report" + Path.DirectorySeparatorChar, dir);
+        Assert.EndsWith("-org.example.app", dir);
+    }
+
+    [Fact]
+    public void LocalOutputDirectory_OutGiven_IsUnderIt()
+    {
+        var dir = Runner.LocalOutputDirectory("/tmp/my-ci-reports", "org.example.app");
+
+        Assert.StartsWith(Path.Combine("/tmp/my-ci-reports", ""), dir);
+        Assert.EndsWith("-org.example.app", dir);
+    }
+
+    [Fact]
+    public void LocalOutputDirectory_TwoCallsForDifferentApps_NeverCollide()
+    {
+        var android = Runner.LocalOutputDirectory("/tmp/out", "org.example.android");
+        var ios = Runner.LocalOutputDirectory("/tmp/out", "org.example.ios");
+
+        Assert.NotEqual(android, ios);
+    }
+
     [Fact]
     public async Task History_SavesAndListsRuns()
     {
