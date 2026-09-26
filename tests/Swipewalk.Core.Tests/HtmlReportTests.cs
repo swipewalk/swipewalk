@@ -240,6 +240,9 @@ public class HtmlReportTests
         {
             Platform = Platform.Android, ScreenName = "Home", Findings = [],
             ScreenshotPath = "a.png", LargeTextSetting = "font scale 2.0", AtfRan = true,
+            // OtherOrientation set so orientation-restricted (WCAG 1.3.4) counts as ran too, or it would be
+            // the one remaining gap on an otherwise fully-covered screen.
+            OtherOrientation = "landscape",
         };
         var iosScreen = new ScreenResult
         {

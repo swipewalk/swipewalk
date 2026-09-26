@@ -130,13 +130,17 @@ public class CoverageReportTests
         // could run on this platform is skipped: every PartlyAutomated criterion whose mapped rule(s) can run
         // on Android stays PartlyAutomated instead of falling back to NotTestedInThisRun. This screen is
         // Android (Screen()'s default), so 1.4.10 Reflow -- whose only mapped rule, offscreen-unreachable,
-        // runs on iOS only -- is the one exception: NotTestedInThisRun here, not a gap in this test's setup.
+        // runs on iOS only -- is one exception: NotTestedInThisRun here, not a gap in this test's setup.
         var screen = Screen(screenshotPath: "a.png", largeTextSetting: "font scale 2.0", atfRan: true);
 
         var summary = CoverageReport.Summary(CoverageReport.Build([screen]));
 
+        // Orientation moved from Manual to PartlyAutomated (scan --orientation both, WCAG 1.3.4), but this
+        // screen doesn't exercise it (no OtherOrientation, no orientation-restricted finding) -- so it's the
+        // second criterion that now shows NotTestedInThisRun instead of staying in either bucket, alongside
+        // 1.4.10 above.
         Assert.Equal(
-            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 37 need a manual check, 4 usually out of scope, 1 not tested in this run.",
+            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 36 need a manual check, 4 usually out of scope, 2 not tested in this run.",
             summary);
     }
 

@@ -63,6 +63,18 @@ public sealed record Finding
     /// either one is a real WCAG failure. Null when the appearance rescan did not run for this screen.
     /// </summary>
     public string? Appearance { get; init; }
+
+    /// <summary>
+    /// Which orientation this finding came from, when the screen was checked in both (see
+    /// <c>Swipewalk.Engine.ScanOptions.OrientationBoth</c> and <see cref="Reports.OrientationMerge"/>):
+    /// <c>"portrait"</c> or <c>"landscape"</c> for a finding seen in only one of the two captures, or
+    /// <see cref="Reports.OrientationLabels.Both"/> when the same rule reported the same element in each.
+    /// Only set when the device actually rotated (see <see cref="ScreenResult.OrientationUnchanged"/>); null
+    /// when the orientation rescan did not run for this screen, or the screen did not visibly rotate (that
+    /// case is reported once, on the screen itself, by <see cref="Rules.OrientationRestrictedRule"/>, not
+    /// per finding).
+    /// </summary>
+    public string? Orientation { get; init; }
 }
 
 /// <summary>The findings for one scanned screen.</summary>
@@ -197,4 +209,41 @@ public sealed record ScreenResult
     /// change was seen.
     /// </summary>
     public bool? AppearanceUnchanged { get; init; }
+
+    /// <summary>
+    /// The orientation ("portrait" or "landscape") the primary capture above was taken in, when the
+    /// orientation rescan (<c>Swipewalk.Engine.ScanOptions.OrientationBoth</c>) ran for this screen. Null
+    /// when it wasn't requested for this run.
+    /// </summary>
+    public string? Orientation { get; init; }
+
+    /// <summary>The other orientation actually captured and compared against. Null when the rescan wasn't
+    /// requested, or was requested but skipped -- see <see cref="OrientationSkippedReason"/>.</summary>
+    public string? OtherOrientation { get; init; }
+
+    /// <summary>Screenshot of the screen rotated to <see cref="OtherOrientation"/>, alongside the primary one above.</summary>
+    public string? OtherOrientationScreenshotPath { get; init; }
+
+    public double OtherOrientationPixelScale { get; init; } = 1.0;
+
+    /// <summary>
+    /// Why the other-orientation capture wasn't made for this screen, when the rescan was requested: today,
+    /// always because a physical iPhone can't be rotated by Swipewalk yet (see docs/limitations.md). Null
+    /// when it was captured (see <see cref="OtherOrientation"/>), or wasn't requested for this run.
+    /// </summary>
+    public string? OrientationSkippedReason { get; init; }
+
+    /// <summary>
+    /// True when the screen still looked the same shape (same aspect ratio, measured from each capture's own
+    /// screenshot, or from its tree's root bounds for whichever capture has no usable screenshot) after the
+    /// device was rotated to <see cref="OtherOrientation"/> -- the app's content is restricted to one
+    /// orientation, reported for review as WCAG 1.3.4 Orientation by <see cref="Rules.OrientationRestrictedRule"/>
+    /// (the exception for an essential orientation means this is never a confirmed failure). False when the
+    /// two captures show a genuinely different aspect ratio (the app rotated; every rule's findings are
+    /// tagged by orientation instead -- see <see cref="Finding.Orientation"/>). Null when the rescan didn't
+    /// run for this screen, or ran but one of the two captures gave no usable evidence (no screenshot and no
+    /// usable bounds) -- see <see cref="OrientationSkippedReason"/> for that second case, since a comparison
+    /// that couldn't be made is reported as not done, never guessed.
+    /// </summary>
+    public bool? OrientationUnchanged { get; init; }
 }

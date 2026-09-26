@@ -269,6 +269,19 @@ public static class FixGuidance
                 Ios: new("// Embed the content in a UIScrollView (or SwiftUI ScrollView) whose content size follows its content\nlet scroll = UIScrollView()\nscroll.translatesAutoresizingMaskIntoConstraints = false\nscroll.addSubview(contentView)\n// pin contentView's edges to scroll.contentLayoutGuide (lets it scroll vertically)\n// and its width to scroll.frameLayoutGuide (so only height, not width, can overflow)",
                     "Content pinned to a fixed-size container (no UIScrollView/SwiftUI ScrollView) so content past the screen edge on a small enough device cannot be scrolled to")),
 
+            "orientation-restricted" => new(
+                "If this screen doesn't need one specific orientation, let it follow the device. If it does (a piano keyboard, a bank cheque deposit, slides meant for a projector or TV, or VR content -- WCAG's own examples of an essential orientation), that's a valid reason to lock it -- note that in your own accessibility documentation instead of leaving it unexplained.",
+                Maui: new("// Platforms/Android/MainActivity.cs -- ScreenOrientation.FullUser (or leave it unset) follows the\n// device's own rotation lock; avoid Sensor/FullSensor, which ignores the user's rotation lock entirely\n// and would also override the very rotation Swipewalk's check itself uses.\n[Activity(..., ScreenOrientation = ScreenOrientation.FullUser)]\n\n<!-- Platforms/iOS/Info.plist -->\n<key>UISupportedInterfaceOrientations</key>\n<array>\n    <string>UIInterfaceOrientationPortrait</string>\n    <string>UIInterfaceOrientationLandscapeLeft</string>\n    <string>UIInterfaceOrientationLandscapeRight</string>\n</array>",
+                    "Platforms/Android/MainActivity.cs sets ScreenOrientation to Portrait (or Landscape) on the Activity attribute",
+                    "Platforms/iOS/Info.plist's UISupportedInterfaceOrientations(~ipad) lists only one orientation"),
+                Android: new("<!-- AndroidManifest.xml -- \"unspecified\" (the default) or \"fullUser\" follow the device's own rotation\n     lock; avoid \"sensor\"/\"fullSensor\", which ignores it entirely. -->\n<activity android:name=\".MainActivity\" android:screenOrientation=\"unspecified\" />",
+                    "android:screenOrientation set to \"portrait\"/\"landscape\" (or a locked variant) on the activity in AndroidManifest.xml",
+                    "Activity.setRequestedOrientation() called in code"),
+                Ios: new("// Info.plist: list every orientation this screen should support, or override per view controller\noverride var supportedInterfaceOrientations: UIInterfaceOrientationMask { [.portrait, .landscapeLeft, .landscapeRight] }",
+                    "Info.plist's UISupportedInterfaceOrientations(~ipad) lists only one orientation",
+                    "A UIViewController overrides supportedInterfaceOrientations to return only one",
+                    "SwiftUI: the app's Info.plist orientation list, since SwiftUI has no per-view orientation override")),
+
             "engine:dynamicType" => new(
                 "Check the screen with the largest text size (Settings > Accessibility > Display & Text Size). Text should grow and must not be cut off.",
                 Maui: new("<!-- FontAutoScalingEnabled is True by default; avoid fixed HeightRequest on text containers -->\n<Label FontAutoScalingEnabled=\"True\" />",

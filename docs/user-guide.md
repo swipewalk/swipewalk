@@ -34,6 +34,13 @@ check on a phone someone relies on every day. What happens:
   (Android `cmd uimode night`; iOS Simulator `simctl ui appearance`) to check both, then restores
   the original appearance afterwards — the same interrupted-run recovery applies. Not supported yet
   on a physical iPhone.
+- **`scan --orientation both`** rotates the device between portrait and landscape the same way
+  (Android `settings put system accelerometer_rotation`/`user_rotation`; iOS Simulator through the
+  scanning harness) to check whether the screen's content follows. On Android it restores the
+  device's exact original orientation and rotation-lock state afterwards; on the iOS Simulator
+  there's no way to read the original orientation back, so it rotates back to whichever of
+  portrait/landscape the first capture showed — the same interrupted-run recovery applies either
+  way. Not supported yet on a physical iPhone.
 
 See [section 2](#2-set-up-a-device) and [section 5](#5-record-mode-and-the-large-text-check) for
 the full detail on each platform.
@@ -158,6 +165,14 @@ appearance — a contrast failure that only shows up in one theme is easy to mis
 dark mode but had 5 real contrast failures on another device in light mode). Off by default; not
 supported yet on a physical iPhone, where the report says why it was skipped.
 
+Pass `--orientation both` to also rotate the device to the screen's other orientation (portrait ↔
+landscape) and check whether the content actually follows — WCAG 1.3.4 Orientation. When it does
+rotate, every check runs on that capture too, the same as `--appearance both`. When it doesn't,
+the report flags it for review, not as a confirmed failure: WCAG allows a single orientation when
+it's essential to a screen (its own examples: a piano keyboard, a bank cheque deposit, slides meant
+for a projector or TV, or VR content). Off by default; not supported yet on a physical iPhone,
+where the report says why it was skipped.
+
 When it finishes, open `report/report.html` in a browser.
 
 ## 4. Reading a report
@@ -255,6 +270,18 @@ Each screen also shows:
   theme-aware ones, or only read the theme at launch, and a scan from the outside can't tell which.
   Large-text and captured-screen-reader findings are never labeled by appearance either, since the
   second capture doesn't repeat those checks.
+- **The other orientation** (with `--orientation both`) — when the device rotated (checked from the
+  screenshot's shape, or, without a usable screenshot, the accessibility tree's, not just the
+  rotation setting), the report shows the screenshot from the other orientation alongside the
+  normal one and labels each finding "Found in both orientations" or "Only in portrait/landscape",
+  the same as appearance. When it did *not* rotate, the report instead adds one "Needs review"
+  finding for the screen, citing WCAG 1.3.4 Orientation: check by hand whether a single orientation
+  is essential here (WCAG's own examples: a piano keyboard, a bank cheque deposit, slides meant for
+  a projector or TV, or VR content), or whether the screen is simply locked to one orientation with
+  no reason to be. If either capture lacks usable evidence (no screenshot and no usable bounds),
+  the check is reported as not done rather than guessed. Large-text and captured-screen-reader
+  findings are never
+  labeled by orientation either, since the second capture doesn't repeat those checks.
 - **Lost navigation place (Android)** — on Android, when the very first attempt at the larger text
   size showed a different screen (typically the app's first) instead of the one being checked, the
   report also adds a platform advisory on that screen (the one where Swipewalk actually saw it
@@ -505,6 +532,8 @@ For a repeatable, scriptable run, describe it once in a `swipewalk.json` file an
                                     // "never" so an unattended run never blocks waiting for an answer.
   "appearance": false,             // scan only for now; true = also check the other dark/light appearance
                                     // (the CLI's --appearance both; here it's a plain boolean)
+  "orientation": false,            // scan only for now; true = also check the other orientation
+                                    // (the CLI's --orientation both; here it's a plain boolean)
   "failOn": "wcag-issues"          // exit code 3 when WCAG issues are found; "never" to always exit 0
 }
 ```

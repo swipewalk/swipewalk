@@ -98,9 +98,14 @@ public static class CoverageCatalog
             "Check instructions never rely only on shape, color, size or position (\"tap the round green " +
             "button\") without also naming the control.",
             "sensory-characteristics"),
-        Manual(WcagCriteria.Orientation,
+        PartlyAutomated(WcagCriteria.Orientation,
             "Rotate the device between portrait and landscape with rotation lock off and check the app " +
-            "supports both, unless a specific orientation is essential.",
+            "supports both, unless a specific orientation is essential. `scan --orientation both` checks part " +
+            "of this automatically: it rotates the device itself and flags a screen for review when its " +
+            "content did not visibly follow (see docs/limitations.md) -- it can tell whether the screen's " +
+            "shape changed, not whether an essential orientation applies or whether the screen still works " +
+            "correctly in the other one, so still check every flagged screen, and any screen the automated " +
+            "rescan did not cover (record mode, and a physical iPhone, which it does not support yet), by hand.",
             "orientation"),
         PartlyAutomated(WcagCriteria.IdentifyInputPurpose,
             "Check common input fields (name, email, phone, address) use the platform's autofill/input-type " +

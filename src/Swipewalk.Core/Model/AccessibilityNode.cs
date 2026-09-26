@@ -217,6 +217,24 @@ public sealed record ScreenSnapshot
     public bool? LargeTextWentToAnotherScreen { get; init; }
 
     /// <summary>
+    /// The same screen captured again after rotating the device to the other orientation (portrait &lt;-&gt;
+    /// landscape; see <c>Swipewalk.Engine.ScanOptions.OrientationBoth</c>), for
+    /// <see cref="Rules.OrientationRestrictedRule"/> -- the same nested-capture shape as <see cref="LargeText"/>,
+    /// attached by <c>Swipewalk.Engine.ScanService</c> before rules run so the rule can compare the two
+    /// captures' dimensions. Null when not captured.
+    /// </summary>
+    public ScreenSnapshot? Orientation { get; init; }
+
+    /// <summary>The orientation this capture (not <see cref="Orientation"/>) was taken in -- "portrait" or
+    /// "landscape" (see <c>Swipewalk.Core.Reports.OrientationLabels</c>). Null unless <see cref="Orientation"/>
+    /// is also set.</summary>
+    public string? OrientationLabel { get; init; }
+
+    /// <summary>The orientation <see cref="Orientation"/> was captured in. Null unless <see cref="Orientation"/>
+    /// is also set.</summary>
+    public string? OtherOrientationLabel { get; init; }
+
+    /// <summary>
     /// Real screen-reader evidence for this screen (TalkBack, Xcode's Accessibility Inspector, or a
     /// recorded VoiceOver session) -- see <see cref="Model.ScreenReaderCapture"/>. Null (the common case
     /// today) when no such capture was made for this screen; that is different from a capture that ran and

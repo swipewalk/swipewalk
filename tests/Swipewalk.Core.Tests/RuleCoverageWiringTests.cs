@@ -1,7 +1,9 @@
 using Swipewalk.Collectors;
 using Swipewalk.Core.Coverage;
 using Swipewalk.Core.Model;
+using Swipewalk.Core.Reports;
 using Swipewalk.Core.Rules;
+using Swipewalk.Core.Wcag;
 
 namespace Swipewalk.Core.Tests;
 
@@ -39,7 +41,8 @@ public class RuleCoverageWiringTests
 
     private static ScreenResult Screen(
         Platform platform, string? screenshotPath, string? largeTextSetting, string? largeTextSkippedReason,
-        bool atfRan, string? atfSkippedReason, IReadOnlyList<Finding>? findings = null) => new()
+        bool atfRan, string? atfSkippedReason, IReadOnlyList<Finding>? findings = null,
+        string? otherOrientation = null, string? orientationSkippedReason = null) => new()
     {
         Platform = platform,
         ScreenName = "Home",
@@ -49,6 +52,18 @@ public class RuleCoverageWiringTests
         AtfRan = atfRan,
         AtfSkippedReason = atfSkippedReason,
         Findings = findings ?? [],
+        OtherOrientation = otherOrientation,
+        OrientationSkippedReason = orientationSkippedReason,
+    };
+
+    private static Finding OrientationFinding() => new()
+    {
+        RuleId = "orientation-restricted",
+        Kind = FindingKind.NeedsReview,
+        Message = "test finding",
+        Criteria = [WcagCriteria.Orientation],
+        NodePath = "",
+        Role = "screen",
     };
 
     private static Finding NavigationFinding() => new()
@@ -163,6 +178,32 @@ public class RuleCoverageWiringTests
         var iosScreen = ScreenActivityBuilder.For(Screen(Platform.iOS, "shot.png", "large text", null, false, null));
         Assert.Contains("text-resize-live", iosScreen.RanRuleIds); // large-text gate isn't platform-specific
         Assert.Equal(CoverageDisplay.TextResizeNavigationAndroidOnlyReason, iosScreen.SkippedRuleIds["text-resize-navigation"]);
+    }
+
+    [Fact]
+    public void OrientationRestricted_IsWiredIntoCoverage()
+    {
+        // Regression coverage for the same bug this test file exists for (see class remarks), on the newest
+        // rule: orientation-restricted (OrientationRestrictedRule).
+        var notRequested = ScreenActivityBuilder.For(Screen(Platform.Android, "shot.png", null, null, true, null));
+        Assert.Equal("orientation check not requested (pass --orientation both)", notRequested.SkippedRuleIds["orientation-restricted"]);
+
+        // The screen rotated (or was checked and looked the same, with the rule's own finding to show for
+        // it, or the comparison was inconclusive) -- either way, OtherOrientation being set means the check
+        // was attempted and completed, so it counts as ran.
+        var checkedAndRotated = ScreenActivityBuilder.For(
+            Screen(Platform.Android, "shot.png", null, null, true, null, otherOrientation: OrientationLabels.Landscape));
+        Assert.Contains("orientation-restricted", checkedAndRotated.RanRuleIds);
+
+        var checkedAndNotRotated = ScreenActivityBuilder.For(
+            Screen(Platform.Android, "shot.png", null, null, true, null, otherOrientation: OrientationLabels.Landscape, findings: [OrientationFinding()]));
+        Assert.Contains("orientation-restricted", checkedAndNotRotated.RanRuleIds);
+
+        // Attempted but skipped for a reason (a physical iPhone, today): recorded as skipped with that reason,
+        // not silently dropped.
+        var skippedWithReason = ScreenActivityBuilder.For(
+            Screen(Platform.Android, "shot.png", null, null, true, null, orientationSkippedReason: OrientationLabels.PhysicalIphoneNotSupportedReason));
+        Assert.Equal(OrientationLabels.PhysicalIphoneNotSupportedReason, skippedWithReason.SkippedRuleIds["orientation-restricted"]);
     }
 
     [Fact]
