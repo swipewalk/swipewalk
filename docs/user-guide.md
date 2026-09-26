@@ -266,6 +266,24 @@ Each screen also shows:
   check can't see at all), when TalkBack's announcement leaves that text out — on the one such
   control checked so far (a Jetpack Compose button in samples/NativeAndroid), TalkBack's
   announcement included the visible text alongside its overriding name, so nothing was reported.
+- **Real evidence in the WCAG coverage** — on a screen with `--screen-reader` evidence, the "Guided
+  checks" tab also carries a "Captured evidence (TalkBack)" or "Captured evidence (Xcode's
+  Accessibility Inspector)" line for 4.1.2 Name, Role, Value, 1.1.1 Non-text Content and (TalkBack
+  only) 2.5.3 Label in Name, naming the tool and how many elements it reached, compared and found to
+  differ — this shows up even with no tester answer recorded yet. It's never "passed": a count of
+  zero always reads as "0 … flagged for review", the same as the automated-findings wording it sits
+  next to — never as a clean result. When one of those differences lands on the same element as a
+  finding from a different, tree-only check, it says so ("… also reported under 4.1.2; the two may
+  disagree, so check both") instead of leaving two unlinked findings. On iOS, 1.3.1 Info and
+  Relationships gets a different kind of line: the Accessibility Inspector's own Header trait, on any
+  element it walked, listed by name — this is evidence for the existing *manual* check, never an
+  automated finding or a status change, since it can only show what the Inspector called a heading,
+  not text that looks like a heading but isn't exposed as one; a person still has to look. 2.4.3
+  Focus Order and 1.3.2 Meaningful Sequence get no line from this at all: neither capture route's own
+  "order" is a real navigation order yet — for TalkBack, Swipewalk moves its focus to each element
+  itself in the tree's own walk order, not TalkBack's own swipe order; for the Accessibility
+  Inspector, the walk starts wherever you clicked, not necessarily the top of the screen, and its
+  order is circular (see the "Accessibility Inspector route..." limitation above).
 - **Relevance to standards** — each finding is labeled with the default laws and standards (ADA
   Title II, Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version
   and level include its criterion. This says a finding is **relevant to** a standard, never that the
@@ -618,14 +636,17 @@ screen was rescanned, are called out too, so a run's guided coverage can't quiet
 complete than it is.
 
 The HTML report shows all of this too, once a run has any guided answers (a plain scan or record
-report with none looks exactly as before). Near the top, a "Flagged" section lists every
-contradiction, worded the same way as the CLI/desktop; a "Guided checks" section below it lists
-screens with no answers yet and a per-criterion summary across every screen a tester answered (the
-worst recorded result wins — one recorded fail is never hidden behind other screens' passes, and a
-flagged answer keeps the criterion unsettled). Each screen with at least one guided answer also
-gets its own "Guided checks" tab, next to Findings and the predicted/captured screen-reader
-transcript, showing what was recorded there. Manual testing of criteria with no answer is still
-required. Since the tester name is free text saved into the run, it also appears in a report if you
+report with neither guided answers nor `--screen-reader` evidence looks exactly as before). Near
+the top, a "Flagged" section lists every contradiction, worded the same way as the CLI/desktop; a
+"Guided checks" section below it lists screens with no answers yet and a per-criterion summary
+across every screen a tester answered (the worst recorded result wins — one recorded fail is never
+hidden behind other screens' passes, and a flagged answer keeps the criterion unsettled). Each
+screen with at least one guided answer, a confirmed not-applicable, or real `--screen-reader`
+evidence for one of the criteria it exercises (see [section 4](#4-reading-a-report)) also gets its
+own "Guided checks" tab, next to Findings and the predicted/captured screen-reader transcript,
+showing what was recorded or captured there — captured evidence needs no tester answer to appear.
+Manual testing of criteria with no answer is still required. Since the tester name is free text
+saved into the run, it also appears in a report if you
 share that run with someone else.
 
 ## 7. CI and history

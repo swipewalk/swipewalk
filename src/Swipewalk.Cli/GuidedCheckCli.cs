@@ -150,6 +150,8 @@ internal static class GuidedCheckCli
         Console.WriteLine($"{row.Number} {row.Name} ({row.Level}){sourceUrl}");
         if (row.AutomatedSummary is not null)
             Console.WriteLine($"  {row.AutomatedSummary}");
+        if (row.CapturedEvidenceSummary is not null && row.CapturedEvidenceSource is { } evidenceSource)
+            Console.WriteLine($"  Captured evidence ({Swipewalk.Core.ScreenReader.ScreenReaderCaptureComparer.ToolLabel(evidenceSource)}): {row.CapturedEvidenceSummary}");
         foreach (var proposal in row.ProposedButNotConfirmed)
             Console.WriteLine($"  Swipewalk suggests this may not apply here: {proposal.Reason}");
         if (row.Answer is not null)

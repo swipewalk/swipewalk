@@ -127,6 +127,23 @@ public class HtmlReportGuidedChecksTests
     }
 
     [Fact]
+    public void ScreenWithOnlyCapturedEvidence_ShowsTheGuidedChecksTabWithNoTesterAnswerNeeded()
+    {
+        // A screen with real screen-reader evidence but no tester answer must still surface that evidence --
+        // it isn't gated behind a guided answer or a confirmed-not-applicable status.
+        var item = new ScreenReaderCaptureItem(1, "Submit, Button", null, null, null, null, null, null, null, "0", MatchConfidence.Exact);
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow, [item], Complete: true, NotCompleteReason: null);
+        var screen = Screen("s1", "Home") with { ScreenReaderCapture = capture };
+        var report = new ScanReport { ToolVersion = "test", Screens = [screen] };
+
+        var html = HtmlReport.Render(report);
+
+        Assert.Contains("Guided checks</button>", html);
+        Assert.Contains("Captured evidence (TalkBack)", html);
+        Assert.Contains("4.1.2 Name, Role, Value (A)", html);
+    }
+
+    [Fact]
     public void RollupRow_OnlyShownForCriteriaWithAnAnswer()
     {
         var report = new ScanReport

@@ -810,6 +810,29 @@ than the Inspector comparison: both are now excluded from Swipewalk's predicted 
 on iOS, Inspector capture or not, since the tree parser was the thing telling the predictor they were
 ordinary named, reachable elements in the first place.
 
+### Real evidence now updates WCAG coverage
+
+The same BuggyApp capture above (18 elements, complete) also shows up in the report's WCAG coverage,
+not just next to the predicted transcript. This capture predates the placeholder-normalization fix
+described above, so its raw data still carries the "None"-labeled false difference on B7 — the
+numbers below are what the coverage row shows once that one known-fixed difference is set aside (the
+"Terms" mismatch is real and unaffected by that fix). For 4.1.2 Name, Role, Value, the coverage row
+for that screen adds: "Xcode's Accessibility Inspector reported the label, value and traits of 18
+elements on this screen (VoiceOver itself was not turned on). 14 could be matched to an element
+confidently enough to compare its name and role with Swipewalk's prediction; 1 difference was flagged
+for review. Values and states were not compared; manual check still needed." — that difference is the
+real "Terms" mismatch above. (When a capture's own difference lands on the same element as a
+finding from a different, tree-only check, the row adds a sentence naming that overlap instead of
+leaving two unlinked findings — not the case for "Terms" here, since no other rule flags that
+element.) For 1.3.1 Info and Relationships (which Swipewalk still can't automate: it needs a person to
+judge whether text that looks like a heading is exposed as one), the same capture instead adds an
+informational line, never a finding: "Evidence for the manual check, not an automated check: Xcode's
+Accessibility Inspector reported the Header trait on 3 of the 18 elements it reached on this screen
+(VoiceOver itself was not turned on): "Parking tickets", "City of Exampleville", "Pay a parking
+ticket". Check that every text that looks like a heading is in this list, and nothing that isn't a
+heading is." — evidence for the manual check, not a status change, since the Inspector can only
+confirm what it called a heading, not spot text that looks like one but isn't exposed that way.
+
 ### What this study doesn't show
 
 - This is one physical iPhone, one iOS version, two apps. Whether the Inspector's placeholder text

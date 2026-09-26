@@ -106,6 +106,12 @@ public sealed class ScreenReaderCaptureRule : IRule
         _ => kind.ToString(),
     };
 
+    // NOTE (flagged by review, 0.3.0 stream C): a RoleMismatch always cites 4.1.2 Name, Role, Value, even
+    // when the predicted role is "Heading" -- a heading isn't a user interface component, so that specific
+    // case would more accurately cite 1.3.1 Info and Relationships instead. No collector sets
+    // AccessibilityNode.Role to "heading" today (only IsHeading, a separate bool -- see AccessibilityNode's
+    // own remarks), so this is unreached in practice; fix this switch (branch on node?.Role == "heading"
+    // before falling back to NameRoleValue) before any collector starts setting that role.
     private static IReadOnlyList<WcagCriterion> Criteria(ScreenReaderDifferenceKind kind, AccessibilityNode? node) => kind switch
     {
         ScreenReaderDifferenceKind.RoleMismatch => [WcagCriteria.NameRoleValue],
