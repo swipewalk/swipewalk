@@ -61,6 +61,16 @@
                 -->
                 <controls:CheckOption x:Name="TalkBackOption" Text="Listen with TalkBack (records what TalkBack actually says)" IsChecked="True" HeightRequest="28"
                                        SemanticProperties.Hint="Android only. Turns TalkBack on for this run so the report shows what it actually says next to the predicted transcript; TalkBack stays silent while Swipewalk listens, and the phone's accessibility settings are restored afterwards." />
+                <!--
+                    iOS only (hidden for Android in code-behind, NewScanPage.OnPlatformChanged): walks Xcode's
+                    Accessibility Inspector over the macOS Accessibility API instead of turning VoiceOver on
+                    (see IosCollector.RunInspectorCaptureAsync). Off by default, unlike TalkBack: it needs a
+                    person present every time it's used (granting a macOS permission, then choosing the device
+                    and clicking an element in the Inspector, see Services/InspectorNotice), so it can't run
+                    unattended; the report says which route produced its screen-reader evidence either way.
+                -->
+                <controls:CheckOption x:Name="InspectorOption" Text="Read what VoiceOver would say (uses Xcode's Accessibility Inspector)" HeightRequest="28"
+                                       SemanticProperties.Hint="iOS only. Reads real accessibility evidence from Xcode's Accessibility Inspector instead of turning VoiceOver on; needs the macOS Accessibility permission and a one-time click in the Inspector each time it's used." />
                 <controls:CheckOption x:Name="MauiOption" Text="App built with .NET MAUI (fix examples in XAML)" HeightRequest="28" />
                 <controls:CheckOption x:Name="AutoScanOption" Text="Scan automatically when the screen changes" HeightRequest="28"
                                        SemanticProperties.Hint="Record only: off by default, so a screen you're still navigating through is never captured on its own. When off, use Scan this screen now." />

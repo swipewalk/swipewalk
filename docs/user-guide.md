@@ -233,33 +233,38 @@ Each screen also shows:
 - **Screen reader (captured)** (with `--screen-reader`) — real evidence next to the predicted
   transcript above; Swipewalk reports every difference for you to check by hand (never as a
   confirmed WCAG failure by itself — the difference could be the app, or Swipewalk's own prediction,
-  that's wrong). On iOS, `scan` only for now (`record` still reports predicted-only evidence):
-  Swipewalk walks Xcode's Accessibility Inspector on your Mac over the macOS Accessibility API
-  instead of turning VoiceOver on — the Inspector reports the same accessibility properties (label,
-  value, traits, identifier, hint, class) VoiceOver would read, for each element it walks. This is
-  interactive only, and takes extra time per element (a large screen can take a minute or more): it
-  asks to use the macOS Accessibility permission (System Settings > Privacy & Security >
-  Accessibility) for whichever app is running Swipewalk — this permission lets that app, and
-  anything it runs, operate other apps on your Mac; Swipewalk itself uses it only to step through
-  the Inspector, and you can turn it off in System Settings any time, including right after the
-  scan — then for a one-time step per Inspector session it can't do itself: opening Accessibility
-  Inspector, choosing your device in its target menu, and clicking the first element (for example
-  its title) on the app's screen, so the walk starts from the top. Observed once on a physical
-  iPhone, across one screen change: after that click, the Inspector followed the app onto a
-  different screen with no more clicking needed, and the next scan captured that new screen in
+  that's wrong). On iOS, for `scan` and `record`: Swipewalk walks Xcode's Accessibility Inspector on
+  your Mac over the macOS Accessibility API instead of turning VoiceOver on — the Inspector reports
+  the same accessibility properties (label, value, traits, identifier, hint, class) VoiceOver would
+  read, for each element it walks. This is interactive only, and takes extra time per element (a
+  large screen can take a minute or more): it asks to use the macOS Accessibility permission (System
+  Settings > Privacy & Security > Accessibility) for whichever app is running Swipewalk — this
+  permission lets that app, and anything it runs, operate other apps on your Mac; Swipewalk itself
+  uses it only to step through the Inspector, and you can turn it off in System Settings any time,
+  including right after the run — then for a one-time step per Inspector session it can't do itself:
+  opening Accessibility Inspector, choosing your device in its target menu, and clicking the first
+  element (for example its title) on the app's screen, so the walk starts from the top. Observed once
+  on a physical iPhone, across one screen change: after that click, the Inspector followed the app
+  onto a different screen with no more clicking needed, and the next scan captured that new screen in
   full — one data point, not a guarantee for every app; if a walk comes back empty or short after
   navigating, click an element in the Inspector and scan again. If that click landed on the
   app's window or background instead of an element, Swipewalk notices (every captured item comes
   back empty, or far fewer than expected) and reports the screen as not covered, with a prompt to
   click an element and scan again, rather than a false clean pass. Declining, or a non-interactive
-  run, falls back to the predicted transcript, and the report records why. Because the Inspector
-  reports no on-screen position for each element, a captured item is matched to the scanned tree by
-  its identifier, then its accessible name, then position alone as a last resort — recorded per item
-  in results.json as Exact/Likely/Weak/unmatched, so a Weak or unmatched item is a hint to check by
-  hand, not confirmed evidence. Swipe order differences aren't reported from this route at all: the
-  walk starts wherever you clicked, not necessarily the top of the screen, and the Inspector's own
-  order is circular, so an unanchored walk can't be told apart from a real order difference. See
-  the "Accessibility Inspector route..." limitation for what this still doesn't cover.
+  run, falls back to the predicted transcript, and the report records why. When recording, this
+  one-time setup step is only asked once per recording session, not once per screen (continuing a
+  recording later — `record --continue` — asks again): Swipewalk says so up front, and every later
+  "Scan this screen now" reuses the answer silently; if a later screen's own walk comes back short or
+  incomplete, that one screen is reported as not covered, with the same prompt to click an element in
+  the Inspector and scan again — declining once doesn't ask again for the rest of that session.
+  Because the Inspector reports no on-screen position for each element, a
+  captured item is matched to the scanned tree by its identifier, then its accessible name, then
+  position alone as a last resort — recorded per item in results.json as Exact/Likely/Weak/unmatched,
+  so a Weak or unmatched item is a hint to check by hand, not confirmed evidence. Swipe order
+  differences aren't reported from this route at all: the walk starts wherever you clicked, not
+  necessarily the top of the screen, and the Inspector's own order is circular, so an unanchored walk
+  can't be told apart from a real order difference. See the "Accessibility Inspector route..."
+  limitation for what this still doesn't cover.
   On Android, with `--screen-reader`: Swipewalk drives TalkBack itself over the screen's focusable
   elements and reads back exactly what it said. It works by temporarily making a small app Swipewalk installs
   (shown in the device's text-to-speech settings as "Swipewalk (testing only)") the device's
@@ -780,11 +785,19 @@ pages:
   large-text option are both selected, a short reminder of the same fact stays next to that option.
   For Android, "Listen with TalkBack (records what TalkBack actually says)" is on by default — the
   same real TalkBack capture as the CLI's `--screen-reader` (see [section 4](#4-reading-a-report)),
-  for both a single scan and every screen you scan while recording; it's hidden for iOS, which isn't
-  supported yet. The first time it would change a physical phone's accessibility settings, Start
-  shows a confirmation naming what changes and that TalkBack stays silent while Swipewalk listens;
-  choosing Continue is remembered on this Mac so you're not asked again, and Cancel stops the run
-  before anything changes (asked again next time). Use a test device.
+  for both a single scan and every screen you scan while recording; it's hidden for iOS. The first
+  time it would change a physical phone's accessibility settings, Start shows a confirmation naming
+  what changes and that TalkBack stays silent while Swipewalk listens; choosing Continue is
+  remembered on this Mac so you're not asked again, and Cancel stops the run before anything changes
+  (asked again next time). Use a test device.
+  For iOS, "Read what VoiceOver would say (uses Xcode's Accessibility Inspector)" is hidden for
+  Android and **off by default** — unlike TalkBack, it needs you present every time it's used, so it
+  can't run unattended. Turning it on and pressing Start shows two alerts: first, what the macOS
+  Accessibility permission is for and that it's confirmed once on this Mac, not asked again; then,
+  every time, the one-time Inspector setup step (open Accessibility Inspector, choose your device,
+  click the first element on the app's screen) — Continue only after you've done it, since nothing
+  here can confirm it was. Cancelling either alert falls back to the predicted transcript for that
+  run, and the report says which route produced its screen-reader evidence.
 - **Devices** — readiness checks and fix hints for each connected device, the same checks
   `swipewalk doctor` runs.
 - **History** — every saved run, to open or compare. A recording that's still going (here, or in

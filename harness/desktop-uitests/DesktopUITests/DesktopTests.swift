@@ -953,4 +953,87 @@ final class DesktopTests: XCTestCase {
         XCTAssertTrue(resultsJSON.contains("\"talkBack\""), "results.json should have a talkBack screenReaderCapture")
         XCTAssertTrue(reportHTML.contains("Screen reader (captured)"), "report.html should show the captured TalkBack section")
     }
+
+    /// "Read what VoiceOver would say (uses Xcode's Accessibility Inspector)" (NewScanPage.InspectorOption) is
+    /// iOS only (NewScanPage.OnPlatformChanged hides it for Android) and **off by default**, unlike TalkBack:
+    /// it needs a person present every time it's used (Services/InspectorNotice), so it can't run unattended.
+    func testInspectorOptionIsIOSOnlyAndOffByDefault() throws {
+        let app = Desktop.launch(page: "scan")
+        defer { app.terminate() }
+        let inspector = app.switches["Read what VoiceOver would say (uses Xcode's Accessibility Inspector)"].firstMatch
+        XCTAssertFalse(inspector.waitForExistence(timeout: 3), "Inspector option should be hidden on Android (the default platform)")
+
+        app.buttons["Platform"].firstMatch.click()
+        let iosItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "ios")).firstMatch
+        XCTAssertTrue(iosItem.waitForExistence(timeout: 10), "iOS platform option did not appear")
+        iosItem.click()
+        XCTAssertTrue(inspector.waitForExistence(timeout: 10), "Inspector option should be visible on iOS")
+        XCTAssertEqual(inspector.value as? String, "0", "Inspector option should default to unchecked (needs a person present every time)")
+
+        app.buttons["Platform"].firstMatch.click()
+        let androidItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "android")).firstMatch
+        XCTAssertTrue(androidItem.waitForExistence(timeout: 10), "Android platform option did not appear")
+        androidItem.click()
+        XCTAssertFalse(inspector.waitForExistence(timeout: 3), "Inspector option should be hidden again back on Android")
+    }
+
+    /// Turning "Read what VoiceOver would say" on for iOS and pressing Start shows the permission-explanation
+    /// alert (Services/InspectorNotice) before anything else happens -- unlike TalkBack's notice (gated only for
+    /// a physical phone), this is shown for the iOS Simulator too, since the macOS Accessibility permission is
+    /// about this Mac, not the device under test. Cancel must stop the run before it does anything: no Finish
+    /// button appears, and Start stays enabled to try again. Confirming once per Mac
+    /// (Services/InspectorNoticePreference, reset here via --reset-inspector-notice) only covers this first
+    /// alert; the device-and-click setup step is a separate, always-shown alert (see the next test), not
+    /// exercised end to end here since it needs a person to actually use Accessibility Inspector.
+    func testInspectorNoticeGatesStartAndCancelStopsTheRun() throws {
+        let app = Desktop.launch(page: "scan", extraArguments: ["--reset-inspector-notice"])
+        defer { app.terminate() }
+
+        app.buttons["Platform"].firstMatch.click()
+        let iosItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "ios")).firstMatch
+        XCTAssertTrue(iosItem.waitForExistence(timeout: 10), "iOS platform option did not appear")
+        iosItem.click()
+
+        let devicePicker = app.buttons["Device"].firstMatch
+        XCTAssertTrue(devicePicker.waitForExistence(timeout: 10))
+        let loaded = NSPredicate(format: "value != %@", "No device found (see Devices)")
+        expectation(for: loaded, evaluatedWith: devicePicker)
+        waitForExpectations(timeout: 15)
+        devicePicker.click()
+        // "simulator" is iOS-only (Android's non-physical Kind is "emulator"): this uniquely targets the iOS
+        // Simulator, which is what most CI/dev Macs actually have, without popping the unrelated physical-phone
+        // notice if an iPhone also happens to be connected.
+        let simulatorItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "simulator")).firstMatch
+        guard simulatorItem.waitForExistence(timeout: 10) else { throw XCTSkip("No iOS Simulator connected") }
+        simulatorItem.click()
+
+        let inspector = app.switches["Read what VoiceOver would say (uses Xcode's Accessibility Inspector)"].firstMatch
+        XCTAssertTrue(inspector.waitForExistence(timeout: 10))
+        inspector.click()
+        let appId = app.textFields["App package or bundle id"].firstMatch
+        XCTAssertTrue(appId.waitForExistence(timeout: 10))
+        appId.click()
+        appId.typeText("org.swipewalk.buggyapp")
+
+        app.buttons["Start"].firstMatch.click()
+        let heading = app.staticTexts["Use Xcode's Accessibility Inspector?"]
+        guard heading.waitForExistence(timeout: 10) else { XCTFail("The Accessibility Inspector permission notice did not appear"); return }
+        XCTAssertTrue(app.staticTexts.containing("Accessibility").exists, "The notice should explain the macOS Accessibility permission")
+        XCTAssertTrue(app.staticTexts.containing("won't be asked to confirm this again").exists,
+                      "The notice body should be shown in full, not truncated")
+        XCTAssertTrue(app.windows.buttons["Continue"].exists, "The notice should offer Continue")
+        XCTAssertTrue(app.windows.buttons["Cancel"].exists, "The notice should offer Cancel")
+
+        app.windows.buttons["Cancel"].firstMatch.click()
+        XCTAssertFalse(heading.waitForExistence(timeout: 3), "Cancel should close the notice")
+        XCTAssertTrue(app.buttons["Start"].firstMatch.isEnabled, "Cancel should leave Start ready to try again")
+        XCTAssertFalse(app.buttons["Finish"].firstMatch.exists, "Cancel must not have started a scan")
+
+        // Declining once must not suppress the notice for good (InspectorNoticePreference is only confirmed on
+        // Continue): pressing Start again shows it again.
+        app.buttons["Start"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Use Xcode's Accessibility Inspector?"].waitForExistence(timeout: 10),
+                      "Declining once must not suppress the permission notice for good")
+        app.windows.buttons["Cancel"].firstMatch.click()
+    }
 }

@@ -127,6 +127,19 @@ internal sealed class FakeScreenSource : IScreenSource
         return Task.CompletedTask;
     }
 
+    /// <summary>What CaptureScreenReaderAsync returns; defaults to null (nothing to attach), the harmless
+    /// default for tests that don't care about it -- see IScreenSource.CaptureScreenReaderAsync's own default.</summary>
+    public Func<ScreenSnapshot, ScreenReaderCapture?>? ScreenReaderCaptureBehavior { get; set; }
+    public int ScreenReaderCaptureCalls { get; private set; }
+    public List<IProgress<string>?> ScreenReaderCaptureLogs { get; } = [];
+
+    public Task<ScreenReaderCapture?> CaptureScreenReaderAsync(ScreenSnapshot snapshot, IProgress<string>? log = null, CancellationToken cancellationToken = default)
+    {
+        ScreenReaderCaptureCalls++;
+        ScreenReaderCaptureLogs.Add(log);
+        return Task.FromResult(ScreenReaderCaptureBehavior?.Invoke(snapshot));
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static AccessibilityNode Tree((string Title, string Marker) screen) => new()
@@ -1006,6 +1019,106 @@ public class RecorderTests
             Assert.NotNull(report.EndedEarlyReason);
             Assert.Contains("cancelled", report.EndedEarlyReason);
             Assert.Equal(0, source.BeginLargeTextCalls);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// IScreenSource.CaptureScreenReaderAsync (iOS's Accessibility Inspector route -- see
+    /// IosScreenSource.CaptureScreenReaderAsync) is called for a screen's normal capture, and whatever it
+    /// returns is attached to that screen's ScreenSnapshot before the rules run, so it ends up on the
+    /// resulting ScreenResult.ScreenReaderCapture -- the same shape ScanService.ScanAsync uses for `scan`.
+    /// Verified end to end on the iOS Simulator too (see the PR description); this checks Recorder's own
+    /// wiring in isolation, without a device.
+    /// </summary>
+    [Fact]
+    public async Task ScreenReaderCapture_AttachedToTheNormalCapture()
+    {
+        var dir = TempDir();
+        try
+        {
+            var capture = new ScreenReaderCapture(ScreenReaderSource.AccessibilityInspector, "1", DateTimeOffset.Now, [], Complete: true, NotCompleteReason: null);
+            var source = new FakeScreenSource { ScreenReaderCaptureBehavior = _ => capture };
+            var control = new RecorderControl();
+            var recorder = MakeRecorder(source, dir, autoScan: false, control: control);
+            var run = recorder.RunAsync(CancellationToken.None);
+            await Task.Delay(200);
+            control.RequestScanNow();
+            await TestWait.UntilAsync(() => source.CaptureCount >= 1, "the screen to be captured");
+            control.Stop();
+            var report = await run;
+
+            Assert.Single(report.Screens);
+            Assert.Equal(1, source.ScreenReaderCaptureCalls);
+            Assert.Same(capture, report.Screens[0].ScreenReaderCapture);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>The default no-op (IScreenSource.CaptureScreenReaderAsync's own default, and what
+    /// FakeScreenSource returns with no ScreenReaderCaptureBehavior set) must never overwrite a snapshot that
+    /// already carries a capture -- the case a real Android source is in: its TalkBack capture, when
+    /// requested, already arrives attached to the snapshot CaptureAsync returns.</summary>
+    [Fact]
+    public async Task ScreenReaderCapture_NullResult_NeverOverwritesWhatCaptureAsyncAlreadyAttached()
+    {
+        var dir = TempDir();
+        try
+        {
+            var source = new FakeScreenSource(); // ScreenReaderCaptureBehavior unset -> null, the default no-op
+            var control = new RecorderControl();
+            var recorder = MakeRecorder(source, dir, autoScan: false, control: control);
+            var run = recorder.RunAsync(CancellationToken.None);
+            await Task.Delay(200);
+            control.RequestScanNow();
+            await TestWait.UntilAsync(() => source.CaptureCount >= 1, "the screen to be captured");
+            control.Stop();
+            var report = await run;
+
+            Assert.Single(report.Screens);
+            Assert.Equal(1, source.ScreenReaderCaptureCalls);
+            Assert.Null(report.Screens[0].ScreenReaderCapture);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>Never attempted for a large-text capture (that path calls
+    /// IScreenSource.CaptureLargeTextAsync/CompleteLargeTextAsync, never CaptureAsync directly) -- a rescan
+    /// under a changed text size isn't what --screen-reader asked to capture again, the same choice
+    /// ScanService's own appearance/orientation rescans make for their second captures.</summary>
+    [Fact]
+    public async Task ScreenReaderCapture_NeverCalledForALargeTextCapture()
+    {
+        var dir = TempDir();
+        try
+        {
+            var source = new FakeScreenSource
+            {
+                ScreenReaderCaptureBehavior = _ => new ScreenReaderCapture(ScreenReaderSource.AccessibilityInspector, "1", DateTimeOffset.Now, [], true, null),
+                LargeTextCaptureBehavior = (_, _, _) => Task.FromResult(LargeTextCapture.Skipped(LargeTextCapture.DidNotGrowLive)),
+            };
+            var control = new RecorderControl();
+            var recorder = MakeRecorder(source, dir, autoScan: false, control: control, policy: LargeTextRestartPolicy.Never, largeText: true);
+            var run = recorder.RunAsync(CancellationToken.None);
+            await Task.Delay(200);
+            control.RequestScanNow();
+            await TestWait.UntilAsync(() => source.LargeTextCaptureCalls >= 1, "the live large-text attempt to run");
+            control.Stop();
+            var report = await run;
+
+            Assert.Single(report.Screens);
+            // Exactly one normal capture happened (the live large-text attempt is a separate call, not
+            // CaptureAsync), so exactly one screen-reader capture attempt, not two.
+            Assert.Equal(1, source.ScreenReaderCaptureCalls);
         }
         finally
         {

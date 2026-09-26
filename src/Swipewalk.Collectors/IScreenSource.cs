@@ -117,4 +117,22 @@ public interface IScreenSource : IAsyncDisposable
     /// <see cref="CompleteLargeTextAsync"/>'s restore step for the given <paramref name="reason"/>.
     /// </summary>
     Task AbandonLargeTextAsync(string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Real screen-reader evidence for <paramref name="snapshot"/> (the screen <see cref="CaptureAsync"/> just
+    /// captured, normally -- never called for a large-text capture), when gathering it needs a step beyond that
+    /// capture itself. Android's on-device TalkBack capture is already folded into the snapshot
+    /// <see cref="CaptureAsync"/> returns (see <c>AndroidScreenSource</c>'s own <c>captureScreenReader</c>
+    /// option), so this default no-op is what Android keeps: there's nothing more to add, and
+    /// <see cref="Swipewalk.Engine.Recorder"/> simply keeps whatever <paramref name="snapshot"/> already
+    /// carries. iOS's Accessibility Inspector walk (<c>IosCollector.RunInspectorCaptureAsync</c>) overrides this
+    /// instead: it runs on the Mac, separately from the device capture, and needs a one-time person-answered
+    /// guide (the macOS Accessibility permission, then choosing the device and clicking the first element in
+    /// the Inspector) that must be asked at most once per recording, not once per screen -- see
+    /// <c>IosScreenSource.CaptureScreenReaderAsync</c> for how it caches that answer, and reports through
+    /// <paramref name="log"/> when a screen's own walk comes back short or incomplete. Null return means nothing
+    /// more to attach.
+    /// </summary>
+    Task<ScreenReaderCapture?> CaptureScreenReaderAsync(ScreenSnapshot snapshot, IProgress<string>? log = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult<ScreenReaderCapture?>(null);
 }

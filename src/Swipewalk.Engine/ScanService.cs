@@ -610,10 +610,16 @@ public sealed class ScanService(IProgress<string> log)
     /// <param name="continuation">Resumes an earlier, ended-early session of the same run instead of starting a
     /// fresh one -- see <see cref="ResolveContinuation"/>. Null (the default) starts a
     /// fresh recording, as before.</param>
+    /// <param name="iosInspectorGuide">iOS only, and only when <see cref="ScanOptions.ScreenReaderCapture"/> is
+    /// set: the CLI/desktop prompt for the Accessibility Inspector route's one-time permission-and-setup step
+    /// (see <see cref="IosCollector.RunInspectorCaptureAsync"/>) -- the same hook <see cref="ScanAsync"/> takes,
+    /// but asked at most once for the whole recording, not once per screen (see
+    /// <see cref="IosScreenSource.CaptureScreenReaderAsync"/>). Android's equivalent (TalkBack) needs no such
+    /// hook -- it runs entirely on the device. Null (the default) declines the Inspector route without asking.</param>
     public async Task<RunResult> RecordAsync(
         ScanOptions options, RecorderControl control, CancellationToken cancellationToken = default, Action<ScreenResult>? onScreen = null,
         LargeTextRestartAsker? largeTextRestartAsk = null, RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null,
-        RecordContinuation? continuation = null)
+        RecordContinuation? continuation = null, IosCollector.IosInspectorGuide? iosInspectorGuide = null)
     {
         var outDir = Path.GetFullPath(options.OutputDirectory);
         if (options.Platform == TargetPlatform.Ios)
@@ -624,7 +630,8 @@ public sealed class ScanService(IProgress<string> log)
             // either way, and later runs stay incremental (see IosHarnessSession).
             log.Report("Preparing the iOS harness (the first run builds it; this can take a minute)...");
         await using IScreenSource source = options.Platform == TargetPlatform.Ios
-            ? await IosScreenSource.StartAsync(options.BundleId!, options.Device, options.HarnessProject, options.Team, options.Profile, options.HarnessBundlePrefix, options.AutoScanOnScreenChange)
+            ? await IosScreenSource.StartAsync(options.BundleId!, options.Device, options.HarnessProject, options.Team, options.Profile, options.HarnessBundlePrefix,
+                options.AutoScanOnScreenChange, options.ScreenReaderCapture, iosInspectorGuide)
             : await AndroidScreenSource.ConnectAsync(options.Device, options.Package, androidHarnessDir: options.AndroidHarnessDir,
                 captureScreenReader: options.ScreenReaderCapture);
 

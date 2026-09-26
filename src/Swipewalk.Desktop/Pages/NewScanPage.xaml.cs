@@ -153,9 +153,11 @@ public partial class NewScanPage : ContentPage
 		DevicePicker.Items = [.. _devices.Select(d => d.ToString())];
 		SelectDevice();
 		UpdateDeviceRequiredControls();
-		// TalkBack capture is Android only for now (see AndroidHarness.RunScreenReaderCaptureAsync); hide the
-		// option entirely for iOS rather than show a checkbox that would do nothing if left checked.
+		// TalkBack capture is Android only (see AndroidHarness.RunScreenReaderCaptureAsync); the Accessibility
+		// Inspector route is iOS only (see IosCollector.RunInspectorCaptureAsync) -- each option is hidden for
+		// the other platform rather than shown as a checkbox that would do nothing if left checked.
 		TalkBackOption.IsVisible = Platform == TargetPlatform.Android;
+		InspectorOption.IsVisible = Platform == TargetPlatform.Ios;
 	}
 
 	private DeviceInfo? SelectedDevice() =>
@@ -292,6 +294,18 @@ public partial class NewScanPage : ContentPage
 		});
 
 	/// <summary>
+	/// The Accessibility Inspector route's guide (see IosCollector.IosInspectorGuide): shows
+	/// Services/InspectorNotice's alerts on the main thread -- this runs from inside Task.Run(() =>
+	/// service.ScanAsync/RecordAsync(...)) in OnStart, a background thread, the same reason
+	/// AskLargeTextRestartAsync below hops to MainThread before showing anything. For a recording, the engine
+	/// (IosScreenSource.CaptureScreenReaderAsync) calls this at most once for the whole recording session, not
+	/// once per screen; for a single scan, it's asked once either way. <see cref="Recording"/> picks the setup
+	/// alert's wording (InspectorNotice.SetupBodyRecord/SetupBodyScan).
+	/// </summary>
+	private Task<bool> AskIosInspectorGuideAsync(CancellationToken cancellationToken) =>
+		MainThread.InvokeOnMainThreadAsync(() => InspectorNotice.GuideAsync(this, Recording));
+
+	/// <summary>
 	/// Asked once, when Finish is pressed, if any screen wasn't checked at the larger size: offers to keep
 	/// recording so the person can navigate back and check them (opt-in, declinable -- nothing here navigates
 	/// or captures on its own).
@@ -342,10 +356,11 @@ public partial class NewScanPage : ContentPage
 				LargeText = LargeTextOption.IsChecked,
 				Framework = MauiOption.IsChecked ? AppFramework.Maui : null,
 				AutoScanOnScreenChange = AutoScanOption.IsChecked,
-				// Android only for now (TalkBackOption is hidden for iOS -- OnPlatformChanged -- but guard
-				// on Platform here too, so a stale checked state from before a platform switch can never
-				// silently turn this on for an iOS run).
-				ScreenReaderCapture = Platform == TargetPlatform.Android && TalkBackOption.IsChecked,
+				// TalkBackOption is Android only, InspectorOption is iOS only (each hidden for the other
+				// platform -- OnPlatformChanged), but guard on Platform here too, so a stale checked state from
+				// before a platform switch can never silently turn either on for the wrong platform.
+				ScreenReaderCapture = (Platform == TargetPlatform.Android && TalkBackOption.IsChecked)
+					|| (Platform == TargetPlatform.Ios && InspectorOption.IsChecked),
 				// Same picker, same mapping as OnLargeTextRestartPolicyChanged: it now applies to a single
 				// scan too, not just a recording's later screens.
 				LargeTextRestartPolicy = LargeTextRestartPicker.SelectedIndex switch
@@ -396,11 +411,13 @@ public partial class NewScanPage : ContentPage
 				{
 					MainThread.BeginInvokeOnMainThread(() => SemanticScreenReader.Announce($"Scanned {screen.ScreenName}"));
 					saveProgress(screen);
-				}, largeTextRestartAsk: AskLargeTextRestartAsync, revisitSkippedScreensAsk: AskRevisitSkippedScreensAsync, continuation: _continuation));
+				}, largeTextRestartAsk: AskLargeTextRestartAsync, revisitSkippedScreensAsk: AskRevisitSkippedScreensAsync, continuation: _continuation,
+					iosInspectorGuide: options.ScreenReaderCapture && Platform == TargetPlatform.Ios ? AskIosInspectorGuideAsync : null));
 			}
 			else
 			{
-				result = await Task.Run(() => service.ScanAsync(options, largeTextRestartAsk: AskLargeTextRestartAsync));
+				result = await Task.Run(() => service.ScanAsync(options, largeTextRestartAsk: AskLargeTextRestartAsync,
+					iosInspectorGuide: options.ScreenReaderCapture && Platform == TargetPlatform.Ios ? AskIosInspectorGuideAsync : null));
 			}
 
 			var run = await AppState.History.SaveAsync(result, options, Recording ? "record" : "scan", started);
