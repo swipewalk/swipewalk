@@ -21,6 +21,33 @@ public static class AppInstaller
     /// </summary>
     public sealed record InstalledIosApp(string? BundleId, AppFramework Framework = AppFramework.Unknown, string? FrameworkVersion = null);
 
+    /// <summary>
+    /// Keystore to sign an Android App Bundle's device-specific .apks with, instead of the standard Android
+    /// debug key (see <see cref="Bundletool.DebugKeystorePath"/>). The passwords are read from environment
+    /// variables rather than taken as constructor arguments, and passed to bundletool via a private temp file
+    /// (not its own <c>pass:</c> option) so nothing puts them on the command line, in swipewalk.json, or in any
+    /// process's argument list: SWIPEWALK_KEYSTORE_PASSWORD (required), SWIPEWALK_KEY_PASSWORD (optional; see
+    /// <see cref="ReadPasswords"/> for what leaving it out means).
+    /// </summary>
+    public sealed record AndroidBundleSigning(string Keystore, string KeystoreAlias)
+    {
+        /// <summary>
+        /// KeyPassword is null unless SWIPEWALK_KEY_PASSWORD is set: bundletool tries the keystore password for
+        /// the key too when --key-pass is left out (its own --help: "If this flag is not set, the keystore
+        /// password will be tried"), which is right for the common case of a self-managed keystore where both
+        /// passwords are the same, without Swipewalk having to assume that and pass it explicitly.
+        /// </summary>
+        internal (string StorePassword, string? KeyPassword) ReadPasswords()
+        {
+            var store = Environment.GetEnvironmentVariable("SWIPEWALK_KEYSTORE_PASSWORD")
+                ?? throw new InvalidOperationException(
+                    "--keystore needs the SWIPEWALK_KEYSTORE_PASSWORD environment variable set (a keystore " +
+                    "password is never taken on the command line or put in swipewalk.json). Set " +
+                    "SWIPEWALK_KEY_PASSWORD too if the key's own password is different.");
+            return (store, Environment.GetEnvironmentVariable("SWIPEWALK_KEY_PASSWORD"));
+        }
+    }
+
     /// <summary>Opens the app's launcher activity.</summary>
     public static async Task LaunchAndroidAsync(string package, string? serial)
     {
@@ -54,23 +81,24 @@ public static class AppInstaller
         return await InstallIosAsync(path, udid, physical);
     }
 
-    /// <summary>Installs an .apk on the Android device and returns its package name.</summary>
-    public static async Task<string?> InstallAndroidAsync(string apkPath, string? serial)
+    /// <summary>
+    /// Installs an .apk, or an Android App Bundle (.aab, via bundletool -- see
+    /// <see cref="InstallAndroidBundleAsync"/>), on the Android device, and returns its package name.
+    /// </summary>
+    public static Task<string?> InstallAndroidAsync(
+        string apkPath, string? serial, string? bundletoolPath = null, AndroidBundleSigning? signing = null, IProgress<string>? log = null)
     {
         if (apkPath.EndsWith(".aab", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                "An .aab (Play bundle) cannot be installed directly. Build an .apk (for example with bundletool build-apks --mode=universal) " +
-                "or install through Play internal testing, then scan by package.");
-        if (!apkPath.EndsWith(".apk", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Android --install expects an .apk file.");
+            return InstallAndroidBundleAsync(apkPath, serial, bundletoolPath, signing, log);
+        return InstallAndroidApkAsync(apkPath, serial);
+    }
 
-        using (var apk = ZipFile.OpenRead(apkPath))
-        {
-            if (IsFastDeploymentApk(apk.Entries.Select(e => e.FullName)))
-                throw new InvalidOperationException(
-                    "This is a .NET MAUI Debug build that uses fast deployment: its code is not inside the .apk, so it cannot run on " +
-                    "its own. Build Release, or Debug with -p:EmbedAssembliesIntoApk=true.");
-        }
+    private static async Task<string?> InstallAndroidApkAsync(string apkPath, string? serial)
+    {
+        if (!apkPath.EndsWith(".apk", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Android --install expects an .apk or .aab file.");
+
+        EnsureNotFastDeploymentBuild(apkPath, ".apk");
 
         var adb = new Adb(await new Adb(serial).ResolveSerialAsync());
         var package = await ApkPackageNameAsync(apkPath);
@@ -83,20 +111,181 @@ public static class AppInstaller
         return added.Count == 1 ? added[0] : null;
     }
 
+    /// <summary>
+    /// Installs an Android App Bundle via Google's bundletool: builds a set of .apks matching the connected
+    /// device (<c>build-apks --connected-device</c>), then installs them (<c>install-apks</c>). bundletool is
+    /// never downloaded by Swipewalk (see <see cref="Bundletool.Locate"/>'s remarks) and, without
+    /// <paramref name="signing"/>, signs the .apks with the standard Android debug key
+    /// (<see cref="Bundletool.DebugKeystorePath"/>, created with keytool if it doesn't already exist -- see
+    /// that property's remarks for why bundletool itself won't) -- a debug-signed build is only for scanning;
+    /// it differs from the app-signing key Play would use for the same bundle, so this is never a substitute
+    /// for a store build. Installing over an app already installed with a different key fails with a plain
+    /// message pointing at --keystore or uninstalling first (see the "signatures do not match" check below).
+    /// </summary>
+    private static async Task<string?> InstallAndroidBundleAsync(
+        string aabPath, string? serial, string? bundletoolPath, AndroidBundleSigning? signing, IProgress<string>? log)
+    {
+        var tool = Bundletool.Locate(bundletoolPath) ?? throw new InvalidOperationException(Bundletool.NotFoundMessage);
+        // Found unconditionally (not just for a .jar): needed to run bundletool.jar, and separately as the
+        // likely home of keytool (same JDK/JRE bin folder) when the standard debug keystore has to be created
+        // below. A native bundletool executable with no java found at all still works when the debug keystore
+        // already exists or --keystore is given; keytool is then found via PATH only (FindKeytool's fallback).
+        var java = Bundletool.FindJava();
+        if (tool.IsJar && java is null)
+            throw new InvalidOperationException(Bundletool.JavaNotFoundMessage);
+
+        EnsureNotFastDeploymentBuild(aabPath, ".aab");
+
+        if (signing is null && !await Bundletool.EnsureDebugKeystoreAsync(java))
+            throw new InvalidOperationException(Bundletool.DebugKeystoreCreateFailedMessage);
+
+        var fullAabPath = Path.GetFullPath(aabPath);
+        var package = await DumpManifestPackageAsync(tool, java, fullAabPath);
+
+        var resolvedSerial = await new Adb(serial).ResolveSerialAsync();
+        var adb = new Adb(resolvedSerial);
+        var adbPath = Adb.ExecutablePath();
+        // Only needed as a fallback if bundletool's own dump manifest above didn't give the package name --
+        // captured before installing, the same before/after diff the plain-.apk path uses without aapt2.
+        var before = package is null ? PackageSet(await adb.RunAsync("shell", "pm", "list", "packages", "-3")) : null;
+        var apksPath = Path.Combine(Path.GetTempPath(), $"swipewalk-{Guid.NewGuid():N}.apks");
+        // Password files rather than --ks-pass=pass:<value>/--key-pass=pass:<value>: bundletool has no way to
+        // take a password from an environment variable (only 'pass:<value>' or 'file:<path>' -- checked
+        // against its own --help), and 'pass:' would put the plaintext password in this process's argument
+        // list, visible to anything else on the machine that can list processes for the moment bundletool
+        // runs. Written with 0600-equivalent permissions where supported and deleted in the same finally as
+        // apksPath.
+        string? storePasswordFile = null;
+        string? keyPasswordFile = null;
+        try
+        {
+            List<string> buildArgs =
+            [
+                "build-apks",
+                $"--bundle={fullAabPath}",
+                $"--output={apksPath}",
+                "--connected-device",
+                $"--device-id={resolvedSerial}",
+                $"--adb={adbPath}",
+            ];
+            // The bundletool.jar bundled with the .NET Android SDK workload doesn't embed aapt2 (unlike
+            // Google's own bundletool-all.jar release), so build-apks needs it pointed at explicitly; found
+            // the same way ApkPackageNameAsync finds it, from the Android SDK's build-tools.
+            if (Aapt2Path() is { } aapt2)
+                buildArgs.Add($"--aapt2={aapt2}");
+            if (signing is not null)
+            {
+                var (storePassword, keyPassword) = signing.ReadPasswords();
+                storePasswordFile = WriteTempPasswordFile(storePassword);
+                buildArgs.Add($"--ks={Path.GetFullPath(signing.Keystore)}");
+                buildArgs.Add($"--ks-key-alias={signing.KeystoreAlias}");
+                buildArgs.Add($"--ks-pass=file:{storePasswordFile}");
+                // key-pass is optional: if the key's own password is the same as the keystore's (the common
+                // case for a self-managed keystore), leaving it out lets bundletool try the keystore password
+                // for the key too, rather than Swipewalk assuming they're the same.
+                if (keyPassword is not null)
+                {
+                    keyPasswordFile = WriteTempPasswordFile(keyPassword);
+                    buildArgs.Add($"--key-pass=file:{keyPasswordFile}");
+                }
+            }
+            else
+            {
+                log?.Report(
+                    "No --keystore given: signing with the standard Android debug key (~/.android/debug.keystore, " +
+                    "created by Swipewalk with keytool if it doesn't already exist). That differs from your store build's " +
+                    "signing key -- for scanning only.");
+            }
+
+            var (buildExit, buildOutput) = await Bundletool.RunAsync(tool, java, buildArgs);
+            if (buildExit != 0)
+                throw new InvalidOperationException($"bundletool build-apks failed:\n{buildOutput.Trim()}");
+
+            var (installExit, installOutput) = await Bundletool.RunAsync(
+                tool, java, ["install-apks", $"--apks={apksPath}", $"--adb={adbPath}", $"--device-id={resolvedSerial}"]);
+            if (installExit != 0)
+                throw new InvalidOperationException(installOutput.Contains("signatures do not match", StringComparison.OrdinalIgnoreCase)
+                    ? $"bundletool install-apks failed: the app is already installed, signed with a different key than this install would " +
+                      $"use. Uninstall it first (adb uninstall <package>), or pass --keystore with the matching key.\n{installOutput.Trim()}"
+                    : $"bundletool install-apks failed:\n{installOutput.Trim()}");
+        }
+        finally
+        {
+            File.Delete(apksPath);
+            if (storePasswordFile is not null)
+                File.Delete(storePasswordFile);
+            if (keyPasswordFile is not null)
+                File.Delete(keyPasswordFile);
+        }
+
+        if (package is not null)
+            return package;
+        var added = PackageSet(await adb.RunAsync("shell", "pm", "list", "packages", "-3")).Except(before!).ToList();
+        return added.Count == 1 ? added[0] : null;
+    }
+
+    /// <summary>The package name from a .aab's manifest, via bundletool's own <c>dump manifest</c> (no aapt2
+    /// needed -- aapt2 doesn't read bundles).</summary>
+    private static async Task<string?> DumpManifestPackageAsync(Bundletool.Location tool, string? java, string aabPath)
+    {
+        var (exitCode, output) = await Bundletool.RunAsync(tool, java, ["dump", "manifest", $"--bundle={aabPath}", "--xpath=/manifest/@package"]);
+        var trimmed = output.Trim().Trim('"');
+        return exitCode == 0 && trimmed is { Length: > 0 } && !trimmed.Contains(' ') && !trimmed.Contains('\n') ? trimmed : null;
+    }
+
+    private static void EnsureNotFastDeploymentBuild(string path, string extension)
+    {
+        using var zip = ZipFile.OpenRead(path);
+        if (IsFastDeploymentApk(zip.Entries.Select(e => e.FullName)))
+            throw new InvalidOperationException(
+                $"This is a .NET MAUI Debug build that uses fast deployment: its code is not inside the {extension}, so it cannot run on " +
+                "its own. Build Release, or Debug with -p:EmbedAssembliesIntoApk=true.");
+    }
+
+    /// <summary>Writes a password as the sole line of a private temp file, for bundletool's --ks-pass=file:/
+    /// --key-pass=file: (see InstallAndroidBundleAsync's remarks on why not --ks-pass=pass:&lt;value&gt;). Best-
+    /// effort 0600 permissions on Unix, set at creation time (not after writing) so the password is never
+    /// briefly readable at default permissions; Windows has no equivalent single call, so the file relies on
+    /// being under the per-user temp folder and deleted right after bundletool exits.</summary>
+    private static string WriteTempPasswordFile(string password)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"swipewalk-{Guid.NewGuid():N}.pass");
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows())
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        try
+        {
+            using (var stream = new FileStream(path, options))
+            using (var writer = new StreamWriter(stream))
+                writer.Write(password);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // UnixCreateMode isn't honored on this platform; fall back to a normal create (still deleted
+            // right after use either way).
+            File.WriteAllText(path, password);
+        }
+        return path;
+    }
+
     /// <summary>The package name inside an .apk, via the Android SDK's aapt2 (build-tools); null without it.</summary>
     internal static async Task<string?> ApkPackageNameAsync(string apkPath)
     {
-        var aapt2 = Adb.SdkRoots()
-            .Select(sdk => Path.Combine(sdk, "build-tools"))
-            .Where(Directory.Exists)
-            .SelectMany(dir => Directory.EnumerateDirectories(dir).OrderByDescending(d => d, StringComparer.Ordinal))
-            .Select(dir => Path.Combine(dir, OperatingSystem.IsWindows() ? "aapt2.exe" : "aapt2"))
-            .FirstOrDefault(File.Exists);
+        var aapt2 = Aapt2Path();
         if (aapt2 is null)
             return null;
         var (exitCode, output) = await RunAsync(aapt2, "dump", "packagename", Path.GetFullPath(apkPath));
         return exitCode == 0 && output.Trim() is { Length: > 0 } name && !name.Contains(' ') ? name : null;
     }
+
+    /// <summary>The newest aapt2 in the Android SDK's build-tools, if the SDK is installed; null otherwise.</summary>
+    private static string? Aapt2Path() =>
+        Adb.SdkRoots()
+            .Select(sdk => Path.Combine(sdk, "build-tools"))
+            .Where(Directory.Exists)
+            .SelectMany(dir => Directory.EnumerateDirectories(dir).OrderByDescending(d => d, StringComparer.Ordinal))
+            .Select(dir => Path.Combine(dir, OperatingSystem.IsWindows() ? "aapt2.exe" : "aapt2"))
+            .FirstOrDefault(File.Exists);
 
     /// <summary>
     /// Installs a Simulator .app (or a .zip containing one) or a device .ipa. Device .ipa files must be signed for

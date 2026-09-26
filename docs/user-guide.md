@@ -860,11 +860,33 @@ Other things you might hit:
 - **Apps that block screenshots.** Some apps set Android's `FLAG_SECURE` on sensitive screens
   (banking, passwords, DRM) to block screenshots. Swipewalk reports these screens and skips the
   pixel-based checks (contrast, close-ups) on them, rather than failing.
-- **.NET MAUI Android debug builds won't install from a file.** `--install` accepts any signed
-  `.apk`, but MAUI Debug builds that use fast deployment can't be installed that way (Swipewalk
-  detects this and explains). Build and install with `dotnet build -t:Install -f net10.0-android`
-  instead, or build in Release (or with `EmbedAssembliesIntoApk=true`), and scan the already
-  installed app by `--package`.
+- **.NET MAUI Android debug builds won't install from a file.** `--install` accepts a signed
+  `.apk` or `.aab`, but MAUI Debug builds that use fast deployment can't be installed that way
+  (Swipewalk detects this and explains, in either format). Build and install with
+  `dotnet build -t:Install -f net10.0-android` instead, or build in Release (or with
+  `EmbedAssembliesIntoApk=true`), and scan the already installed app by `--package`.
+- **Installing a `.aab` needs bundletool.** `--install` on an Android App Bundle (`.aab`) builds a
+  set of `.apks` for the connected device with Google's bundletool, then installs them. bundletool
+  is usually found automatically: on `PATH` (for example after `brew install bundletool`), or
+  bundled with the installed .NET Android SDK workload (so most MAUI setups already have it); pass
+  `--bundletool <path>` to point at a specific copy. It also needs a Java runtime (a JRE on `PATH`
+  or `JAVA_HOME`); a message says how to get either one if it's missing — Swipewalk never
+  downloads bundletool itself. Without `--keystore`, the generated `.apks` are signed with the
+  standard Android debug key (`~/.android/debug.keystore`, the same one Android Studio and Gradle
+  use — Swipewalk creates it with `keytool` if it doesn't already exist, since bundletool itself
+  won't) — fine for scanning, but different from your store build's signing key, so it's never a
+  substitute for a release build. Pass `--keystore <path> --keystore-alias <alias>` to sign with
+  your own key instead; set the `SWIPEWALK_KEYSTORE_PASSWORD` environment variable first
+  (`SWIPEWALK_KEY_PASSWORD` too if the key's own password differs — rare in practice, since a
+  PKCS12 keystore, the default format since Java 8u60, doesn't reliably support a key password
+  different from the keystore's own) — a keystore password is never taken on the command line or
+  put in `swipewalk.json`, only passed to bundletool through a private temporary file. Installing
+  over an app that's already installed with a different signing key fails (Android requires a
+  matching signature to update an app); uninstall it first (`adb uninstall <package>`), or pass the
+  matching `--keystore` — the error message says so.
+  `swipewalk.json` has the same options: `bundletoolPath` (top level) and, under
+  `app.android`, `keystore` and `keystoreAlias` (`keystore` needs `keystoreAlias` too, and the
+  `SWIPEWALK_KEYSTORE_PASSWORD` environment variable at run time — never put a password in the file).
 - **Xcode version mismatch when building a MAUI app for iOS.** If your installed .NET for iOS
   workload pack expects an older Xcode than the one you have (for example the pack expects Xcode
   26.5 but you have Xcode 27.0), the build fails on the version check. Build with

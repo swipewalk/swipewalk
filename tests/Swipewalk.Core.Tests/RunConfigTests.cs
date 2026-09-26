@@ -41,6 +41,31 @@ public class RunConfigTests
         Assert.EndsWith(Path.Combine("builds", "app.apk"), config.App.Android.Install);
     }
 
+    [Fact]
+    public void AndroidKeystore_IsRelativeToTheConfigFileAndFlowsToScanOptions()
+    {
+        var config = Load("""
+            { "app": { "android": { "install": "app.aab", "keystore": "keys/release.jks", "keystoreAlias": "release" } },
+              "targets": [ { "platform": "android" } ], "bundletoolPath": "/opt/bundletool.jar" }
+            """);
+
+        Assert.True(Path.IsPathRooted(config.App.Android!.Keystore));
+        Assert.EndsWith(Path.Combine("keys", "release.jks"), config.App.Android.Keystore);
+
+        var options = config.ToOptions(config.Targets[0], "out");
+        Assert.Equal(config.App.Android.Keystore, options.AndroidKeystore);
+        Assert.Equal("release", options.AndroidKeystoreAlias);
+        Assert.Equal("/opt/bundletool.jar", options.BundletoolPath);
+    }
+
+    [Fact]
+    public void AndroidKeystore_WithoutAlias_FailsValidation()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Load(
+            """{ "app": { "android": { "install": "app.aab", "keystore": "keys/release.jks" } }, "targets": [ { "platform": "android" } ] }"""));
+        Assert.Contains("keystoreAlias", ex.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// swipewalk.json's largeTextRestart, left unset, must not silently change behaviour for a "run" using
     /// mode "scan" from before ScanService started respecting the resolved policy: a "run" is unattended by

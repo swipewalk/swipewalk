@@ -80,6 +80,10 @@ public sealed record RunConfig
 
     public IosSigningConfig? IosSigning { get; init; }
 
+    /// <summary>Android only: path to bundletool, for installing app.android.install when it's a .aab -- see
+    /// Swipewalk.Engine.ScanOptions.BundletoolPath. Found automatically when not given.</summary>
+    public string? BundletoolPath { get; init; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -138,12 +142,19 @@ public sealed record RunConfig
                 throw new InvalidOperationException($"\"app.{target.Platform}\" must give the app to scan (bundleId/package or install).");
         }
 
+        if (App.Android?.Keystore is not null && App.Android.KeystoreAlias is null)
+            throw new InvalidOperationException("\"app.android.keystore\" needs \"app.android.keystoreAlias\" too.");
+
         string? Resolve(string? file) => file is null || Path.IsPathRooted(file) ? file : Path.GetFullPath(Path.Combine(baseDirectory, file));
         return this with
         {
             App = App with
             {
-                Android = App.Android is null ? null : App.Android with { Install = Resolve(App.Android.Install) },
+                Android = App.Android is null ? null : App.Android with
+                {
+                    Install = Resolve(App.Android.Install),
+                    Keystore = Resolve(App.Android.Keystore),
+                },
                 Ios = App.Ios is null ? null : App.Ios with { Install = Resolve(App.Ios.Install) },
             },
             Out = Resolve(Out),
@@ -162,6 +173,9 @@ public sealed record RunConfig
             Package = app.Package,
             BundleId = app.BundleId,
             InstallFile = app.Install,
+            BundletoolPath = BundletoolPath,
+            AndroidKeystore = app.Keystore,
+            AndroidKeystoreAlias = app.KeystoreAlias,
             Framework = Framework is null ? null : Enum.Parse<AppFramework>(Framework, ignoreCase: true),
             Standard = Standard,
             LargeText = LargeText,
@@ -196,6 +210,14 @@ public sealed record AppTarget
 
     /// <summary>Already-built app to install first; relative to swipewalk.json.</summary>
     public string? Install { get; init; }
+
+    /// <summary>Android only: keystore to sign a .aab's install with (see
+    /// Swipewalk.Collectors.AppInstaller.AndroidBundleSigning); relative to swipewalk.json. Needs
+    /// <see cref="KeystoreAlias"/> too, and the SWIPEWALK_KEYSTORE_PASSWORD environment variable at run time --
+    /// a keystore password never goes in this file.</summary>
+    public string? Keystore { get; init; }
+
+    public string? KeystoreAlias { get; init; }
 }
 
 public sealed record TargetConfig
