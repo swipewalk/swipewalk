@@ -346,7 +346,8 @@ final class DesktopTests: XCTestCase {
     func testScanShowsReportAndSavesToHistory() throws {
         guard ProcessInfo.processInfo.environment["CF_E2E"] == "1" else { throw XCTSkip("CF_E2E not set") }
         let device = ProcessInfo.processInfo.environment["CF_E2E_DEVICE_NAME"] ?? "sdk_gphone"
-        let app = Desktop.launch(page: "devices")
+        let historyDir = Desktop.freshHistoryDir()
+        let app = Desktop.launch(page: "devices", history: historyDir)
         let scanOnDevice = app.buttons.containing("New scan on Google \(device)")
         guard scanOnDevice.waitForExistence(timeout: 20) else { throw XCTSkip("Device '\(device)' not connected") }
         scanOnDevice.click()
@@ -362,18 +363,24 @@ final class DesktopTests: XCTestCase {
         appId.typeText("org.swipewalk.buggyapp")
         app.buttons["Start"].firstMatch.click()
 
-        // Wait for the Report page first (cheap query), then look inside the web view only: querying the
-        // whole app while the report's large web content loads can time out.
-        let reportPage = app.buttons["Open in browser"].firstMatch
-        let report = app.webViews.staticTexts.containing("Automated checks found")
-        if !reportPage.waitForExistence(timeout: 300) || !report.waitForExistence(timeout: 30) {
+        // Poll the run's own report.html on disk instead of querying the UI while the scan runs and the
+        // Report page's WebView loads and renders: any query rooted at `app` -- even for a plain native
+        // button on the same page -- has to snapshot the WHOLE accessibility tree, including the WebView's
+        // own (large, screenshot-embedded) one, and XCUITest can time out doing that while it's still
+        // rendering ("Failed to get matching snapshots", found flaky about 1 in 3 runs even querying only a
+        // native "Open in browser" button). Leaving the Report page with a keyboard shortcut below (rather
+        // than clicking a button on it) sidesteps the same problem for the next step.
+        guard let reportFile = Desktop.waitForReportFile(in: historyDir, timeout: 300),
+              let reportText = try? String(contentsOf: reportFile, encoding: .utf8),
+              reportText.contains("Automated checks found") else {
             // Keep what the app showed (including the progress messages) to diagnose the failure.
             let dump = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("e2e-failure.txt")
             try? app.debugDescription.write(to: dump, atomically: true, encoding: .utf8)
             XCTFail("The report did not open after the scan; screen saved to \(dump.path)")
+            return
         }
 
-        app.buttons["History"].firstMatch.click()
+        app.typeKey("4", modifierFlags: .command) // Go > History -- avoids querying a button on the Report page
         // The row's app name is no longer its own StaticText: it is part of the row's grouped accessible name
         // (see testHistoryRowsHaveAccessibleNamesAndDeleteStaysReachable), so search all elements, not just
         // staticTexts.
