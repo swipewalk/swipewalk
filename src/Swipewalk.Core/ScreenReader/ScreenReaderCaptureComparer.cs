@@ -249,8 +249,11 @@ public static class ScreenReaderCaptureComparer
     /// Spanish "Botón") doesn't match any entry in that English-only list, so it parses as if it were a
     /// name -- if that segment came after the real name it would otherwise silently replace it. Joining
     /// keeps the real name in the result; <see cref="NamesMatch"/>'s substring fallback then still matches
-    /// it even with the untranslated role word trailing alongside it.</summary>
-    private static (string? Name, string? Role) ActualNameAndRole(ScreenReaderCaptureItem item, ScreenReaderSource source)
+    /// it even with the untranslated role word trailing alongside it.
+    /// <para>Internal (not private) so <see cref="Rules.ScreenReaderLabelInNameRule"/> can read the same
+    /// (name, role) pair this comparer uses, rather than re-implementing TalkBack's utterance-joining and
+    /// role-word stripping a second time.</para></summary>
+    internal static (string? Name, string? Role) ActualNameAndRole(ScreenReaderCaptureItem item, ScreenReaderSource source)
     {
         if (source == ScreenReaderSource.AccessibilityInspector)
         {
@@ -354,8 +357,14 @@ public static class ScreenReaderCaptureComparer
     /// text, on a real device and the emulator alike; exactly how TalkBack sources that text wasn't
     /// determined. Losing that finding on a non-English capture would defeat the point of testing in more
     /// than one language, so it is still reported there.</para>
+    /// <para>Internal (not private) so <see cref="Rules.ScreenReaderLabelInNameRule"/> can reuse this exact
+    /// predicate for WCAG 2.5.3 Label in Name: there, the "predicted" side is a control's own visible text
+    /// (never empty, since that rule requires one) rather than <see cref="ScreenReaderPredictor"/>'s
+    /// announcement text, and the "actual" side is still <see cref="ActualNameAndRole"/>'s parsed name --
+    /// otherwise the exact same whole-word, role-word-aware and language-aware matching this comparer
+    /// already uses.</para>
     /// </summary>
-    private static bool NamesMatch(string? predicted, string? actual, ScreenReaderSource source, string? language)
+    internal static bool NamesMatch(string? predicted, string? actual, ScreenReaderSource source, string? language)
     {
         var (p, a) = (Norm(predicted), Norm(actual));
         if (string.Equals(p, a, StringComparison.OrdinalIgnoreCase))

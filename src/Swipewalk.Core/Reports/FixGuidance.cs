@@ -127,7 +127,11 @@ public static class FixGuidance
                     "NSLocalizedString key with no translation, so the key is shown",
                     "SwiftUI Image(\"asset_name\") read aloud by its asset name")),
 
-            "label-in-name" => new(
+            // screen-reader-label-in-name reports the same underlying problem as label-in-name (an
+            // accessible name that doesn't include the control's visible text), just found from a real
+            // screen-reader capture instead of the tree's own fields -- Details["visibleText"] is set the
+            // same way, so the same fix applies.
+            "label-in-name" or "screen-reader-label-in-name" => new(
                 $"Make the accessible name start with the visible text \"{visible}\", or remove the override so the visible text is used.",
                 Maui: new($"<Button Text=\"{visible}\" />\n<!-- or: SemanticProperties.Description=\"{visible} ticket\" -->",
                     "SemanticProperties.Description overrides Text with different wording",

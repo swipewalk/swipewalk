@@ -50,5 +50,7 @@ public static class RuleCatalog
             "iOS"),
         new("screen-reader-capture", "Needs review (every difference from the predicted transcript is reported for a person to check, never as a confirmed WCAG failure by itself)",
             "Android (needs --screen-reader and the instrumentation harness; TalkBack)"),
+        new("screen-reader-label-in-name", "Needs review (a real screen-reader capture is evidence of the accessible name a speech-input user relies on, not proof of it)",
+            "Android (needs --screen-reader and the instrumentation harness; TalkBack)"),
     ];
 }

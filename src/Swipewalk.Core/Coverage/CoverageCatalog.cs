@@ -250,7 +250,16 @@ public static class CoverageCatalog
             "For each control flagged, check the spoken accessible name actually contains the visible text, " +
             "in the order TalkBack/VoiceOver reads it. Check other controls with visible text too. With " +
             "Voice Access (Android) or Voice Control (iOS), say the visible label and check the control " +
-            "activates. Best practice is for the name to start with the visible text.",
+            "activates. Best practice is for the name to start with the visible text. On Android, when a " +
+            "real, complete screen-reader capture ran (--screen-reader; see docs/limitations.md " +
+            "\"android-screen-reader-capture\") and matched a control with more than weak confidence, " +
+            "Swipewalk also checks this against what TalkBack actually said -- this could report a control " +
+            "whose visible text is only on a child node (a shape the tree-only check can't see at all, since " +
+            "it needs the text on the control's own node -- see \"android-compose-merged-name\"), when " +
+            "TalkBack's announcement leaves that text out. On the one such control captured so far " +
+            "(samples/NativeAndroid's Compose bug N5), TalkBack's announcement included the visible text " +
+            "alongside its overriding name, so nothing was reported there -- either way, this still isn't " +
+            "proof of what speech-input software matches, so check by hand regardless.",
             "label-in-name"),
         Manual(WcagCriteria.MotionActuation,
             "If a feature is triggered by shaking or tilting the device, check there is also a standard " +

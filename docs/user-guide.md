@@ -213,7 +213,16 @@ Each screen also shows:
   did not translate the app's own accessible names in any of them, and the comparison is built to
   match. Needs TalkBack (Android Accessibility Suite) installed on the device. See the "TalkBack
   capture is opt-in..." limitation for what this can get wrong (it doesn't check plain text, and
-  only Android is supported so far).
+  only Android is supported so far). When this capture completed and matched a control with more
+  than weak confidence, Swipewalk also checks WCAG 2.5.3 Label in Name against it: for a control
+  with visible text (its own, or its only descendant's), it checks whether the name TalkBack
+  actually said contains that text, and reports it for review — never as a confirmed failure by
+  itself, since this shows what TalkBack said, not whether speech-input software such as Voice
+  Access would match on it — when it doesn't. This could catch a control whose visible text sits
+  only on a child node (a shape the tree-only Label in Name check can't see at all), when TalkBack's
+  announcement leaves that text out — on the one such control checked so far (a Jetpack Compose
+  button in samples/NativeAndroid), TalkBack's announcement included the visible text alongside its
+  overriding name, so nothing was reported.
 - **Relevance to standards** — each finding is labeled with the laws and standards (ADA Title II,
   Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version and level
   include its criterion. This says a finding is **relevant to** a standard, never that the app

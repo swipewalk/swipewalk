@@ -60,6 +60,14 @@ public sealed record ReportComparison
         // treated as not checked, so a failed audit can't make its earlier findings look "no longer found".
         var withEngine = later.Screens.Where(s => s.Findings.Any(f => f.RuleId.StartsWith("engine", StringComparison.Ordinal)))
             .Select(s => s.ScreenName).ToHashSet();
+        // screen-reader-capture and screen-reader-label-in-name both need a real screen-reader capture
+        // (--screen-reader, Android only); comparing a run that had one against a later run without it must
+        // not read the earlier findings as "no longer found" -- the check simply didn't run this time.
+        // screen-reader-label-in-name additionally needs the capture to be complete (see its own remarks).
+        var withScreenReaderCapture = later.Screens.Where(s => s.ScreenReaderCapture is { Items.Count: > 0 })
+            .Select(s => s.ScreenName).ToHashSet();
+        var withCompleteScreenReaderCapture = later.Screens.Where(s => s.ScreenReaderCapture is { Items.Count: > 0, Complete: true })
+            .Select(s => s.ScreenName).ToHashSet();
         var before = earlier.Screens.GroupBy(s => s.ScreenName).ToDictionary(g => g.Key, g => g.SelectMany(s => s.Findings).ToList());
         var after = later.Screens.GroupBy(s => s.ScreenName).ToDictionary(g => g.Key, g => g.SelectMany(s => s.Findings).ToList());
 
@@ -108,6 +116,8 @@ public sealed record ReportComparison
             "text-resize" => !withLargeText.Contains(screen),
             "text-contrast" => f.Role != "screen" && !withContrast.Contains(screen),
             _ when f.RuleId.StartsWith("engine", StringComparison.Ordinal) => !withEngine.Contains(screen),
+            _ when f.RuleId.StartsWith("screen-reader-capture", StringComparison.Ordinal) => !withScreenReaderCapture.Contains(screen),
+            "screen-reader-label-in-name" => !withCompleteScreenReaderCapture.Contains(screen),
             _ => false,
         };
 
