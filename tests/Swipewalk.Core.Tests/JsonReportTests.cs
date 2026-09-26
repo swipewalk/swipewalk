@@ -71,4 +71,85 @@ public class JsonReportTests
 
         Assert.Null(roundTripped.AppId);
     }
+
+    [Fact]
+    public void SchemaVersion_Is0_3()
+    {
+        // 0.3 adds guided checks (GuidedAnswers, ScreenId, ProposedNotApplicable) -- this test is updated
+        // deliberately, not a surprise CI failure, whenever the schema version changes.
+        Assert.Equal("0.3", ScanReport.CurrentSchemaVersion);
+    }
+
+    [Fact]
+    public void ScreenId_RoundTripsThroughJson()
+    {
+        // A real id, as RuleRunner.Run would assign one -- not the empty default (see
+        // OldResultsJsonWithNoScreenId_GetsTheSameIdOnEveryLoad for that case).
+        var originalId = Guid.NewGuid().ToString();
+        var report = Report(AppFramework.Unknown, null) with { Screens = [Report(AppFramework.Unknown, null).Screens[0] with { ScreenId = originalId }] };
+
+        var roundTripped = JsonReport.Deserialize(JsonReport.Serialize(report))!;
+
+        Assert.Equal(originalId, roundTripped.Screens[0].ScreenId);
+    }
+
+    [Fact]
+    public void OldResultsJsonWithNoScreenId_StillLoads_AndGetsAnId()
+    {
+        // A results.json saved before ScreenId existed has no "screenId" property at all.
+        var json = """
+            {
+              "toolVersion": "test",
+              "screens": [ { "platform": "iOS", "screenName": "Home", "findings": [] } ]
+            }
+            """;
+
+        var report = JsonReport.Deserialize(json);
+
+        Assert.NotNull(report);
+        Assert.False(string.IsNullOrEmpty(report.Screens[0].ScreenId));
+    }
+
+    [Fact]
+    public void OldResultsJsonWithNoScreenId_GetsTheSameIdOnEveryLoad()
+    {
+        // The real bug this guards against: a random per-load id would let a guided-check answer saved
+        // against one load's id become permanently unreachable the next time the same old file is loaded (a
+        // separate `swipewalk guide` process, or the report reopened later) -- the id must be deterministic
+        // (by screen position) instead.
+        var json = """
+            {
+              "toolVersion": "test",
+              "screens": [
+                { "platform": "iOS", "screenName": "Home", "findings": [] },
+                { "platform": "iOS", "screenName": "Settings", "findings": [] }
+              ]
+            }
+            """;
+
+        var first = JsonReport.Deserialize(json)!;
+        var second = JsonReport.Deserialize(json)!;
+
+        Assert.Equal(first.Screens[0].ScreenId, second.Screens[0].ScreenId);
+        Assert.Equal(first.Screens[1].ScreenId, second.Screens[1].ScreenId);
+        Assert.NotEqual(first.Screens[0].ScreenId, first.Screens[1].ScreenId);
+    }
+
+    [Fact]
+    public void ProposedNotApplicable_RoundTripsThroughJson()
+    {
+        var report = Report(AppFramework.Unknown, null) with
+        {
+            Screens = [Report(AppFramework.Unknown, null).Screens[0] with
+            {
+                ProposedNotApplicable = [new Swipewalk.Core.Coverage.ProposedNotApplicable("1.4.13", "no focusable node")],
+            }],
+        };
+
+        var roundTripped = JsonReport.Deserialize(JsonReport.Serialize(report))!;
+
+        var proposal = Assert.Single(roundTripped.Screens[0].ProposedNotApplicable);
+        Assert.Equal("1.4.13", proposal.CriterionNumber);
+        Assert.Equal("no focusable node", proposal.Reason);
+    }
 }

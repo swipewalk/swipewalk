@@ -33,6 +33,16 @@ public static class KnownLimitations
         },
         new()
         {
+            Id = "guided-checks-first-ten",
+            Area = LimitationArea.Coverage,
+            Title = "Guided step-by-step checks exist for only 10 criteria so far",
+            Description = "`swipewalk guide` (and the desktop app's Guided checks page) can suggest which WCAG criteria might not apply to a screen and record a tester's Pass/Fail/Inconclusive/not-applicable answer for any of the 55, but written, numbered TalkBack/VoiceOver steps exist today only for 1.3.1, 1.3.2, 1.3.4, 1.4.1, 2.4.3, 2.5.1, 2.5.7, 3.3.1, 3.3.2 and 4.1.3. The CLI asks about those ten by default (pass --criterion for any other criterion); the desktop page asks about every applicable criterion by default. Either way, a criterion with no script yet shows the one-line \"how to check by hand\" note from the WCAG 2.2 coverage table instead of a full script.",
+            Impact = "A guided-checks session covers less ground than the full manual-check list until more scripts are written.",
+            ManualCheck = "Use the coverage table's one-line note for any criterion without numbered steps yet.",
+            Planned = "Guided steps for the remaining criteria",
+        },
+        new()
+        {
             Id = "predicted-screen-reader",
             Area = LimitationArea.ScreenReader,
             Title = "Screen-reader output is predicted, not recorded",

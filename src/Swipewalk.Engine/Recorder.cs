@@ -152,9 +152,13 @@ public sealed class Recorder(
     /// <param name="RescannedAt">Carried through to the completed <see cref="ScreenResult.RescannedAt"/> --
     /// set when the normal-size capture that started this pending check itself replaced an earlier capture of
     /// the same screen (see ScanCurrentScreenAsync's FindSameScreenIndex); null otherwise.</param>
+    /// <param name="ScreenId">The <see cref="ScreenResult.ScreenId"/> already assigned to the placeholder
+    /// entry stored at <paramref name="Index"/> (see ScanCurrentScreenAsync's AddResult call for the
+    /// AwaitingNavigateBack case), carried through so the completed result keeps the same id rather than
+    /// getting a fresh one from BuildResult's underlying RuleRunner.Run call.</param>
     private sealed record PendingLargeText(
         int Index, int Number, string ScreenName, string Dir, ScreenSnapshot NormalSnapshot, string Reason, bool ConfirmedLiveFailure,
-        DateTimeOffset? RescannedAt);
+        DateTimeOffset? RescannedAt, string ScreenId);
 
     /// <summary>Set when the app had to be started for this recording (see <see cref="BringToFront"/>);
     /// attached to the first scanned screen and to the coverage note, so the report is honest that the
@@ -384,10 +388,14 @@ public sealed class Recorder(
         // screen replaces the older one, but only within the same run.
         string name;
         DateTimeOffset? rescannedAt = null;
+        string? existingScreenId = null;
         if (FindSameScreenIndex(captured) is { } matchIndex)
         {
             name = _results[matchIndex].ScreenName;
             rescannedAt = DateTimeOffset.Now;
+            // Kept across the replacement below so a guided-check answer recorded against the earlier
+            // capture (see ScreenResult.ScreenId's remarks) still resolves to this newer one.
+            existingScreenId = _results[matchIndex].ScreenId;
             // Named here, not just in the report, so a wrong match (two different screens that happen to share
             // a title and most labels -- see ScreenIdentity.IsSameScreen) is visible while recording, not only
             // discovered later when the earlier capture is already gone.
@@ -408,7 +416,7 @@ public sealed class Recorder(
 
         if (!largeText)
         {
-            await StoreAsync(number, name, BuildResult(number, snapshot, null, null, rescannedAt), fingerprint);
+            await StoreAsync(number, name, BuildResult(number, snapshot, null, null, rescannedAt, existingScreenId), fingerprint);
             return;
         }
 
@@ -431,18 +439,19 @@ public sealed class Recorder(
                     LargeTextAppliedLive = outcome.Snapshot.LargeTextAppliedLive,
                     LargeTextRestartCaptured = outcome.Snapshot.LargeTextRestartCaptured,
                 };
-                await StoreAsync(number, name, BuildResult(number, merged, null, null, rescannedAt), fingerprint);
+                await StoreAsync(number, name, BuildResult(number, merged, null, null, rescannedAt, existingScreenId), fingerprint);
                 break;
             case LargeTextOutcomeKind.NotChecked:
-                await StoreAsync(number, name, BuildResult(number, snapshot, outcome.Reason, outcome.BaselineNote, rescannedAt), fingerprint);
+                await StoreAsync(number, name, BuildResult(number, snapshot, outcome.Reason, outcome.BaselineNote, rescannedAt, existingScreenId), fingerprint);
                 break;
             case LargeTextOutcomeKind.AwaitingNavigateBack:
                 // Recorded now with an in-progress placeholder; CompletePendingLargeTextAsync replaces this
                 // same entry once the person navigates back and presses "Scan this screen now" again.
-                var result = BuildResult(number, snapshot, LargeTextCapture.CheckInProgress, null, rescannedAt);
+                var result = BuildResult(number, snapshot, LargeTextCapture.CheckInProgress, null, rescannedAt, existingScreenId);
                 AddResult(result, fingerprint, number);
                 _pendingLargeText = new PendingLargeText(
-                    _results.Count - 1, number, name, dir, snapshot, outcome.PendingReason!, outcome.PendingConfirmedLiveFailure, rescannedAt);
+                    _results.Count - 1, number, name, dir, snapshot, outcome.PendingReason!, outcome.PendingConfirmedLiveFailure,
+                    rescannedAt, result.ScreenId);
                 await SaveAsync(number, name, result);
                 break;
         }
@@ -605,13 +614,13 @@ public sealed class Recorder(
                 LargeTextAppliedLive = large.Snapshot.LargeTextAppliedLive,
                 LargeTextRestartCaptured = large.Snapshot.LargeTextRestartCaptured,
             };
-            updated = BuildResult(pending.Number, merged, null, null, pending.RescannedAt);
+            updated = BuildResult(pending.Number, merged, null, null, pending.RescannedAt, pending.ScreenId);
         }
         else
         {
             var reason = large.SkippedReason ?? LargeTextCapture.DifferentScreen;
             log.Report($"Screen {pending.Number}: large-text check not done: {reason}. Check large text by hand.");
-            updated = BuildResult(pending.Number, pending.NormalSnapshot, reason, null, pending.RescannedAt);
+            updated = BuildResult(pending.Number, pending.NormalSnapshot, reason, null, pending.RescannedAt, pending.ScreenId);
         }
         _results[pending.Index] = updated;
         log.Report("  Text size restored. Navigate to the next screen you want to scan, then press Scan this screen now.");
@@ -647,7 +656,8 @@ public sealed class Recorder(
     }
 
     private ScreenResult BuildResult(
-        int number, ScreenSnapshot snapshot, string? largeTextSkippedReason, string? baselineTextSizeNote, DateTimeOffset? rescannedAt = null)
+        int number, ScreenSnapshot snapshot, string? largeTextSkippedReason, string? baselineTextSizeNote,
+        DateTimeOffset? rescannedAt = null, string? existingScreenId = null)
     {
         var result = _runner.Run(snapshot);
         if (largeTextSkippedReason is not null)
@@ -656,6 +666,11 @@ public sealed class Recorder(
             result = result with { BaselineTextSizeNote = baselineTextSizeNote };
         if (rescannedAt is not null)
             result = result with { RescannedAt = rescannedAt };
+        // Keep a rescanned screen's stable id (see ScreenResult.ScreenId's remarks) so guided-check answers
+        // recorded against the earlier capture still resolve to this one; a screen captured for the first
+        // time keeps the fresh GUID _runner.Run just assigned it explicitly.
+        if (existingScreenId is not null)
+            result = result with { ScreenId = existingScreenId };
         if (number == _firstScreenNumberThisSession && _appLaunchedNote is not null)
             result = result with { AppLaunchedNote = _appLaunchedNote };
         return result;

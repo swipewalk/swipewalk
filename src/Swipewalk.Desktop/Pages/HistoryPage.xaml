@@ -28,7 +28,7 @@
                         Description built by RunAccessibleNameConverter: it has no interactive children, so
                         grouping it is safe. Delete stays outside that group, at this Grid's top level.
                     -->
-                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16" Padding="12,10">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="16" Padding="12,10">
                         <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="16"
                               SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}}">
                             <VerticalStackLayout Spacing="2">
@@ -69,6 +69,8 @@
                                 SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}, ConverterParameter=Continue}" />
                         <Button Grid.Column="2" Text="Delete" Clicked="OnDelete" CommandParameter="{Binding .}"
                                 SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}, ConverterParameter=Delete}" />
+                        <Button Grid.Column="3" Text="Guided checks" Clicked="OnGuidedChecks" CommandParameter="{Binding .}"
+                                SemanticProperties.Description="{Binding ., Converter={StaticResource RunAccessibleNameConverter}, ConverterParameter=GuidedChecks}" />
                     </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

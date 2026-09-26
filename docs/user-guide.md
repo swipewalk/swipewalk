@@ -52,10 +52,11 @@ the full detail on each platform.
 3. [First scan](#3-first-scan)
 4. [Reading a report](#4-reading-a-report)
 5. [Record mode and the large-text check](#5-record-mode-and-the-large-text-check)
-6. [CI and history](#6-ci-and-history)
-7. [The desktop app](#7-the-desktop-app)
-8. [Troubleshooting](#8-troubleshooting)
-9. [Privacy and reporting wrong findings](#9-privacy-and-reporting-wrong-findings)
+6. [Guided checks](#6-guided-checks)
+7. [CI and history](#7-ci-and-history)
+8. [The desktop app](#8-the-desktop-app)
+9. [Troubleshooting](#9-troubleshooting)
+10. [Privacy and reporting wrong findings](#10-privacy-and-reporting-wrong-findings)
 
 ## 1. Install
 
@@ -534,7 +535,58 @@ writing the report right away — an opt-in, declinable offer; saying yes just c
 can navigate back to those screens yourself and scan them again, nothing is captured automatically.
 Saying no (or a non-interactive run) writes the report as usual.
 
-## 6. CI and history
+## 6. Guided checks
+
+Automated checks cover only part of WCAG 2.2. `swipewalk guide` walks a saved run's screens and
+asks about the criteria that still need a person — by default, the ten criteria that have
+step-by-step TalkBack/VoiceOver scripts today (1.3.1, 1.3.2, 1.3.4, 1.4.1, 2.4.3, 2.5.1, 2.5.7,
+3.3.1, 3.3.2, 4.1.3; more are added over time). Give `--criterion` to ask about any of the other
+WCAG 2.2 criteria too, using the one-line "how to check by hand" note from the coverage table
+instead of a full script:
+
+```bash
+swipewalk guide <run>                                  # <run> is a run folder or id, e.g. from `swipewalk history`
+swipewalk guide <run> --screen "Payment history"        # just one screen
+swipewalk guide <run> --criterion 1.3.1                 # just one criterion, on every screen
+```
+
+This needs an interactive terminal — it asks a question and waits for your answer, so it isn't run
+from CI. Each answer is saved right away to a `guided-answers.json` file inside the run's own
+folder, never shared automatically. Stop at any point with Ctrl-C; running the command again skips
+whatever's already answered and picks up with what's left (give `--criterion` again to deliberately
+answer a criterion a second time).
+
+Swipewalk sometimes suggests a criterion may not apply to a screen (for example, "no interactive
+element was found in the captured part of this screen"), but this is only ever a suggestion for you
+to confirm or dismiss — Swipewalk never marks a criterion not applicable on its own, and the
+suggestion says plainly when the underlying signal is weak (for example, dropdowns and custom
+controls aren't always recognized). Recording **Pass** always asks for a short description of what
+you saw or heard — a pass with no evidence is never accepted. Confirming "not applicable" always
+asks for a reason, pre-filled with Swipewalk's suggestion when there is one, but you can also give
+your own. Recording a pass within a few seconds of the question appearing asks you to confirm,
+since a rushed pass is worth double-checking (this doesn't apply to Fail/Inconclusive).
+
+The CLI and the desktop app's Guided checks page both show what was recorded right where you
+answered it — worded "you recorded a pass, with this evidence: …", never "passed" on its own — next
+to what automated checks found for the same criterion. If a recorded pass (or a confirmed "not
+applicable") sits next to a real automated finding for the same criterion, or a later answer
+disagrees with an earlier one about whether a criterion applies, you're told immediately, not left
+to notice it later. Screens with no guided checks started yet, and an answer recorded before its
+screen was rescanned, are called out too, so a run's guided coverage can't quietly look more
+complete than it is.
+
+The HTML report shows all of this too, once a run has any guided answers (a plain scan or record
+report with none looks exactly as before). Near the top, a "Flagged" section lists every
+contradiction, worded the same way as the CLI/desktop; a "Guided checks" section below it lists
+screens with no answers yet and a per-criterion summary across every screen a tester answered (the
+worst recorded result wins — one recorded fail is never hidden behind other screens' passes, and a
+flagged answer keeps the criterion unsettled). Each screen with at least one guided answer also
+gets its own "Guided checks" tab, next to Findings and the predicted/captured screen-reader
+transcript, showing what was recorded there. Manual testing of criteria with no answer is still
+required. Since the tester name is free text saved into the run, it also appears in a report if you
+share that run with someone else.
+
+## 7. CI and history
 
 For a repeatable, scriptable run, describe it once in a `swipewalk.json` file and run
 `swipewalk run`. Here's a minimal example, based on
@@ -606,7 +658,7 @@ re-run the rules against it later — after updating Swipewalk, for example — 
 re-scans a saved capture instead of a live device. Find capture directories inside a run folder in
 history: `capture/` for a single scan, or `screens/01`, `screens/02`, … for a recording.
 
-## 7. The desktop app
+## 8. The desktop app
 
 The desktop app (macOS, Mac Catalyst) does the same scans with a window instead of a terminal. Its
 pages:
@@ -625,6 +677,11 @@ pages:
   another window) shows "In progress"; one that stopped before Finish -- including Swipewalk itself
   being closed or crashing -- shows "Ended early" with a Continue button to resume it.
 - **Report** — the same HTML report you'd get from the CLI, in a window.
+- **Guided checks** — the same walkthrough as `swipewalk guide`, one screen at a time (pick the
+  screen from a list at the top), reached from a button on the Report page or on a History row.
+  Recording a Pass requires an evidence description before Save is enabled; confirming "not
+  applicable" requires a reason. Answers save as you go, so closing and reopening the app never
+  loses anything you've already recorded.
 - **Compare** — pick two runs and see new, no longer found, not checked again, and still-found
   findings, with the same "no longer found isn't fixed" caveat as `swipewalk compare`.
 
@@ -633,7 +690,7 @@ Download the signed `.dmg` from the
 [Desktop app section of the README](../README.md#desktop-app-macos) for both (building needs the
 .NET 10 SDK, the MAUI workload and Xcode).
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 `swipewalk doctor --platform android|ios` is the fastest way to find out what's wrong — run it
 before opening an issue. It runs the same checks as `scan` and `record`, and each failure explains
@@ -703,7 +760,7 @@ Other things you might hit:
   capture path (result-bundle attachments) even on a Simulator. Everyday scans don't need it — the
   right path is chosen for you.
 
-## 9. Privacy and reporting wrong findings
+## 10. Privacy and reporting wrong findings
 
 Swipewalk runs entirely on your computer: no accounts, no analytics, no telemetry, and it makes no
 network requests of its own. Scan output goes to the folder you choose and to a local run history

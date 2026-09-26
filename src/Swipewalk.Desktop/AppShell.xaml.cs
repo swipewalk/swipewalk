@@ -9,6 +9,7 @@ public partial class AppShell : Shell
 		InitializeComponent();
 		Routing.RegisterRoute("report", typeof(ReportPage));
 		Routing.RegisterRoute("compare", typeof(ComparePage));
+		Routing.RegisterRoute("guide", typeof(GuidedChecksPage));
 		// The sidebar grows with the text size so its text reflows instead of breaking inside words.
 		FlyoutWidth = SidebarWidth();
 		Services.Fonts.Changed += () => FlyoutWidth = SidebarWidth();
@@ -21,6 +22,8 @@ public partial class AppShell : Shell
 			Loaded += async (_, _) => await GoToAsync($"report?folder={Uri.EscapeDataString(latest.Folder)}");
 		else if (page == "compare" && Services.AppState.History.List().FirstOrDefault() is { } newest)
 			Loaded += async (_, _) => await GoToAsync($"compare?run={Uri.EscapeDataString(newest.Folder)}");
+		else if (page == "guide" && Services.AppState.History.List().FirstOrDefault() is { } forGuide)
+			Loaded += async (_, _) => await GoToAsync($"guide?folder={Uri.EscapeDataString(forGuide.Folder)}");
 	}
 
 	/// <summary>Grows with the text size, but less than the text, so the page keeps room to reflow.</summary>
