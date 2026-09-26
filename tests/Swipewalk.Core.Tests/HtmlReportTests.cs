@@ -233,12 +233,19 @@ public class HtmlReportTests
     [Fact]
     public void WcagGapsNotice_RendersNothing_WhenThereAreNoGaps()
     {
-        var screen = new ScreenResult
+        // A single Android screen isn't enough on its own any more: 1.4.10 Reflow's only mapped rule,
+        // offscreen-unreachable, runs on iOS only (see OffscreenUnreachableRule's remarks), so an iOS screen
+        // is needed too for every PartlyAutomated criterion to have somewhere its mapped rule(s) actually ran.
+        var androidScreen = new ScreenResult
         {
             Platform = Platform.Android, ScreenName = "Home", Findings = [],
             ScreenshotPath = "a.png", LargeTextSetting = "font scale 2.0", AtfRan = true,
         };
-        var report = new ScanReport { ToolVersion = "test", Screens = [screen] };
+        var iosScreen = new ScreenResult
+        {
+            Platform = Platform.iOS, ScreenName = "Home (iOS)", Findings = [], ScreenshotPath = "b.png",
+        };
+        var report = new ScanReport { ToolVersion = "test", Screens = [androidScreen, iosScreen] };
 
         var html = HtmlReport.Render(report);
 

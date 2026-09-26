@@ -126,14 +126,17 @@ public class CoverageReportTests
     [Fact]
     public void Summary_MatchesTheDocumentedExample_WhenNothingWasSkipped()
     {
-        // A screen with a screenshot, a large-text capture and a completed ATF harness run so nothing is
-        // skipped: every PartlyAutomated criterion stays PartlyAutomated instead of falling back to NotTestedInThisRun.
+        // A screen with a screenshot, a large-text capture and a completed ATF harness run so nothing that
+        // could run on this platform is skipped: every PartlyAutomated criterion whose mapped rule(s) can run
+        // on Android stays PartlyAutomated instead of falling back to NotTestedInThisRun. This screen is
+        // Android (Screen()'s default), so 1.4.10 Reflow -- whose only mapped rule, offscreen-unreachable,
+        // runs on iOS only -- is the one exception: NotTestedInThisRun here, not a gap in this test's setup.
         var screen = Screen(screenshotPath: "a.png", largeTextSetting: "font scale 2.0", atfRan: true);
 
         var summary = CoverageReport.Summary(CoverageReport.Build([screen]));
 
         Assert.Equal(
-            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 38 need a manual check, 4 usually out of scope, 0 not tested in this run.",
+            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 37 need a manual check, 4 usually out of scope, 1 not tested in this run.",
             summary);
     }
 

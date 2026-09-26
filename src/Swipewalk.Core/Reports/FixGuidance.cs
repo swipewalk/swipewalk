@@ -254,6 +254,17 @@ public static class FixGuidance
                 Ios: new("// Embed the content in a UIScrollView (or SwiftUI ScrollView) whose content size follows its content\nlet scroll = UIScrollView()\nscroll.translatesAutoresizingMaskIntoConstraints = false\nscroll.addSubview(contentView)\n// pin contentView's edges to scroll.contentLayoutGuide (lets it scroll vertically)\n// and its width to scroll.frameLayoutGuide (so only height, not width, can overflow)",
                     "Content pinned to a fixed-size container (no UIScrollView/SwiftUI ScrollView) so content past the screen edge at Dynamic Type's larger accessibility sizes cannot be scrolled to")),
 
+            // offscreen-unreachable only ever evaluates iOS captures (see the rule's own remarks), so there is
+            // no Android-platform variant here: a MAUI app's iOS build still gets the Maui variant below
+            // (Select picks by framework first), and a non-MAUI iOS app gets the Ios variant.
+            "offscreen-unreachable" => new(
+                "Make the screen scrollable so content that doesn't fit this device's screen at normal text size can still be reached, instead of being cut off with no way back to it.",
+                Maui: new("<ScrollView>\n    <VerticalStackLayout Padding=\"20,12\" Spacing=\"12\">\n        <!-- page content -->\n    </VerticalStackLayout>\n</ScrollView>",
+                    "The page's content is not inside a ScrollView (a plain VerticalStackLayout/Grid directly under ContentPage.Content) -- on a small enough screen, content past the bottom edge has no way back",
+                    "A ScrollView is present but its parent doesn't constrain its height, so it grows to fit its content instead of scrolling it, and never reports itself scrollable"),
+                Ios: new("// Embed the content in a UIScrollView (or SwiftUI ScrollView) whose content size follows its content\nlet scroll = UIScrollView()\nscroll.translatesAutoresizingMaskIntoConstraints = false\nscroll.addSubview(contentView)\n// pin contentView's edges to scroll.contentLayoutGuide (lets it scroll vertically)\n// and its width to scroll.frameLayoutGuide (so only height, not width, can overflow)",
+                    "Content pinned to a fixed-size container (no UIScrollView/SwiftUI ScrollView) so content past the screen edge on a small enough device cannot be scrolled to")),
+
             "engine:dynamicType" => new(
                 "Check the screen with the largest text size (Settings > Accessibility > Display & Text Size). Text should grow and must not be cut off.",
                 Maui: new("<!-- FontAutoScalingEnabled is True by default; avoid fixed HeightRequest on text containers -->\n<Label FontAutoScalingEnabled=\"True\" />",

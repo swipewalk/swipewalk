@@ -139,13 +139,15 @@ public static class CoverageCatalog
             "Check text is rendered as real text rather than as an image of text, except logos or where the " +
             "exact presentation is essential.",
             "images-of-text"),
-        Manual(WcagCriteria.Reflow,
+        PartlyAutomated(WcagCriteria.Reflow,
             "Phone screens in portrait are about 320-430 dp/pt wide, close to the 320 CSS px 1.4.10 uses " +
             "(WCAG2ICT treats dp/pt as CSS px). In portrait, with the largest Android Display size or iOS " +
             "Display Zoom, and on tablets in the narrowest split-screen/Slide Over width, check no content " +
             "needs scrolling in two directions. In landscape, check horizontally scrolling content at a " +
             "height near 256 dp/pt. Maps, data tables, video, games and toolbars that must stay visible may " +
-            "use 2D layout.",
+            "use 2D layout. The scan flags controls or text positioned wholly or mostly outside the visible " +
+            "screen at normal text size with no scrollable ancestor for review (offscreen-unreachable, iOS " +
+            "only for now) -- check whether they can be reached another way.",
             "reflow"),
         PartlyAutomated(WcagCriteria.NonTextContrast,
             "Measure the contrast of UI component boundaries/icons and focus indicators against their " +
