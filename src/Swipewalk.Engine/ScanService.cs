@@ -223,6 +223,23 @@ public sealed class ScanService(IProgress<string> log)
                 };
         }
 
+        // Captured (and the device rotated back) before the main rule run below, not after like the
+        // appearance rescan: OrientationRestrictedRule needs the second capture attached to snapshot.Orientation
+        // (the same nested-capture shape as snapshot.LargeText) to decide whether this screen rotated, so it
+        // has to be there when RuleRunner.Run(snapshot) runs every rule once, below.
+        string? orientationSkippedReason = null;
+        if (options.OrientationBoth && options.FromCapture is null)
+        {
+            var (other, primaryOrientation, otherOrientation, reason) = await CaptureOtherOrientationAsync(ios, options, snapshot, captureDir, cancellationToken);
+            if (other is not null)
+                snapshot = snapshot with { Orientation = other, OrientationLabel = primaryOrientation, OtherOrientationLabel = otherOrientation };
+            else
+            {
+                orientationSkippedReason = reason;
+                log.Report($"Orientation check not done: {reason}.");
+            }
+        }
+
         var screen = new RuleRunner(DefaultRules.All).Run(snapshot);
         if (largeTextSkippedReason is not null)
             screen = screen with { LargeTextSkippedReason = largeTextSkippedReason };
@@ -230,6 +247,41 @@ public sealed class ScanService(IProgress<string> log)
             screen = screen with { BaselineTextSizeNote = baselineTextSizeNote };
         if (appLaunchedNote is not null)
             screen = screen with { AppLaunchedNote = appLaunchedNote };
+
+        // With the primary rule run above already reflecting whether this screen rotated (via
+        // OrientationRestrictedRule reading snapshot.Orientation), only the "it did rotate" case needs more
+        // work here: run every rule on the other capture too and tag findings by orientation (see
+        // OrientationMerge), the same shape RunAppearanceRescanAsync below uses for appearance.
+        if (snapshot.Orientation is { } otherOrientationSnapshot)
+        {
+            var rotated = OrientationChangeDetector.Rotated(snapshot, otherOrientationSnapshot);
+            if (rotated == true)
+            {
+                var otherOrientationScreen = new RuleRunner(DefaultRules.All).Run(otherOrientationSnapshot);
+                screen = OrientationMerge.Merge(screen, snapshot.OrientationLabel!, otherOrientationScreen, snapshot.OtherOrientationLabel!);
+            }
+            else if (rotated == false)
+                // OrientationRestrictedRule already added its finding above. Show the second screenshot
+                // alongside without tagging any of the primary screen's findings by orientation -- the second
+                // capture wasn't run through every other rule, since the screen is exactly the same content twice.
+                screen = screen with
+                {
+                    Orientation = snapshot.OrientationLabel,
+                    OtherOrientation = snapshot.OtherOrientationLabel,
+                    OtherOrientationScreenshotPath = otherOrientationSnapshot.ScreenshotPath,
+                    OtherOrientationPixelScale = otherOrientationSnapshot.PixelScale,
+                    OrientationUnchanged = true,
+                };
+            else
+                // Inconclusive (one of the two captures had no usable screenshot or root bounds, so
+                // OrientationRestrictedRule stayed silent too): reported the same as any other
+                // attempted-but-not-completed check, never as "checked" -- OtherOrientation is deliberately
+                // left unset here so ScreenActivityBuilder counts this as skipped, not ran, and WCAG 1.3.4
+                // coverage doesn't claim an automated result with no evidence behind it.
+                screen = screen with { OrientationSkippedReason = "could not tell whether the screen rotated (no usable screenshot or bounds in one of the captures)" };
+        }
+        else if (orientationSkippedReason is not null)
+            screen = screen with { OrientationSkippedReason = orientationSkippedReason };
 
         if (options.AppearanceBoth && options.FromCapture is null)
         {
@@ -353,6 +405,113 @@ public sealed class ScanService(IProgress<string> log)
                 AppearanceRestore.Forget(serial);
             }
         }
+    }
+
+    /// <summary>
+    /// <see cref="ScanOptions.OrientationBoth"/>: rotates the device to its other orientation and captures
+    /// the screen again, restoring the device's orientation and rotation-lock state afterward no matter what
+    /// happens (an error, a cancellation, or a clean finish) -- exactly, on Android (the original
+    /// accelerometer_rotation/user_rotation are read back and reapplied verbatim); on the iOS Simulator,
+    /// back to whichever of portrait/landscape the primary capture's own screenshot/bounds showed, since
+    /// there is no API to read the Simulator's true original orientation back (see the iOS branch below) --
+    /// the same before-anything-changes,
+    /// finally-restores shape as <see cref="RunAppearanceRescanAsync"/> (mirroring <see cref="OrientationRestore"/>
+    /// on <see cref="AppearanceRestore"/>). Not supported yet on a physical iPhone -- returns a skip reason
+    /// instead of touching the device -- see <see cref="OrientationLabels.PhysicalIphoneNotSupportedReason"/>.
+    /// Unlike <see cref="RunAppearanceRescanAsync"/>, this returns the raw <see cref="ScreenSnapshot"/>, not
+    /// an already-ruled <see cref="ScreenResult"/>: <see cref="ScanAsync"/> attaches it to
+    /// <see cref="ScreenSnapshot.Orientation"/> before running the rules once, so
+    /// <see cref="Rules.OrientationRestrictedRule"/> can decide whether this screen rotated from that single
+    /// run, and only runs the rules a second time (on this returned snapshot) if it did.
+    /// </summary>
+    /// <returns>The other capture and the two orientation labels (all three non-null together, on success);
+    /// a skip reason when nothing was captured.</returns>
+    private async Task<(ScreenSnapshot? Other, string? Orientation, string? OtherOrientation, string? SkippedReason)> CaptureOtherOrientationAsync(
+        bool ios, ScanOptions options, ScreenSnapshot snapshot, string captureDir, CancellationToken cancellationToken)
+    {
+        var otherCaptureDir = Path.Combine(captureDir, "orientation");
+        if (ios)
+        {
+            var deviceId = options.Device ?? await IosCollector.BootedSimulatorAsync();
+            var device = deviceId is null ? null : (await Devices.IosAsync()).FirstOrDefault(d => d.Id == deviceId);
+            if (device is null || device.IsPhysical)
+                return (null, null, null, OrientationLabels.PhysicalIphoneNotSupportedReason);
+            var udid = device.Id;
+
+            // No simctl (or other) API reads the Simulator's current orientation back (see
+            // IosCollector.SetOrientationAsync's remarks); infer the original from the primary capture's own
+            // screenshot/bounds aspect ratio -- the same evidence OrientationChangeDetector compares captures
+            // with -- and always explicitly rotate back to that same inferred value afterward. Defaults to
+            // portrait (most apps' natural orientation) when the primary capture gives no usable evidence.
+            var primaryIsLandscape = IsLandscape(snapshot) ?? false;
+            var originalTarget = primaryIsLandscape ? "landscapeLeft" : "portrait";
+            var otherTarget = primaryIsLandscape ? "portrait" : "landscapeLeft";
+
+            OrientationRestore.Remember(udid, originalTarget);
+            try
+            {
+                var otherLabel = primaryIsLandscape ? OrientationLabels.Portrait : OrientationLabels.Landscape;
+                log.Report($"Rotating to {otherLabel} and capturing again...");
+                await IosCollector.SetOrientationAsync(options.HarnessProject, udid, otherTarget, cancellationToken);
+                await IosCollector.CaptureAsync(otherCaptureDir, options.BundleId!, udid, options.HarnessProject, options.Team,
+                    options.ForceResultBundle, options.Profile, options.HarnessBundlePrefix, log: log);
+                var otherSnapshot = IosCollector.Load(otherCaptureDir, options.ScreenName);
+                var primaryLabel = primaryIsLandscape ? OrientationLabels.Landscape : OrientationLabels.Portrait;
+                return (otherSnapshot, primaryLabel, otherLabel, null);
+            }
+            finally
+            {
+                await IosCollector.SetOrientationAsync(options.HarnessProject, udid, originalTarget, cancellationToken);
+                OrientationRestore.Forget(udid);
+            }
+        }
+        else
+        {
+            var serial = await AndroidCollector.ResolveSerialAsync(options.Device);
+            var (accelerometerRotation, userRotation) = await AndroidOrientation.ReadAsync(serial);
+            OrientationRestore.Remember(serial, $"{accelerometerRotation},{userRotation}");
+            try
+            {
+                // The starting shape comes from the primary capture's own screenshot/bounds (the same
+                // evidence OrientationChangeDetector compares captures with), not from user_rotation alone:
+                // when accelerometer_rotation is 1 (auto-rotate on), Android ignores user_rotation and it can
+                // hold a stale value from a previous session, which would otherwise pick the wrong target and
+                // mislabel a screen that actually did rotate.
+                var primaryIsLandscape = IsLandscape(snapshot) ?? false;
+                var otherRotation = primaryIsLandscape ? AndroidOrientation.Rotation0 : AndroidOrientation.Rotation90;
+                var otherLabel = primaryIsLandscape ? OrientationLabels.Portrait : OrientationLabels.Landscape;
+                log.Report($"Rotating to {otherLabel} and capturing again...");
+                await AndroidOrientation.SetAsync(serial, accelerometerRotation: 0, otherRotation);
+                if (options.Package is not null)
+                    await AndroidCollector.EnsureAppInFrontAsync(options.Package, serial, log, cancellationToken);
+                // captureScreenReader is always false here, for the same reason as the appearance rescan
+                // above: --screen-reader already opts into one TalkBack walk for the primary capture, and
+                // doubling that silently for the orientation rescan would surprise a run that only asked for
+                // one of them.
+                await AndroidCollector.CaptureAsync(otherCaptureDir, serial, maskStatusBar: !options.KeepStatusBar,
+                    expectedPackage: options.Package, androidHarnessDir: options.AndroidHarnessDir, captureScreenReader: false);
+                var otherSnapshot = AndroidCollector.Load(otherCaptureDir, options.ScreenName, options.Package);
+                var primaryLabel = primaryIsLandscape ? OrientationLabels.Landscape : OrientationLabels.Portrait;
+                return (otherSnapshot, primaryLabel, otherLabel, null);
+            }
+            finally
+            {
+                await AndroidOrientation.SetAsync(serial, accelerometerRotation, userRotation);
+                OrientationRestore.Forget(serial);
+            }
+        }
+    }
+
+    /// <summary>True = the primary capture's screenshot (falling back to its root bounds) is wider than
+    /// tall; false = portrait-shaped; null = neither gives a usable (non-zero) size -- see
+    /// <see cref="OrientationChangeDetector"/>, whose private helper this duplicates the shape of (that one
+    /// isn't exposed, since comparing a snapshot against itself is meaningless as a "rotated" question).</summary>
+    private static bool? IsLandscape(ScreenSnapshot snapshot)
+    {
+        if (snapshot.Screenshot is { } shot && shot.Width > 0 && shot.Height > 0)
+            return shot.Width > shot.Height;
+        var bounds = snapshot.Root.Bounds;
+        return bounds.Width > 0 && bounds.Height > 0 ? bounds.Width > bounds.Height : null;
     }
 
     /// <summary>

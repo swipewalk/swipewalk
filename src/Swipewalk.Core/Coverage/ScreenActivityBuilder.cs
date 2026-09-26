@@ -86,6 +86,18 @@ public static class ScreenActivityBuilder
         else
             skipped["text-resize-navigation"] = screen.LargeTextSkippedReason ?? "large-text check not requested";
 
+        // orientation-restricted (OrientationRestrictedRule) needs a second capture in the other orientation
+        // (ScreenSnapshot.Orientation, attached only when scan --orientation both ran); OtherOrientation is
+        // only set once that capture succeeded (see Swipewalk.Engine.ScanService), whether or not the rule
+        // itself found the screen restricted -- the same "attempted, not just found something" shape as
+        // text-contrast's screenshot gate above. A finding on the screen counts as ran too, the same
+        // belt-and-suspenders as text-resize-navigation, in case a future caller sets the finding without also
+        // setting OtherOrientation.
+        if (screen.OtherOrientation is not null || screen.Findings.Any(f => f.RuleId == "orientation-restricted"))
+            ran.Add("orientation-restricted");
+        else
+            skipped["orientation-restricted"] = screen.OrientationSkippedReason ?? "orientation check not requested (pass --orientation both)";
+
         // The platform's own accessibility audit (EngineIssueRule) only ever runs as part of the iOS
         // collector (see XcuiTreeParser); Android and Windows collectors never populate EngineIssues, so a
         // screen with zero engine findings there means the audit doesn't exist, not that it ran and found

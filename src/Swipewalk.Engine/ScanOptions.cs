@@ -49,6 +49,21 @@ public sealed record ScanOptions
     /// </summary>
     public bool AppearanceBoth { get; init; }
 
+    /// <summary>
+    /// scan only for now: also capture the screen rotated to the device's other orientation (portrait &lt;-&gt;
+    /// landscape; Android `settings put system accelerometer_rotation/user_rotation`; iOS Simulator via the
+    /// harness's <c>XCUIDevice.shared.orientation</c> -- there is no `simctl` equivalent) and check whether
+    /// the screen's content actually followed, for WCAG 1.3.4 Orientation (see
+    /// <c>Swipewalk.Core.Rules.OrientationRestrictedRule</c>). When it did rotate, every rule runs on that
+    /// capture too and findings are tagged by orientation (see <c>Swipewalk.Core.Reports.OrientationMerge</c>),
+    /// the same shape as <see cref="AppearanceBoth"/>. The device's original orientation and rotation-lock
+    /// state are restored afterward, including on an error or cancellation. Off by default: it doubles the
+    /// capture and rule-running work for a screen. Not supported yet on a physical iPhone -- see
+    /// <c>Swipewalk.Core.Reports.OrientationLabels.PhysicalIphoneNotSupportedReason</c> -- where it is
+    /// skipped with a reason rather than attempted.
+    /// </summary>
+    public bool OrientationBoth { get; init; }
+
     public bool KeepStatusBar { get; init; }
     public bool SkipChecks { get; init; }
 

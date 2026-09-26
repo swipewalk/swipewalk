@@ -32,6 +32,10 @@ public sealed record RunConfig
     /// Swipewalk.Engine.ScanOptions.AppearanceBoth. Off by default.</summary>
     public bool Appearance { get; init; }
 
+    /// <summary>scan only for now: also capture and check the screen rotated to the device's other
+    /// orientation -- see Swipewalk.Engine.ScanOptions.OrientationBoth. Off by default.</summary>
+    public bool Orientation { get; init; }
+
     /// <summary>record: scan automatically when the screen changes; off by default, matching the CLI/desktop
     /// default -- see Swipewalk.Engine.ScanOptions.AutoScanOnScreenChange.</summary>
     public bool AutoScanOnScreenChange { get; init; }
@@ -96,6 +100,10 @@ public sealed record RunConfig
             // Not wired into Recorder yet (see ScanOptions.AppearanceBoth); reject rather than silently do
             // nothing, so nobody thinks a recording checked both appearances when it didn't.
             throw new InvalidOperationException("\"appearance\" is scan only for now; record does not support it yet.");
+        if (Orientation && Mode == "record")
+            // Not wired into Recorder yet (see ScanOptions.OrientationBoth); reject rather than silently do
+            // nothing, so nobody thinks a recording checked both orientations when it didn't.
+            throw new InvalidOperationException("\"orientation\" is scan only for now; record does not support it yet.");
         foreach (var target in Targets)
         {
             if (target.Platform is not ("android" or "ios"))
@@ -133,6 +141,7 @@ public sealed record RunConfig
             Standard = Standard,
             LargeText = LargeText,
             AppearanceBoth = Appearance,
+            OrientationBoth = Orientation,
             AutoScanOnScreenChange = AutoScanOnScreenChange,
             LargeTextRestartPolicy = LargeTextRestart is null
                 ? LargeTextRestartPolicies.Default(interactive: false, recordMode: Mode == "record")

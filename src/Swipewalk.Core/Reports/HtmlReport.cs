@@ -258,7 +258,12 @@ public static class HtmlReport
                 : s.OtherAppearance is not null
                     ? $", also checked in {E(s.OtherAppearance)} appearance"
                     : s.AppearanceSkippedReason is { } appearanceReason ? $", other appearance not checked: {E(appearanceReason)}" : "";
-            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}{appearanceNote}</span></li>""");
+            var orientationNote = s.OrientationUnchanged == true
+                ? $", did not visibly rotate to {E(s.OtherOrientation)}"
+                : s.OtherOrientation is not null
+                    ? $", also checked in {E(s.OtherOrientation)}"
+                    : s.OrientationSkippedReason is { } orientationReason ? $", other orientation not checked: {E(orientationReason)}" : "";
+            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}{appearanceNote}{orientationNote}</span></li>""");
         }
         html.Append("</ol>");
         if (report.MissingScreens.Count > 0)
@@ -303,12 +308,16 @@ public static class HtmlReport
 
     private sealed record Shot(string Id, int Width, int Height, double Scale);
 
-    /// <summary>The normal screenshot, the one at enlarged text size, and -- when the appearance rescan ran
-    /// (see <c>ScanOptions.AppearanceBoth</c>) -- the one in the other dark/light appearance.</summary>
-    private sealed record Shots(Shot? Normal, Shot? LargeText, Shot? Appearance = null, string? OtherAppearance = null)
+    /// <summary>The normal screenshot, the one at enlarged text size, and -- when the appearance and/or
+    /// orientation rescans ran (see <c>ScanOptions.AppearanceBoth</c>/<c>OrientationBoth</c>) -- the one in
+    /// the other dark/light appearance and/or the one rotated to the other orientation.</summary>
+    private sealed record Shots(
+        Shot? Normal, Shot? LargeText, Shot? Appearance = null, string? OtherAppearance = null,
+        Shot? Orientation = null, string? OtherOrientation = null)
     {
         public Shot? For(Finding f) => IsLargeText(f) ? LargeText
             : f.Appearance is { } a && OtherAppearance is not null && a == OtherAppearance ? Appearance
+            : f.Orientation is { } o && OtherOrientation is not null && o == OtherOrientation ? Orientation
             : Normal;
     }
 
@@ -357,6 +366,32 @@ public static class HtmlReport
             """;
     }
 
+    /// <summary>The screenshot captured after rotating the device to the screen's other orientation (see
+    /// <c>ScanOptions.OrientationBoth</c>), with boxes only for findings seen only in that orientation --
+    /// findings also seen in the primary capture are already numbered there, so they aren't repeated here.
+    /// When the screen did not visibly rotate (<see cref="ScreenResult.OrientationUnchanged"/> is true), no
+    /// finding carries this orientation label (see <see cref="Finding.Orientation"/>'s remarks), so this
+    /// draws no boxes at all -- the screen-level finding that says so is shown as plain text instead.</summary>
+    private static string OrientationFigure(ScreenResult screen, Shot other, List<(int Number, Finding Finding)> numbered)
+    {
+        var s = other.Scale;
+        var boxes = string.Concat(numbered.Where(n => n.Finding.Orientation == screen.OtherOrientation && n.Finding.Bounds.Width > 0).Select(n =>
+        {
+            var b = n.Finding.Bounds;
+            return $"""
+                <g class="box review"><rect x="{N(b.X * s)}" y="{N(b.Y * s)}" width="{N(b.Width * s)}" height="{N(b.Height * s)}" rx="6"/>
+                <rect class="tag" x="{N(b.X * s)}" y="{N(b.Y * s)}" width="{24 + 20 * n.Number.ToString().Length}" height="44" rx="6"/>
+                <text x="{N(b.X * s)}" y="{N(b.Y * s)}" dx="12" dy="32">{n.Number}</text></g>
+                """;
+        }));
+        return $"""
+            <figcaption class="large-caption">After rotating the device to {E(screen.OtherOrientation)}</figcaption>
+            <div class="stage large">
+              <svg viewBox="0 0 {other.Width} {other.Height}" role="img" aria-label="Screenshot of {E(screen.ScreenName)} after rotating the device to {E(screen.OtherOrientation)}"><use href="#{other.Id}"/>{boxes}</svg>
+            </div>
+            """;
+    }
+
     /// <summary>How the large-text capture was produced, e.g. " (via system setting)" or, on a physical
     /// iPhone that applies Dynamic Type only at launch, " (via system setting, applied after a restart)".
     /// When a force-stop + relaunch comparison was captured but text still didn't grow (so
@@ -387,6 +422,7 @@ public static class HtmlReport
         var shot = EmbedScreenshot(html, screen.ScreenshotPath, screen.PixelScale, $"{id}-shot");
         var largeShot = EmbedScreenshot(html, screen.LargeTextScreenshotPath, screen.LargeTextPixelScale, $"{id}-large");
         var appearanceShot = EmbedScreenshot(html, screen.OtherAppearanceScreenshotPath, screen.OtherAppearancePixelScale, $"{id}-appearance");
+        var orientationShot = EmbedScreenshot(html, screen.OtherOrientationScreenshotPath, screen.OtherOrientationPixelScale, $"{id}-orientation");
 
         html.Append($"""
             <section class="screen" id="{id}" aria-labelledby="{id}-title">
@@ -419,6 +455,14 @@ public static class HtmlReport
         }
         else if (screen.AppearanceSkippedReason is { } appearanceSkippedReason)
             html.Append($"""<p class="hint">Appearance check not done: {E(appearanceSkippedReason)}. Check this screen in the other appearance by hand.</p>""");
+        if (orientationShot is not null)
+        {
+            html.Append(OrientationFigure(screen, orientationShot, numbered));
+            if (screen.OrientationUnchanged == true)
+                html.Append($"""<p class="hint">The screen still looked like {E(screen.Orientation)} after the device was rotated to {E(screen.OtherOrientation)}. See the "Needs review" finding below (WCAG 1.3.4 Orientation): check by hand whether a single orientation is essential here.</p>""");
+        }
+        else if (screen.OrientationSkippedReason is { } orientationSkippedReason)
+            html.Append($"""<p class="hint">Orientation check not done: {E(orientationSkippedReason)}. Check this screen in the other orientation by hand.</p>""");
         html.Append($"""
                 </figure>
                 <div class="panel">
@@ -436,7 +480,7 @@ public static class HtmlReport
         if (numbered.Count == 0)
             html.Append("<p class=\"empty\">Automated checks found no issues on this screen. Manual testing is still required.</p>");
 
-        var shots = new Shots(shot, largeShot, appearanceShot, screen.OtherAppearance);
+        var shots = new Shots(shot, largeShot, appearanceShot, screen.OtherAppearance, orientationShot, screen.OtherOrientation);
         FindingGroup(html, screen, shots, id, "WCAG issues", "issue",
             numbered.Where(n => n.Finding.Kind == FindingKind.WcagIssue && report.InFocus(n.Finding)).ToList(), byCriterion: true);
         FindingGroup(html, screen, shots, id, "Needs review", "review",
@@ -610,6 +654,10 @@ public static class HtmlReport
             chips += appearance == AppearanceLabels.Both
                 ? """<span class="chip appearance">Found in both appearances</span>"""
                 : $"""<span class="chip appearance">Only in {E(appearance)} appearance</span>""";
+        if (f.Orientation is { } orientation)
+            chips += orientation == OrientationLabels.Both
+                ? """<span class="chip orientation">Found in both orientations</span>"""
+                : $"""<span class="chip orientation">Only in {E(orientation)}</span>""";
 
         var element = f.Label is null ? E(f.Role) : $"{E(f.Role)} “{E(f.Label)}”";
         html.Append($"""

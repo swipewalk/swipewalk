@@ -451,6 +451,60 @@ for UI automation that a person has to give); it never touched the device's appe
 left no appearance-restore marker behind, but the skip message itself was not observed on hardware
 in this pass.
 
+### Automating the orientation check: `scan --orientation both`
+
+`scan --orientation both` rotates the device to the screen's other orientation, captures again, and
+checks whether the screen's shape changed -- WCAG 1.3.4 Orientation (AA). When it didn't change,
+Swipewalk reports `orientation-restricted` as "Needs review", never as a confirmed failure, since
+1.3.4 exempts a screen where a specific orientation is essential. Verified with real runs on an
+Android emulator, a physical Pixel 4a, and the iOS Simulator: on Android, confirmed restored to the
+starting orientation and rotation-lock state exactly afterward (by reading back
+`accelerometer_rotation`/`user_rotation`); on the iOS Simulator, returned to whichever of
+portrait/landscape the first capture showed (the Simulator has no rotation-lock state, and there is
+no API to read its true original orientation):
+
+- **BuggyApp (MAUI), Android emulator and Pixel 4a**: the first screen rotated cleanly on both
+  devices (screenshot dimensions swapped, e.g. 1080x2424 to 2424x1080 on the emulator), and every
+  rule's findings were tagged by orientation as expected -- no `orientation-restricted` finding.
+- **samples/NativeAndroid's launcher screen, Android emulator and Pixel 4a**: rotated cleanly too
+  (screenshot dimensions swapped on each device).
+- **WeatherTwentyOne (MAUI), Android emulator and Pixel 4a**: rotated cleanly on both devices.
+- **A harness screenshot bug, found and fixed while verifying the iOS Simulator (Simulator only;
+  not yet checked on a physical iPhone)**: an early run reported `orientation-restricted` "Needs
+  review" on every iOS screen tried, even BuggyApp (whose iOS Info.plist does declare landscape
+  support). Comparing the harness's own screenshot.png against `xcrun simctl io <udid> screenshot`
+  (the Simulator's real screen) at the same moment showed the app had genuinely rotated -- only the
+  harness's own screenshot stayed portrait-shaped. Cause: XCTest's `XCUIScreenshot.pngRepresentation`
+  encodes the screen's native (portrait) pixel buffer and ignores the image's `imageOrientation`, so
+  a screenshot taken while the interface is rotated comes out in the wrong pixel dimensions
+  (confirmed directly: `image.size` correctly reported the rotated size and `imageOrientation ==
+  .left`, but `pngRepresentation` still wrote the un-rotated buffer). Fixed by re-rendering the
+  image through `UIGraphicsImageRenderer`, which applies `imageOrientation`, before encoding to PNG
+  (`harness/ios/HarnessUITests/ScanTests.swift`) -- a capture-only fix, nothing about how the device
+  is rotated or restored changed.
+- **BuggyApp (MAUI), iOS Simulator, re-verified after the fix**: rotated cleanly (screenshot
+  1206x2622 to 2622x1206), findings tagged by orientation ("both"/"portrait"/"landscape"), and no
+  `orientation-restricted` finding -- run end-to-end through `swipewalk scan --orientation both`,
+  not just the harness in isolation.
+- **samples/NativeiOS's launcher screen (UIKit), iOS Simulator, re-verified after the fix**: also
+  rotated cleanly, confirmed visually against a `simctl` screenshot taken at the same moment. Its
+  Info.plist and project.yml declare no orientation list (no `UISupportedInterfaceOrientations` key
+  in either), and it still rotated on this Simulator and iOS/Xcode version -- one observation, not a
+  general statement about iOS's default behavior.
+- **Interrupted run, Android emulator**: a scan was killed (`kill -9`) right after it rotated the
+  device to landscape but before it could restore; the device was confirmed still rotated
+  (`accelerometer_rotation=0`, `user_rotation=1`) with a restore marker left behind. The next
+  `swipewalk doctor` restored it exactly (`accelerometer_rotation=1`, `user_rotation=0`) and
+  removed the marker.
+
+Not supported yet on a physical iPhone -- Swipewalk doesn't rotate a physical iPhone yet, so
+`--orientation both` is skipped there with a reason before touching the device. A run was attempted
+against a connected iPhone in this pass to check the harness fix on real hardware too, but it
+stopped before reaching the orientation step: the phone needed a fresh Face ID/passcode approval for
+UI automation, which needs a person present, so it was left there rather than retried automatically.
+The orientation-specific skip logic itself only runs after that first capture succeeds, so it was
+not exercised on hardware in this pass.
+
 ### What Google's Accessibility Test Framework added
 
 Running Google's Accessibility Test Framework (ATF) alongside Swipewalk's own rules, on three

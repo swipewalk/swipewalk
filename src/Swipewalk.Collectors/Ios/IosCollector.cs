@@ -491,6 +491,38 @@ public static class IosCollector
     /// <summary>Sets the Simulator's appearance ("dark" or "light").</summary>
     public static Task SetAppearanceAsync(string udid, string appearance) => Simctl("ui", udid, "appearance", appearance);
 
+    /// <summary>
+    /// Rotates the Simulator to <paramref name="orientation"/> ("portrait" or "landscapeLeft") for the
+    /// orientation rescan (<c>scan --orientation both</c>). There is no <c>simctl</c> equivalent of
+    /// <see cref="SetAppearanceAsync"/> for orientation (checked: `simctl ui &lt;udid&gt; --help` lists
+    /// appearance/increase_contrast/content_size only, no orientation option, on Xcode 27), so this runs the
+    /// harness's one-shot <c>ScanTests/testSetOrientation</c>, which sets <c>XCUIDevice.shared.orientation</c>
+    /// -- the same one-small-command shape as the text-size steps below, but with no signing (Simulator only:
+    /// a physical iPhone is never passed here -- see
+    /// <see cref="Reports.OrientationLabels.PhysicalIphoneNotSupportedReason"/>) and no output file (success
+    /// is exit code 0).
+    /// </summary>
+    public static async Task SetOrientationAsync(string? harnessProject, string udid, string orientation, CancellationToken cancellationToken = default)
+    {
+        var workDir = Path.Combine(Path.GetTempPath(), $"swipewalk-orientation-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workDir);
+        try
+        {
+            var info = HarnessProcess(harnessProject, udid, "-", workDir, "ScanTests/testSetOrientation", serve: false);
+            info.Environment["TEST_RUNNER_CF_ORIENTATION"] = orientation;
+            var (exitCode, output) = await RunAsync(info);
+            if (exitCode != 0)
+            {
+                var errors = string.Join('\n', output.Split('\n').Where(l => l.Contains("error", StringComparison.OrdinalIgnoreCase)).Take(5));
+                throw new InvalidOperationException($"Could not rotate the Simulator to {orientation} (xcodebuild exit {exitCode}). {errors}");
+            }
+        }
+        finally
+        {
+            TryDelete(workDir);
+        }
+    }
+
     /// <summary>The pure decision behind <see cref="CaptureLargeTextAsync"/>, once a capture attempt has finished
     /// (or never succeeded): no snapshot means the app never came back to front; a snapshot of a different screen
     /// means it restarted or navigated away.</summary>

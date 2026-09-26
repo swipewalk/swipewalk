@@ -100,6 +100,16 @@ const string Usage = """
                              appearance afterward, including on an error or Ctrl-C. Off by default. Not
                              supported yet on a physical iPhone (the report says why it was skipped); Simulator
                              and emulator/Android device both work
+      --orientation <both>   scan: also rotate the device to its other orientation (portrait <-> landscape;
+                             Android `settings put system accelerometer_rotation/user_rotation`; iOS Simulator
+                             via the harness) and check whether the screen's content actually followed --
+                             for review against WCAG 1.3.4 Orientation, since a single orientation can be
+                             essential to a screen. When it does rotate, every check runs on that capture too.
+                             Restores the device's orientation and rotation-lock state afterward (exactly, on
+                             Android; on the iOS Simulator, back to whichever of portrait/landscape the first
+                             capture showed, since there's no way to read the original back), including on an
+                             error or Ctrl-C. Off by default. Not supported yet on a physical iPhone (the
+                             report says why it was skipped); Simulator and emulator/Android device both work
       --standard <id>        Focus the report on one standard: ada-title-ii, section-508, en-301-549, en-301-549-v4, uk-public-sector
       --expect <names>       record: comma-separated screens you meant to cover; missing ones are listed
       --auto                 record: also scan automatically when the screen changes (default: off -- only
@@ -334,6 +344,21 @@ if (options.GetValueOrDefault("appearance") is { } appearanceValue)
         return 1;
     }
 }
+if (options.GetValueOrDefault("orientation") is { } orientationValue)
+{
+    if (orientationValue != "both")
+    {
+        Console.Error.WriteLine($"--orientation must be \"both\", not \"{orientationValue}\".");
+        return 1;
+    }
+    if (command == "record")
+    {
+        // Not wired into Recorder yet (see ScanOptions.OrientationBoth); reject rather than silently do
+        // nothing, so nobody thinks a recording checked both orientations when it didn't.
+        Console.Error.WriteLine("--orientation is scan only for now; record does not support it yet.");
+        return 1;
+    }
+}
 
 var scanOptions = ToScanOptions(platformName, options, command);
 if (command == "doctor")
@@ -444,6 +469,7 @@ static ScanOptions ToScanOptions(string platform, Dictionary<string, string> o, 
     ScreenName = o.GetValueOrDefault("screen") ?? "Screen 1",
     LargeText = command == "record" ? o.GetValueOrDefault("large-text") != "false" : o.GetValueOrDefault("large-text") is { } lt && lt != "false",
     AppearanceBoth = o.GetValueOrDefault("appearance") == "both",
+    OrientationBoth = o.GetValueOrDefault("orientation") == "both",
     KeepStatusBar = o.GetValueOrDefault("keep-status-bar") is { } k && k != "false",
     SkipChecks = o.ContainsKey("skip-checks"),
     FromCapture = o.GetValueOrDefault("from"),

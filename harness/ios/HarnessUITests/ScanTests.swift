@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Thin capture harness driven by Swipewalk. Environment (pass to xcodebuild with a TEST_RUNNER_ prefix):
 ///   CF_BUNDLE_ID   app to inspect
@@ -10,6 +11,7 @@ import XCTest
 ///   CF_TEXTSIZE_TARGET  testTextSizeRestore only: the exact state to move Settings to, as
 ///                       SettingsTextSize.swift's TextSizeState.description ("on:5/7") -- used both to move
 ///                       to AX3 and to put an earlier state back; there is no separate "set" step
+///   CF_ORIENTATION  testSetOrientation only: "portrait" or "landscapeLeft" -- see that test's own comment
 /// Settings text-size driving (see SettingsTextSize.swift) is exposed both as one-shot test methods below
 /// (testTextSizeRead/Restore, for `scan`) and as serve-mode commands (textsize-read/restore, relaunch, for
 /// `record`) in testServe. Callers always read first and remember the original before applying anything (see
@@ -266,6 +268,23 @@ final class ScanTests: XCTestCase {
         }
     }
 
+    /// One-shot: rotates the Simulator (or device) to CF_ORIENTATION ("portrait" or "landscapeLeft") for the
+    /// orientation rescan (`scan --orientation both`; see Swipewalk.Collectors.Ios.IosCollector
+    /// .SetOrientationAsync, whose remarks explain why this exists -- there is no `simctl` equivalent).
+    /// XCUIDevice.shared.orientation is the same API UI-testing teams commonly use to rotate a Simulator; it
+    /// has only been verified here against a Simulator (Swipewalk does not attempt this on a physical
+    /// iPhone). No output file: success is exit code 0, a crash or a non-zero exit is the failure signal, the
+    /// same shape as the relaunch action in testServe below.
+    func testSetOrientation() throws {
+        guard let target = env["CF_ORIENTATION"] else {
+            XCTFail("CF_ORIENTATION must be set to \"portrait\" or \"landscapeLeft\"")
+            return
+        }
+        XCUIDevice.shared.orientation = target == "landscapeLeft" ? .landscapeLeft : .portrait
+        // Lets the rotation animate and the app's layout settle before the next capture reads it.
+        Thread.sleep(forTimeInterval: 1.0)
+    }
+
     /// Runs a Settings text-size step and writes its result (or a machine-readable error, never a crash) as
     /// JSON to CF_OUTPUT/textsize.json -- attached to the test result with CF_ATTACH=1 (physical devices,
     /// whose files the Mac can't read directly), written straight into CF_OUTPUT otherwise. Settings is left
@@ -310,7 +329,20 @@ final class ScanTests: XCTestCase {
 
         let screenshot = XCUIScreen.main.screenshot()
         scale = screenshot.image.scale
-        try screenshot.pngRepresentation.write(to: outDir.appendingPathComponent("screenshot.png"))
+        // XCUIScreenshot.pngRepresentation encodes the screen's native (portrait) pixel buffer and
+        // ignores image.imageOrientation, so a screenshot taken while the interface is rotated (the
+        // orientation rescan, `scan --orientation both`) comes out sideways at the wrong pixel dimensions
+        // (confirmed 2026-09: image.size correctly reports the rotated 874x402pt logical size and
+        // .imageOrientation .left, but pngRepresentation still writes 1206x2622 raw portrait pixels).
+        // UIImage.draw(in:) applies imageOrientation when rendering, so re-rendering through it (only when
+        // there's a rotation to apply) bakes the correct orientation into the pixels before encoding --
+        // this applies to any capture where the interface happens not to be in its "up" orientation,
+        // not only the orientation rescan.
+        let orientedImage = screenshot.image.imageOrientation == .up ? screenshot.image : screenshot.image.orientedForEncoding()
+        guard let pngData = orientedImage.pngData() else {
+            throw NSError(domain: "Harness", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not encode the screenshot as PNG."])
+        }
+        try pngData.write(to: outDir.appendingPathComponent("screenshot.png"))
         // The status bar is drawn by SpringBoard; its frame lets the host blank it (time, carrier, notifications).
         let statusBar = XCUIApplication(bundleIdentifier: "com.apple.springboard").statusBars.firstMatch
         let statusBarFrame = statusBar.exists ? Self.frame(statusBar.frame) : nil
@@ -409,6 +441,22 @@ final class ScanTests: XCTestCase {
         case .textClipped: return "textClipped"
         case .trait: return "trait"
         default: return "other:\(type.rawValue)"
+        }
+    }
+}
+
+extension UIImage {
+    /// Re-renders this image with `imageOrientation` baked into the pixel data (`UIImage.draw(in:)` applies
+    /// the orientation transform; a raw `pngData()`/`cgImage` does not). Used whenever a captured
+    /// screenshot isn't `.up`-oriented -- most often the orientation rescan, but any capture taken while
+    /// the interface is rotated -- since `XCUIScreenshot.pngRepresentation` writes the screen's native,
+    /// un-rotated buffer regardless; see the call site in `capture(_:into:full:launched:broughtForward:)`.
+    func orientedForEncoding() -> UIImage {
+        let format = UIGraphicsImageRendererFormat.preferred()
+        format.scale = scale
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            draw(in: CGRect(origin: .zero, size: size))
         }
     }
 }

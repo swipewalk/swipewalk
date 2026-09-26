@@ -75,6 +75,17 @@ public static class Preflight
             AppearanceRestore.Forget(chosen);
             results.Add(new("Appearance", CheckStatus.Pass, $"restored to {appearance}; an interrupted appearance check had left it switched"));
         }
+        if (OrientationRestore.Pending(chosen) is { } orientationState)
+        {
+            var parts = orientationState.Split(',');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var accel) && int.TryParse(parts[1], out var userRotation))
+            {
+                await AndroidOrientation.SetAsync(chosen, accel, userRotation);
+                OrientationRestore.Forget(chosen);
+                results.Add(new("Orientation", CheckStatus.Pass,
+                    $"restored (accelerometer_rotation={accel}, user_rotation={userRotation}); an interrupted orientation check had left it rotated"));
+            }
+        }
 
         var window = await adb.RunAsync("shell", "dumpsys", "window");
         results.Add(AndroidCollector.IsAwakeAndUnlocked(await adb.RunAsync("shell", "dumpsys", "power"), window)
@@ -247,6 +258,15 @@ public static class Preflight
             await IosCollector.SetAppearanceAsync(udid, appearance);
             AppearanceRestore.Forget(udid);
             results.Add(new("Appearance", CheckStatus.Pass, $"restored to {appearance}; an interrupted appearance check had left it switched"));
+        }
+
+        // Orientation rescan (scan --orientation both), Simulator only -- see Reports.OrientationLabels
+        // .PhysicalIphoneNotSupportedReason; a physical iPhone never gets an OrientationRestore marker.
+        if (!device.IsPhysical && OrientationRestore.Pending(udid) is { } orientation)
+        {
+            await IosCollector.SetOrientationAsync(harnessProject, udid, orientation);
+            OrientationRestore.Forget(udid);
+            results.Add(new("Orientation", CheckStatus.Pass, $"restored to {orientation}; an interrupted orientation check had left it rotated"));
         }
 
         if (device.IsPhysical)

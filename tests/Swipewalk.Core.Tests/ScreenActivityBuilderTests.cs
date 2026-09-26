@@ -8,7 +8,8 @@ public class ScreenActivityBuilderTests
     private static ScreenResult Screen(
         Platform platform = Platform.Android, string? screenshotPath = null, string? largeTextSetting = null,
         string? largeTextSkippedReason = null, IReadOnlyList<Finding>? findings = null,
-        ScreenReaderCapture? screenReaderCapture = null) => new()
+        ScreenReaderCapture? screenReaderCapture = null, string? otherOrientation = null,
+        string? orientationSkippedReason = null) => new()
     {
         Platform = platform,
         ScreenName = "Home",
@@ -17,6 +18,8 @@ public class ScreenActivityBuilderTests
         LargeTextSkippedReason = largeTextSkippedReason,
         Findings = findings ?? [],
         ScreenReaderCapture = screenReaderCapture,
+        OtherOrientation = otherOrientation,
+        OrientationSkippedReason = orientationSkippedReason,
     };
 
     [Fact]
@@ -147,6 +150,24 @@ public class ScreenActivityBuilderTests
 
         Assert.DoesNotContain("screen-reader-capture", activity.RanRuleIds);
         Assert.Equal("screen-reader capture is Android-only for now", activity.SkippedRuleIds["screen-reader-capture"]);
+    }
+
+    [Fact]
+    public void NoOrientationCheck_SkippedWithNotRequestedReason()
+    {
+        var activity = ScreenActivityBuilder.For(Screen(otherOrientation: null, orientationSkippedReason: null));
+
+        Assert.DoesNotContain("orientation-restricted", activity.RanRuleIds);
+        Assert.Contains("--orientation", activity.SkippedRuleIds["orientation-restricted"]);
+    }
+
+    [Fact]
+    public void OrientationChecked_CountsAsRan()
+    {
+        var activity = ScreenActivityBuilder.For(Screen(otherOrientation: "landscape"));
+
+        Assert.Contains("orientation-restricted", activity.RanRuleIds);
+        Assert.False(activity.SkippedRuleIds.ContainsKey("orientation-restricted"));
     }
 
     [Fact]
