@@ -620,17 +620,32 @@ live scan, rather than writing an answer key from reading the rules alone.
   unambiguous case -- exactly one non-focusable descendant carries a name, and nothing else in the
   subtree is independently focusable or clickable -- by merging that name onto the clickable node's
   own `Label`
-  (`UiAutomatorParser.TryMergeSingleDescendantName`), approximating how a screen reader is expected
+  (`UiAutomatorParser.TryMergeDescendantName`), approximating how a screen reader is expected
   to read the merged node (not tested with TalkBack): `identifier-name` now reports the interactive
   element's real role (e.g. `button`, not the earlier `group`); `missing-name`'s own output is
   unchanged, since it already found these buttons named through its existing descendant-walk
-  fallback. Left unmerged, deliberately: a button with an icon's `contentDescription` *and*
-  separate visible text as two different children of one merged Button -- what a screen reader
-  actually announces for them together wasn't verified, so `label-in-name` still can't check a
-  mismatch built that way, and `identifier-name` would still report the wrong role for a
-  developer-identifier name built the same way. `target-size` was never affected by any of this; it
-  reads the clickable node's own bounds regardless of naming. Limitation `android-compose-merged-name`
-  narrowed accordingly.
+  fallback. Extended for bug N5, where `Modifier.semantics { contentDescription = "Submit" }` is set
+  directly on the Button itself (not on an icon) alongside a separate `Text("Pay")` child -- Compose's
+  tree export still splits the two the same way. Real TalkBack capture confirmed both parts are
+  announced, in the same order, on both an emulator and a physical Pixel 4a (section 6 below), so
+  this exact tree shape -- one `contentDescription` candidate, one visible-text candidate,
+  nothing else named, which can occur on classic Views too, not only Compose -- is now merged too,
+  giving `label-in-name` a name and visible text to compare on the tree alone. Because the merged
+  name always contains the merged visible text by construction, `label-in-name` reports no mismatch
+  for N5, consistent with what TalkBack announced on both devices -- but this also means the tree
+  alone can never report a mismatch for this exact shape either way; whether Voice Access would
+  activate the button by saying "Pay" was not tested. That is why the bug is listed as "not found"
+  rather than "was found" on Compose (see the table above), not proof the bug is harmless.
+  `identifier-name`'s role fix does not extend to this shape: the content-desc descendant's own
+  `Label` is deliberately left in place, so a developer-identifier name there would still be caught
+  with the pre-existing wrong (non-clickable) role, rather than silenced -- untested on a real
+  screen, since neither "Submit" nor "Pay" looks like one. Still left unmerged, deliberately: a
+  several-named-descendants shape with more than one `contentDescription` candidate, or more than
+  one visible-text candidate -- what a screen reader actually announces for those isn't
+  established, so `identifier-name` would still report the wrong role for a developer-identifier
+  name built that way. `target-size` was never affected by any
+  of this; it reads the clickable node's own bounds regardless of naming. Limitation
+  `android-compose-merged-name` narrowed accordingly.
 - **A common SF Symbol can already have a name on iOS; Android's equivalent never does.** A
   `UIButton`/SwiftUI `Button` built from `UIImage(systemName: "magnifyingglass")`, with no
   `accessibilityLabel` set anywhere, is captured with the accessible name "Search" -- Apple appears
@@ -733,13 +748,22 @@ supports the missing-name finding the tree scan already makes for that field, ra
 new finding of its own.
 
 This capture also answers the narrower question section 5's bug N5 note left open: what TalkBack
-says for this Compose button (visible text "Pay", content description "Submit" -- the mismatch
-`label-in-name` catches on UIKit but not on this Compose button, see section 5). TalkBack announced
-it as "Submit || Pay || Button": the content description, then the visible text, then the role, on
-one TalkBack version (16.0.0, emulator). That is screen-reader output only. WCAG 2.5.3 Label in Name
-concerns people who operate controls by voice, and this capture doesn't show which name speech-input
-software such as Voice Access matches on, so whether saying "Pay" activates this button wasn't
-tested. `label-in-name` still reports nothing for this button; check it by hand with speech input.
+says for this Compose button (visible text "Pay", content description "Submit" -- see section 5).
+TalkBack announced it as "Submit || Pay || Button": the content description, then the visible text,
+then the role, on one TalkBack version (16.0.0, emulator). Re-run 2026-09-26 on both the same
+emulator and a physical Pixel 4a (TalkBack 17.0.1): both announce the same three parts in the same
+order; the Pixel sends them as one combined utterance ("Submit. Pay. Button.") rather than three
+separate ones, which the comparator already parses the same way. That is screen-reader output only.
+WCAG 2.5.3 Label in Name concerns people who operate controls by voice, and this capture doesn't
+show which name speech-input software such as Voice Access matches on, so whether saying "Pay"
+activates this button wasn't tested. Since this is the only several-named-descendants shape
+confirmed against real TalkBack evidence, `UiAutomatorParser.TryMergeDescendantName` was extended
+2026-09-26 to merge it (one `contentDescription` candidate plus one visible-text
+candidate): `label-in-name` now evaluates this button directly from the tree and reports no
+mismatch, consistent with what TalkBack announced on both devices, since the merged name ("Submit,
+Pay") always contains the merged visible text ("Pay") by construction -- which also means the tree
+alone can never report a mismatch for this exact shape either way. Check with speech input
+regardless; this evidence is about what TalkBack said, not what Voice Access would do.
 
 ### `screen-reader-label-in-name`, checked against real captures for the first time
 

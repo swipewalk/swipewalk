@@ -71,7 +71,7 @@ in the ground-truth files, the same convention BuggyApp uses for its `T1`/`T2` e
 | N2 | Helper text at about 2.3:1 contrast (`#AAAAAA` on white) | `text-contrast` (WCAG issue) | `text-contrast` (WCAG issue) |
 | N3 | Icon button with a correct name but drawn at 20dp | `target-size` (platform advisory) | **not reported** -- see Framework differences (unrelated to the naming gap) |
 | N4 | Accessible name copied from a developer identifier (`img_btn_email_receipt`) | `identifier-name`, role `button` | `identifier-name`, role `button` -- see Framework differences |
-| N5 | Visible text "Pay" but accessible name "Submit" | `label-in-name` (WCAG issue) | **not reported** -- see Framework differences |
+| N5 | Visible text "Pay" but accessible name "Submit" | `label-in-name` (WCAG issue) | **not found** -- see Framework differences |
 | N6 | Text field with no label, hint or content description, and an unassociated caption | `missing-name` + `target-size` | `missing-name` |
 | N7 | Text sized in a unit meant to ignore the system font-size setting (Views: `px`; Compose: a `dp`-to-`sp` conversion) | `text-resize`, confirmed on the large-text rescan | **did not reproduce** -- see Framework differences |
 | N8 | Icon-only control with a correct name and normal size, but a low-contrast icon tint | ATF `ImageContrastCheck` | **not reported** -- see Framework differences (unrelated to the naming gap) |
@@ -101,23 +101,38 @@ Confirmed by live scans, not assumptions -- see each ground-truth file's own not
   reported `clickable="false"` in the raw dump, while the actual clickable/focusable node has an
   empty content-desc. Addressed for the unambiguous case (`N3`, `N4`, `N8`, `OK1`, `OK2`): when
   exactly one non-focusable descendant carries a name and nothing else in the subtree is
-  independently focusable or clickable, the parser now gives the clickable node that name as its
+  independently focusable or clickable, the parser gives the clickable node that name as its
   own `Label`
-  (`UiAutomatorParser.TryMergeSingleDescendantName`). `missing-name`'s own output is unchanged (it
+  (`UiAutomatorParser.TryMergeDescendantName`). `missing-name`'s own output is unchanged (it
   already found these buttons named through the existing `ScreenReaderPredictor.AccessibleName`
   descendant-walk fallback); `identifier-name` (which reads `Label` directly and scans every named
   node, not just clickable ones) is what actually changes, now reporting `N4`'s role as `button`
-  instead of `group`. Left unmerged, deliberately: `N5`, where the icon's `contentDescription`
-  ("Submit") and the visible text ("Pay") are two *different* children of the same merged Button --
-  TalkBack was seen to announce both ("Submit || Pay || Button", see docs/case-study.md section 6),
-  but that doesn't show which name speech input matches on, so `label-in-name` still can't check
-  that mismatch, and `identifier-name` would still report the wrong role for a developer-identifier
-  name built the same way. `target-size` was never blocked by this gap at all:
-  it reads the clickable node's own (correct) bounds regardless of naming, and `N3`/`OK2` simply
-  measure exactly 48dp on the emulator (Compose's `IconButton` padding its touch target back up
-  regardless of a smaller `Modifier.size`), similar to `samples/BuggyApp`'s `B5` (there, MAUI
-  enlarges the target to only 44dp, which still trips the platform advisory). Limitation
-  `android-compose-merged-name` narrowed to the still-open `label-in-name`/`identifier-name` gap.
+  instead of `group`. Extended 2026-09-26 for `N5`, where `Modifier.semantics { contentDescription
+  = "Submit" }` is set directly on the Button itself (not on an icon -- `N5` has no icon) and its
+  `Text("Pay")` child renders the visible text; Compose's tree export still splits the two across
+  separate non-clickable descendants the same way. TalkBack was confirmed to announce both parts,
+  in the same order, on both the emulator (TalkBack 16, "Submit || Pay || Button", three separate
+  utterances) and a physical Pixel 4a (TalkBack 17, "Submit. Pay. Button.", one combined utterance
+  -- see docs/case-study.md section 6), so this exact tree shape (one `contentDescription`
+  candidate, one visible-text candidate, nothing else named -- the same shape can occur on
+  classic Views too, not only Compose) is now merged: `Label` becomes "Submit, Pay" and
+  `VisibleText` becomes "Pay". `label-in-name` now evaluates `N5`'s button directly from the tree
+  and reports no mismatch, consistent with what TalkBack announced on both devices -- but by
+  construction (the merged name always contains the merged visible text) it can never report a
+  mismatch for this exact shape either way. TalkBack output is recorded here; WCAG 2.5.3 depends on
+  speech input (Voice Access), which wasn't tested -- check by hand. `identifier-name`'s role fix
+  does NOT extend to this two-descendant shape: the content-desc descendant's own `Label` is
+  deliberately left in place (not cleared, unlike the single-descendant case) so a
+  developer-identifier name there is still caught, just with the pre-existing wrong (non-clickable)
+  role -- untested on a real screen, since neither `N5`'s "Submit" nor "Pay" looks like one. A
+  several-named-descendants shape with more than one `contentDescription` candidate, or more than
+  one visible-text candidate, is still left entirely unmerged. `target-size` was never
+  blocked by this gap at all: it reads the clickable node's own (correct) bounds regardless of
+  naming, and `N3`/`OK2` simply measure exactly 48dp on the emulator (Compose's `IconButton`
+  padding its touch target back up regardless of a smaller `Modifier.size`), similar to
+  `samples/BuggyApp`'s `B5` (there, MAUI enlarges the target to only 44dp, which still trips the
+  platform advisory). Limitation `android-compose-merged-name` narrowed to the still-open
+  several-candidate `label-in-name`/`identifier-name` gap.
 - **`N7`'s Compose version doesn't reproduce.** `with(LocalDensity.current) { 14.dp.toSp() }` was
   assumed to bypass the system font-scale setting; a live large-text rescan showed the text's
   bounds grow exactly in proportion to the 200% scale (63dp to 126dp), the same as an ordinary

@@ -76,17 +76,26 @@ public static partial class UiAutomatorParser
         // See KnownLimitations "android-compose-merged-name": Jetpack Compose's default merged semantics
         // (Modifier.semantics(mergeDescendants = true), set by Button/IconButton) can leave the clickable,
         // focusable node's own content-desc empty in the uiautomator dump, with the name uiautomator does
-        // capture landing on a separate, non-clickable child instead. TryMergeSingleDescendantName gives
-        // the outer node that name back, conservatively. missing-name already found these buttons named
-        // through ScreenReaderPredictor.AccessibleName's own descendant-walk fallback, so this makes no
-        // difference to it; identifier-name reads AccessibilityNode.Label directly rather than through that
-        // fallback, so this is what fixes its role (previously the non-clickable child's role, e.g.
-        // "group", instead of the button's own). target-size and label-in-name are unaffected either way
-        // (see KnownLimitations for why).
-        if (interactive && label is null && text is null && TryMergeSingleDescendantName(children) is { } merge)
+        // capture landing on a separate, non-clickable child instead -- also seen on classic Android Views
+        // (a clickable container whose content-desc or text lives on a non-clickable child), not only
+        // Compose. TryMergeDescendantName gives the outer node that name back, conservatively. missing-name
+        // already found these buttons named through ScreenReaderPredictor.AccessibleName's own
+        // descendant-walk fallback, so this makes no difference to it; identifier-name reads
+        // AccessibilityNode.Label directly rather than through that fallback, so this is what fixes its
+        // role (previously the non-clickable child's role, e.g. "group", instead of the button's own) for
+        // the single-named-descendant shape -- not for the two-descendant shape below, where the
+        // content-desc descendant's own Label is deliberately left in place (see TryMergeDescendantName's
+        // own comment). target-size is unaffected either way (see KnownLimitations for why). label-in-name
+        // now evaluates the "several named descendants" shape confirmed against real TalkBack evidence
+        // (samples/NativeAndroid's N5, one content-desc descendant plus one separate visible-text
+        // descendant -- see docs/case-study.md), rather than staying silent on it as before, but by
+        // construction (the merged Label always contains the merged VisibleText) it can never report a
+        // mismatch for this exact shape either.
+        if (interactive && label is null && text is null && TryMergeDescendantName(children) is { } merge)
         {
             label = merge.Name;
             children = merge.Children;
+            text = merge.VisibleText;
         }
 
         return new AccessibilityNode
@@ -123,17 +132,24 @@ public static partial class UiAutomatorParser
     }
 
     /// <summary>
-    /// Looks for exactly one descendant (any depth) carrying its own name, with no descendant anywhere in
-    /// the subtree that is independently clickable, long-clickable, checkable or focusable -- i.e. nothing
-    /// else under this node is its own screen-reader stop, so a screen reader is expected to have nothing
-    /// else to read when it lands on the merged node (see AOSP's AccessibilityNodeInfoDumper/UiAutomator,
-    /// which reads through the same accessibility API TalkBack uses, and Jetpack Compose's semantics
-    /// merging: https://developer.android.com/reference/kotlin/androidx/compose/ui/semantics/package-summary).
-    /// Deliberately conservative: several named descendants (for example an icon's content-desc alongside
-    /// a separate visible-text child under one merged Button) are left alone -- see KnownLimitations
-    /// "android-compose-merged-name" for why that case isn't handled here.
+    /// Looks for descendants (any depth) carrying their own name, with no descendant anywhere in the
+    /// subtree that is independently clickable, long-clickable, checkable or focusable -- i.e. nothing else
+    /// under this node is its own screen-reader stop, so a screen reader is expected to have nothing else
+    /// to read when it lands on the merged node (see AOSP's AccessibilityNodeInfoDumper/UiAutomator, which
+    /// reads through the same accessibility API TalkBack uses, and Jetpack Compose's semantics merging:
+    /// https://developer.android.com/reference/kotlin/androidx/compose/ui/semantics/package-summary).
+    ///
+    /// Exactly one named descendant merges as before (see KnownLimitations "android-compose-merged-name").
+    /// Several named descendants merge ONLY the shape confirmed against real TalkBack evidence there: one
+    /// descendant carrying a content-desc (a <see cref="AccessibilityNode.Label"/>) and exactly one other
+    /// carrying plain visible text and nothing else -- e.g. samples/NativeAndroid's N5,
+    /// Modifier.semantics { contentDescription = "Submit" } set directly on the Button itself (not on an
+    /// icon) alongside a separate Text("Pay") child. Any other several-named-
+    /// descendants shape (more than one content-desc candidate, or more than one visible-text
+    /// candidate) is left alone: which of several would actually be announced, and in what order, isn't
+    /// established, so this doesn't guess.
     /// </summary>
-    private static (string Name, List<AccessibilityNode> Children)? TryMergeSingleDescendantName(List<AccessibilityNode> children)
+    private static (string Name, List<AccessibilityNode> Children, string? VisibleText)? TryMergeDescendantName(List<AccessibilityNode> children)
     {
         var descendants = children.SelectMany(c => c.DescendantsAndSelf()).ToList();
         if (descendants.Any(d => d.IsAccessible && (d.IsInteractive || d.IsFocusable)))
@@ -145,23 +161,57 @@ public static partial class UiAutomatorParser
             .Where(d => d.IsAccessible && d.Bounds.Width > 0 && d.Bounds.Height > 0
                         && (d.Label is not null || d.VisibleText is not null))
             .ToList();
-        if (named.Count != 1)
+
+        if (named.Count == 1)
+        {
+            var candidate = named[0];
+            var soloName = candidate.Label ?? candidate.VisibleText!;
+
+            // Only a content-desc source is cleared from the descendant: left in place, it would still
+            // carry its own Label and be re-evaluated by rules that scan every node regardless of
+            // interactivity (for example IdentifierNameRule), double-reporting the same name at two roles
+            // once this node's own clickable role also has it. Visible text is left untouched -- other
+            // rules (for example TextContrastRule) still need to check it as real on-screen text, and no
+            // rule flags a plain text node just for carrying readable text, so there is nothing to
+            // double-report there. VisibleText is deliberately not returned here (kept null, as before
+            // this merge existed at all): this single-descendant case is unverified against real TalkBack
+            // evidence (see KnownLimitations "android-compose-merged-name"), so it doesn't get the extra
+            // label-in-name coverage the two-descendant N5 shape below does.
+            var soloChildren = candidate.Label is not null
+                ? children.Select(c => ClearLabel(c, candidate)).ToList()
+                : children;
+            return (soloName, soloChildren, null);
+        }
+
+        // The N5 shape: exactly one descendant carrying ONLY a content-desc (nothing else named on it) and
+        // exactly one other descendant carrying ONLY plain visible text -- nothing else named anywhere in
+        // the subtree. A descendant carrying both its own Label and its own VisibleText is deliberately
+        // excluded from both groups (so this declines to merge rather than silently dropping one of its two
+        // names) -- this shape hasn't come up on a real screen and combining three names, not two, is a
+        // separate guess this has no evidence for.
+        var labelOnly = named.Where(d => d.Label is not null && d.VisibleText is null).ToList();
+        var textOnly = named.Where(d => d.Label is null && d.VisibleText is not null).ToList();
+        if (named.Count != 2 || labelOnly.Count != 1 || textOnly.Count != 1)
             return null;
 
-        var candidate = named[0];
-        var name = candidate.Label ?? candidate.VisibleText!;
-
-        // Only a content-desc source is cleared from the descendant: left in place, it would still carry
-        // its own Label and be re-evaluated by rules that scan every node regardless of interactivity (for
-        // example IdentifierNameRule), double-reporting the same name at two roles once this node's own
-        // clickable role also has it. Visible text is left untouched -- other rules (for example
-        // TextContrastRule) still need to check it as real on-screen text, and no rule flags a plain text
-        // node just for carrying readable text, so there is nothing to double-report there.
-        var newChildren = candidate.Label is not null
-            ? children.Select(c => ClearLabel(c, candidate)).ToList()
-            : children;
-
-        return (name, newChildren);
+        // Joined in tree order (not "content-desc first"), matching ScreenReaderPredictor.AccessibleName's
+        // own descendant-walk fallback and the one real capture of this shape ("Submit || Pay || Button" on
+        // an emulator, "Submit. Pay. Button." on a physical Pixel 4a, both content-desc child before text
+        // child in the tree -- see docs/case-study.md). The merged name always contains the merged
+        // VisibleText by construction, so label-in-name now evaluates this node instead of staying silent
+        // on it, though by that same construction it can never report a mismatch for this exact shape (see
+        // KnownLimitations "android-compose-merged-name").
+        //
+        // Unlike the single-descendant case above, the content-desc descendant's own Label is deliberately
+        // NOT cleared here: IdentifierNameRule.LooksLikeIdentifier never matches a name containing a space,
+        // so the merged name (which always has one, from the ", " join) never trips it -- but if this
+        // content-desc looked like a developer identifier on its own (e.g. "img_btn_pay"), clearing it would
+        // silence that finding entirely rather than just report it with the wrong (non-clickable) role, which
+        // is what happens today and is preserved here. This is a smaller fix than the single-descendant
+        // case's role correction: an identifier-looking content-desc in this exact shape hasn't been seen on
+        // a real screen, so avoiding a new silent gap took priority over also fixing its role.
+        var mergedName = string.Join(", ", named.Select(d => d.Label ?? d.VisibleText));
+        return (mergedName, children, textOnly[0].VisibleText);
     }
 
     private static AccessibilityNode ClearLabel(AccessibilityNode subtree, AccessibilityNode target) =>

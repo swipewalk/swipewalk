@@ -269,14 +269,16 @@ public static class CoverageCatalog
             "activates. Best practice is for the name to start with the visible text. On Android, when a " +
             "real, complete screen-reader capture ran (--screen-reader; see docs/limitations.md " +
             "\"android-screen-reader-capture\") and matched a control with more than weak confidence, " +
-            "Swipewalk also checks this against what TalkBack actually said -- this could report a control " +
-            "whose visible text is only on a child node (a shape the tree-only check can't see at all, since " +
-            "it needs the text on the control's own node -- see \"android-compose-merged-name\"), when " +
-            "TalkBack's announcement leaves that text out. On samples/NativeAndroid's Compose bug N5, " +
-            "TalkBack's announcement included the visible text alongside its overriding name, so this check " +
-            "reports nothing there -- either way, this still isn't proof of what speech-input software " +
-            "matches, so check by hand regardless. This specific check runs whenever the capture reached " +
-            "every focusable or interactive element it found and TalkBack said something for each.",
+            "Swipewalk also checks this against what TalkBack actually said -- the TalkBack comparison " +
+            "runs only when the capture reached every focusable or interactive element it found and " +
+            "TalkBack said something for each. It could report a control whose visible text is only on a " +
+            "child node the tree-only check still can't merge onto the control itself (for example more " +
+            "than one content-description child alongside a single visible-text child -- see " +
+            "\"android-compose-merged-name\"), when TalkBack's announcement leaves that text out. " +
+            "samples/NativeAndroid's Compose bug N5 used to be exactly this kind of control; the " +
+            "tree-only check now evaluates it directly (it merges the one shape confirmed against real " +
+            "TalkBack evidence) and, consistent with that capture, reports nothing there -- either way, " +
+            "none of this is proof of what speech-input software matches, so check by hand regardless.",
             "label-in-name"),
         Manual(WcagCriteria.MotionActuation,
             "If a feature is triggered by shaking or tilting the device, check there is also a standard " +

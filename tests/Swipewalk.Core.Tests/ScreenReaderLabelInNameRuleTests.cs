@@ -58,12 +58,17 @@ public class ScreenReaderLabelInNameRuleTests
         new ScreenReaderLabelInNameRule().Evaluate(Snapshot(root, capture)).ToList();
 
     // --- The real samples/NativeAndroid Compose evidence (docs/case-study.md, bug N5; the real fixture is
-    // tests/Swipewalk.Core.Tests/Fixtures/NativeAndroid.Compose/uiautomator.xml, node index 9): the clickable
-    // node's own content-desc and text are BOTH empty. Its non-focusable children are a View with
-    // content-desc "Submit" and a TextView with text "Pay" -- two different descendants each carrying a name
-    // or text, so UiAutomatorParser.TryMergeSingleDescendantName declines to merge either onto the clickable
-    // node (see android-compose-merged-name in docs/limitations.md): the clickable node's own Label and
-    // VisibleText both stay null. TalkBack (16.0.0, emulator) announced the button as "Submit || Pay || Button".
+    // tests/Swipewalk.Core.Tests/Fixtures/NativeAndroid.Compose/uiautomator.xml, node index 9). TalkBack
+    // (16.0.0, emulator) announced the button as "Submit || Pay || Button". This built a raw node the way
+    // UiAutomatorParser used to produce N5 (both Label and VisibleText null, the name and text each on a
+    // separate child) before 2026-09-26, when TryMergeDescendantName started merging this exact shape (one
+    // contentDescription candidate, one distinct visible-text candidate) onto the clickable node itself --
+    // see android-compose-merged-name in docs/limitations.md and MergedRealShape_OwnLabelAndVisibleText_
+    // below for how this rule handles the node the parser actually produces today. Kept here because this
+    // rule's own descendant search (SingleDescendantVisibleText) still matters on its own terms: a still-
+    // unmerged shape (more than one contentDescription or more than one distinct text candidate) reaches
+    // this rule with Label and/or VisibleText null the same way, and other collectors/callers can construct
+    // a node directly without going through the parser at all.
 
     private static AccessibilityNode N5Button(string visibleChildText = "Pay") =>
         Button(visibleText: null, label: null, children:
@@ -88,12 +93,45 @@ public class ScreenReaderLabelInNameRuleTests
     }
 
     [Fact]
+    public void MergedRealShape_OwnLabelAndVisibleText_SpokenNameContainsIt_NoFinding()
+    {
+        // The node UiAutomatorParser actually produces for N5 today (2026-09-26): the merge gives the
+        // clickable node its own Label ("Submit, Pay") and VisibleText ("Pay") directly, rather than leaving
+        // them null with the name split across two children (see N5Button() above, the pre-merge shape).
+        // This takes the "own VisibleText" path (not SingleDescendantVisibleText). LabelInNameRule now also
+        // evaluates this node from the tree alone and finds no mismatch there too, since "Submit, Pay"
+        // contains "Pay" by construction -- so the tree and the capture agree, and this rule's own
+        // duplicate-avoidance check (see this type's remarks) doesn't skip it (it only skips when the tree
+        // ALREADY reports a mismatch); it proceeds to compare against the capture independently and finds
+        // no finding there either, via NamesMatch.
+        var button = Button(visibleText: "Pay", label: "Submit, Pay");
+        var findings = Evaluate(button, Capture([Item("Submit || Pay || Button", "0")]));
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void MergedRealShape_SpokenNameMissingVisibleText_StillReportsNeedsReview()
+    {
+        // Same merged real shape, but TalkBack's capture (hypothetically) never said "Pay" -- the tree's
+        // merged Label always contains the visible text by construction, so LabelInNameRule can't ever catch
+        // a real mismatch for this exact shape; this rule, using real capture evidence instead of the tree's
+        // assumption, still can and does.
+        var button = Button(visibleText: "Pay", label: "Submit, Pay");
+        var findings = Evaluate(button, Capture([Item("Submit || Button", "0")]));
+
+        var finding = Assert.Single(findings);
+        Assert.Equal(FindingKind.NeedsReview, finding.Kind);
+        Assert.Equal([WcagCriteria.LabelInName], finding.Criteria);
+    }
+
+    [Fact]
     public void DescendantVisibleTextMissingFromSpokenName_ReportsNeedsReview()
     {
-        // Same shape as N5, but the captured name genuinely never includes "Pay" (unlike the real N5
-        // capture above) -- the case this rule exists to catch, which the tree-only label-in-name rule
-        // structurally cannot see (LabelInNameRule requires node.VisibleText, which is null on this
-        // clickable node either way -- see android-compose-merged-name in docs/limitations.md).
+        // The still-unmerged shape (see N5Button() above): the captured name genuinely never includes "Pay"
+        // -- the case this rule exists to catch, which the tree-only label-in-name rule structurally cannot
+        // see for a shape the parser leaves unmerged (LabelInNameRule requires node.VisibleText, which is
+        // null on a node like this -- see android-compose-merged-name in docs/limitations.md).
         var findings = Evaluate(N5Button(), Capture([Item("Submit || Button", "0")]));
 
         var finding = Assert.Single(findings);
@@ -193,7 +231,7 @@ public class ScreenReaderLabelInNameRuleTests
         // clickable card) is its own screen-reader stop -- TalkBack focuses it on its own and doesn't fold
         // its text into the outer node's announcement, so this rule must not borrow that text as if it were
         // the outer node's own visible text (mirrors the same safety check
-        // UiAutomatorParser.TryMergeSingleDescendantName uses for a related but different problem).
+        // UiAutomatorParser.TryMergeDescendantName uses for a related but different problem).
         var button = Button(visibleText: null, label: null, children:
         [
             new AccessibilityNode
@@ -303,7 +341,7 @@ public class ScreenReaderLabelInNameRuleTests
     {
         // Two descendants with different, non-blank visible text: this rule requires exactly one distinct
         // candidate, the same "don't guess with more than one" reasoning
-        // UiAutomatorParser.TryMergeSingleDescendantName uses for a related but different problem (merging a
+        // UiAutomatorParser.TryMergeDescendantName uses for a related but different problem (merging a
         // NAME, not visible text -- see android-compose-merged-name in docs/limitations.md).
         var button = Button(visibleText: null, label: "Submit", children:
         [

@@ -61,7 +61,20 @@ public static class RuleSources
     // (Apple 44 pt, Android 48 dp) are unchanged.
     // Then to 2026.09.30 for the new auto-updating-content rule (scan --auto-update-content; WCAG 2.2.2
     // Pause, Stop, Hide, moved from Manual to PartlyAutomated in CoverageCatalog).
-    public const string RulesetVersion = "2026.09.30";
+    // Then to 2026.10.01 (main was at .30, and September has no 31st) for the Jetpack Compose
+    // several-named-descendants merge (UiAutomatorParser.TryMergeDescendantName, KnownLimitations
+    // "android-compose-merged-name"): a clickable node with exactly one descendant carrying only a
+    // content-desc and exactly one other carrying only plain visible text now merges both onto the
+    // clickable node, so label-in-name evaluates it instead of staying silent (though it can never
+    // report a mismatch for this exact shape, by construction); identifier-name's behavior is
+    // unchanged for this shape (the content-desc descendant's own Label is deliberately left in
+    // place, so an identifier-looking name there is still caught, just with its pre-existing role).
+    // Rebased 2026-09-26 onto the TalkBack-completeness fix above: that fix independently re-verified
+    // N5's real TalkBack capture on both devices (Pixel 4a TalkBack 17.0.1, emulator TalkBack 16.0.0) and
+    // is what actually lets screen-reader-label-in-name run on N5 at all now; this change's own tree-level
+    // merge is what lets the tree-only label-in-name evaluate N5 too, a separate, narrower fix -- see
+    // KnownLimitations "android-compose-merged-name" for both, merged.
+    public const string RulesetVersion = "2026.10.01";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);
