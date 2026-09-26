@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Swipewalk.Collectors.Ios;
+using Swipewalk.Core.Model;
+using Swipewalk.Core.ScreenReader;
 
 namespace Swipewalk.Core.Tests;
 
@@ -94,6 +96,60 @@ public class XcuiTreeParserTests
 
         Assert.StartsWith(XcuiTreeParser.UnreadableTreeMessage, ex.Message, StringComparison.Ordinal);
         Assert.IsType<KeyNotFoundException>(ex.InnerException);
+    }
+
+    /// <summary>
+    /// Seen on a real physical-iPhone capture (2026-09-25, samples/NativeiOS): a UIToolbar's own container
+    /// and a scroll view's built-in scroll-position indicator each get a real XCUITest accessibility label
+    /// ("Toolbar", "Vertical scroll bar, 1 page") -- which, before this fix, made
+    /// <see cref="ScreenReaderPredictor"/> treat them as ordinary named, reachable stops. Xcode's
+    /// Accessibility Inspector's own Next/Previous Item walk never stopped on either one in that capture
+    /// (VoiceOver itself was not run, and it may still reach a scroll bar's indicator by touch even though
+    /// the Inspector's keyboard-style walk did not): this produced predicted stops with nothing for the
+    /// capture to match, reported as false "was not reported by Xcode's Accessibility Inspector" findings.
+    /// A sibling button must stay reachable -- this only affects the toolbar/scroll-bar containers themselves,
+    /// not their neighbors or (for the toolbar) the real buttons it contains.
+    /// </summary>
+    [Fact]
+    public void Parse_ToolbarAndScrollBar_AreNotAccessible()
+    {
+        const string json = """
+            {
+              "scale": 3,
+              "tree": {
+                "type": "application", "identifier": "", "label": "", "title": "", "enabled": true,
+                "frame": [0, 0, 390, 844],
+                "children": [
+                  { "type": "toolbar", "identifier": "", "label": "Toolbar", "title": "", "enabled": true,
+                    "frame": [0, 0, 390, 44], "children": [
+                      { "type": "button", "identifier": "", "label": "Search", "title": "", "enabled": true, "frame": [10, 10, 44, 24], "children": [] }
+                    ] },
+                  { "type": "scrollBar", "identifier": "", "label": "Vertical scroll bar, 1 page", "title": "", "enabled": true, "frame": [380, 0, 10, 800], "children": [] },
+                  { "type": "button", "identifier": "", "label": "Submit", "title": "", "enabled": true, "frame": [10, 100, 100, 44], "children": [] }
+                ]
+              },
+              "auditIssues": []
+            }
+            """;
+
+        var result = XcuiTreeParser.Parse(json);
+
+        var toolbar = result.Root.Children[0];
+        var toolbarButton = toolbar.Children[0];
+        var scrollBar = result.Root.Children[1];
+        var submit = result.Root.Children[2];
+        Assert.False(toolbar.IsAccessible);
+        Assert.False(scrollBar.IsAccessible);
+        Assert.True(toolbarButton.IsAccessible); // a real button inside the toolbar is still reachable
+        Assert.True(submit.IsAccessible);
+
+        // End to end: neither container should produce a predicted screen-reader stop at all.
+        var snapshot = new ScreenSnapshot { Platform = Platform.iOS, ScreenName = "Test", Root = result.Root };
+        var predicted = ScreenReaderPredictor.Predict(snapshot);
+        Assert.DoesNotContain(predicted, a => a.Text.Contains("Toolbar", StringComparison.Ordinal));
+        Assert.DoesNotContain(predicted, a => a.Text.Contains("scroll bar", StringComparison.Ordinal));
+        Assert.Contains(predicted, a => a.Text.Contains("Search", StringComparison.Ordinal));
+        Assert.Contains(predicted, a => a.Text.Contains("Submit", StringComparison.Ordinal));
     }
 
     private static string BuildDeepTreeJson(int depth)

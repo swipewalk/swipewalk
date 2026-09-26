@@ -119,6 +119,40 @@ public class ScreenReaderCaptureRuleTests
     }
 
     [Fact]
+    public void OrderMismatch_NotYetReportedForAccessibilityInspector_UntilItsWalkIsVerifiedAnchoredToTheTop()
+    {
+        // Same fixture again, from an Accessibility Inspector capture: the walk starts wherever a person
+        // clicked to set it up, not necessarily the top of the screen, and the Inspector's order was found
+        // to be circular -- an unanchored starting point would make the whole sequence look rotated relative
+        // to the predicted order, which this comparer's rank-based check can't tell apart from a genuine
+        // difference (see ScreenReaderCaptureRule's remarks). Suppressed until verified on a real device.
+        var snapshot = new ScreenSnapshot
+        {
+            Platform = Platform.iOS,
+            ScreenName = "Screen",
+            Root = new AccessibilityNode
+            {
+                Role = "window",
+                Children =
+                [
+                    new AccessibilityNode { Role = "button", IsInteractive = true, Label = "Terms" },
+                    new AccessibilityNode { Role = "button", IsInteractive = true, Label = "Help" },
+                ],
+            },
+        };
+        var items = new ScreenReaderCaptureItem[]
+        {
+            new(1, null, "Help", null, ["Button"], null, null, null, null, "1", MatchConfidence.Exact),
+            new(2, null, "Terms", null, ["Button"], null, null, null, null, "0", MatchConfidence.Exact),
+        };
+        var capture = new ScreenReaderCapture(ScreenReaderSource.AccessibilityInspector, "26.0", DateTimeOffset.UtcNow, items, true, null);
+
+        var findings = new ScreenReaderCaptureRule().Evaluate(snapshot with { ScreenReaderCapture = capture }).ToList();
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
     public void UnmatchedItem_ProducesNoFinding()
     {
         // An empty tree (no predicted stops at all) so the only difference in play is the unmatched item

@@ -65,10 +65,12 @@ public static class DefaultRules
             [WcagCriteria.IdentifyInputPurpose]),
         new("icon-contrast", "Icon-only interactive controls' contrast against their background, measured from screenshot pixels (iOS only; Android is covered by the atf rule's ImageContrastCheck)",
             [WcagCriteria.NonTextContrast]),
-        new("screen-reader-capture", "Differences between the predicted screen-reader transcript and what TalkBack actually said, captured by making Swipewalk's own text-to-speech engine TalkBack's default so it receives the exact spoken text (Android only for now, opt-in with --screen-reader; see KnownLimitations \"android-screen-reader-capture\")",
-            // No Meaningful Sequence/Focus Order here: TalkBack's capture order is Swipewalk's own walk
-            // order, not a real navigation order (see ScreenReaderCaptureRule's remarks), so an order
-            // difference is never reported for it today.
+        new("screen-reader-capture", "Differences between the predicted screen-reader transcript and real evidence, opt-in with --screen-reader: on Android, what TalkBack actually said, captured by making Swipewalk's own text-to-speech engine TalkBack's default so it receives the exact spoken text (see KnownLimitations \"android-screen-reader-capture\"); on iOS (scan only for now), what Xcode's Accessibility Inspector reports while walking the screen over the macOS Accessibility API -- VoiceOver itself is never turned on (see KnownLimitations \"ios-inspector-walk-capture\")",
+            // No Meaningful Sequence/Focus Order here for either source: TalkBack's capture order is
+            // Swipewalk's own walk order, not a real navigation order (see ScreenReaderCaptureRule's
+            // remarks); the Accessibility Inspector route's order differences are suppressed too -- confirmed
+            // on a real device that its walk starts wherever the person clicked, not the top of the screen
+            // (see KnownLimitations "ios-inspector-walk-capture").
             [WcagCriteria.NameRoleValue, WcagCriteria.NonTextContent]),
         new("screen-reader-label-in-name", "WCAG 2.5.3 Label in Name checked against what TalkBack actually said, for an interactive control with visible text (its own, or its only descendant's -- see KnownLimitations \"android-compose-merged-name\"): reported for review when the spoken name doesn't contain that text (Android only for now, opt-in with --screen-reader; see KnownLimitations \"android-screen-reader-capture\")",
             [WcagCriteria.LabelInName]),

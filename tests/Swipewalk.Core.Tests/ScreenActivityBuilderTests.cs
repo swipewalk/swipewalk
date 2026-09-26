@@ -142,14 +142,17 @@ public class ScreenActivityBuilderTests
     }
 
     [Fact]
-    public void NoScreenReaderCapture_OnIos_SkippedAsAndroidOnly()
+    public void NoScreenReaderCapture_OnIos_SkippedAsNotRequestedOrRecordModeNotSupported()
     {
-        // The flag does nothing on iOS (Android-only for now); the reason must say that, not "pass
-        // --screen-reader" as if the option existed there too.
+        // --screen-reader on iOS is real (the Accessibility Inspector route -- see IosCollector.RunInspectorCaptureAsync),
+        // but scan-only for now: the reason must not claim the option doesn't apply to iOS at all, and must
+        // say --screen-reader still isn't wired into record mode there.
         var activity = ScreenActivityBuilder.For(Screen(platform: Platform.iOS, screenReaderCapture: null));
 
         Assert.DoesNotContain("screen-reader-capture", activity.RanRuleIds);
-        Assert.Equal("screen-reader capture is Android-only for now", activity.SkippedRuleIds["screen-reader-capture"]);
+        var reason = activity.SkippedRuleIds["screen-reader-capture"];
+        Assert.Contains("--screen-reader", reason);
+        Assert.Contains("record", reason);
     }
 
     [Fact]

@@ -161,7 +161,7 @@ public static class ScreenActivityBuilder
             skipped["screen-reader-capture"] = emptyCapture.NotCompleteReason ?? "no screen-reader output was captured";
         else
             skipped["screen-reader-capture"] = screen.Platform == Platform.iOS
-                ? "screen-reader capture is Android-only for now"
+                ? "screen-reader capture not requested for this run (pass --screen-reader to scan; record mode doesn't support it yet)"
                 : "screen-reader capture not requested for this run (pass --screen-reader)";
 
         // screen-reader-label-in-name (ScreenReaderLabelInNameRule) reads the same

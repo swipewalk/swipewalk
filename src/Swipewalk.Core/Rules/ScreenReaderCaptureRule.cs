@@ -7,9 +7,10 @@ namespace Swipewalk.Core.Rules;
 /// <summary>
 /// Turns differences between the predicted screen-reader transcript and real evidence
 /// (<see cref="ScreenSnapshot.ScreenReaderCapture"/>) into findings. Reports nothing when no capture was
-/// made for a screen -- the common case, since screen-reader capture is opt-in (<c>--screen-reader</c>;
-/// see <c>Swipewalk.Collectors.Android.AndroidHarness.RunScreenReaderCaptureAsync</c>, Android only for
-/// now -- iOS stays predicted-only until its own capture route ships).
+/// made for a screen -- the common case, since screen-reader capture is opt-in (<c>--screen-reader</c>):
+/// on Android, <c>Swipewalk.Collectors.Android.AndroidHarness.RunScreenReaderCaptureAsync</c> drives
+/// TalkBack itself; on iOS (<c>scan</c> only for now), <c>Swipewalk.Collectors.Ios.IosCollector.RunInspectorCaptureAsync</c>
+/// walks Xcode's Accessibility Inspector over the macOS Accessibility API instead of turning VoiceOver on.
 ///
 /// Every difference is reported as <see cref="FindingKind.NeedsReview"/>, never <see cref="FindingKind.WcagIssue"/>:
 /// a difference from Swipewalk's own prediction is real evidence something needs a look, but not, by itself,
@@ -28,8 +29,16 @@ namespace Swipewalk.Core.Rules;
 /// <see cref="ScreenReaderSource.TalkBack"/>: that capture drives TalkBack's focus to each element itself,
 /// in the tree's own order (harness/android's <c>TalkBackCollector.kt</c>), so its "order" is Swipewalk's
 /// walk order, not TalkBack's own swipe order -- an OrderMismatch there would say nothing about the app.
-/// A source that captures the reader's real navigation order (for example a person-driven VoiceOver
-/// session) would report 1.3.2 Meaningful Sequence and 2.4.3 Focus Order here instead.</item>
+/// Also not reported for <see cref="ScreenReaderSource.AccessibilityInspector"/>, even though its walk order
+/// is the Inspector's own real navigation order in principle: confirmed on a real device that the walk
+/// starts wherever a person clicked to set it up (harness/mac-inspector-walk/InspectorWalk.swift), not the
+/// top of the screen, and that Apple's Inspector order is circular -- so an unanchored starting point makes
+/// the whole sequence a rotation of the true order, which this comparer's rank-based check cannot tell apart
+/// from a genuine difference (every element would then wrongly report an order mismatch). This is
+/// suppressed until the walk's starting point can be anchored (see KnownLimitations
+/// "ios-inspector-walk-capture"). A source confirmed to capture the reader's real navigation order, anchored
+/// correctly, would report 1.3.2 Meaningful Sequence and 2.4.3 Focus Order here instead -- see
+/// <see cref="Criteria"/>.</item>
 /// <item><see cref="ScreenReaderDifferenceKind.Missing"/> and <see cref="ScreenReaderDifferenceKind.TextMismatch"/>
 /// -- mapped from the underlying tree node, via <see cref="NodeCriteria"/>: 4.1.2 Name, Role, Value for an
 /// interactive or focusable element (a user interface component's name/role is what's in question); 1.1.1
@@ -61,8 +70,11 @@ public sealed class ScreenReaderCaptureRule : IRule
             if (diff.Kind == ScreenReaderDifferenceKind.Unmatched)
                 continue;
             // See this type's remarks on OrderMismatch: TalkBack's capture order is Swipewalk's own walk
-            // order, not a real navigation order, so an order difference here is meaningless.
-            if (diff.Kind == ScreenReaderDifferenceKind.OrderMismatch && capture.Source == ScreenReaderSource.TalkBack)
+            // order, not a real navigation order, so an order difference here is meaningless; the
+            // Accessibility Inspector route's walk is not anchored to the top of the screen (confirmed on a
+            // real device), so an order difference there would be a rotation artifact reported as if it were real.
+            if (diff.Kind == ScreenReaderDifferenceKind.OrderMismatch
+                && capture.Source is ScreenReaderSource.TalkBack or ScreenReaderSource.AccessibilityInspector)
                 continue;
 
             var path = diff.Predicted?.NodePath ?? diff.Actual?.MatchedNodePath ?? "";

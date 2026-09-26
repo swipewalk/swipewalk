@@ -89,8 +89,14 @@ public sealed class ScanService(IProgress<string> log)
     /// dialog -- the same asker shape record mode uses, via <see cref="ScanLargeTextRestart.Build"/>. Null with
     /// policy <see cref="LargeTextRestartPolicy.Ask"/> (e.g. a non-interactive run with no console/dialog
     /// wired up) resolves to "don't check", never to waiting forever.</param>
+    /// <param name="iosInspectorGuide">iOS only, and only when <see cref="ScanOptions.ScreenReaderCapture"/> is
+    /// set: the CLI/desktop prompt for the Accessibility Inspector route's one-time permission-and-setup step
+    /// (see <see cref="IosCollector.RunInspectorCaptureAsync"/>). Android's equivalent (TalkBack) needs no such
+    /// hook -- it runs entirely on the device, inside <see cref="AndroidCollector.CaptureAsync"/>. Null (the
+    /// default) declines the Inspector route without asking, same as any other unset confirmation.</param>
     public async Task<RunResult> ScanAsync(
-        ScanOptions options, CancellationToken cancellationToken = default, LargeTextRestartAsker? largeTextRestartAsk = null)
+        ScanOptions options, CancellationToken cancellationToken = default, LargeTextRestartAsker? largeTextRestartAsk = null,
+        IosCollector.IosInspectorGuide? iosInspectorGuide = null)
     {
         var outDir = Path.GetFullPath(options.OutputDirectory);
         var captureDir = options.FromCapture is { } from ? Path.GetFullPath(from) : Path.Combine(outDir, "capture");
@@ -141,6 +147,15 @@ public sealed class ScanService(IProgress<string> log)
         // IosCollector.Load above.
         if (options.FrameworkVersion is { } frameworkVersion)
             snapshot = snapshot with { FrameworkVersion = frameworkVersion };
+
+        // iOS's screen-reader capture (--screen-reader) is the Accessibility Inspector route, run here rather
+        // than inside IosCollector.CaptureAsync above: unlike Android's TalkBack capture, it never touches the
+        // device at all -- it's a Mac-side walk of a separate app (Xcode's Accessibility Inspector) -- and it
+        // can't be replayed from a saved capture (--from), so it's skipped there. Never attempted for the
+        // appearance rescan's second capture, matching Android's own choice not to double an expensive capture
+        // silently (see RunAppearanceRescanAsync's comment on captureScreenReader: false there).
+        if (ios && options.ScreenReaderCapture && options.FromCapture is null)
+            snapshot = snapshot with { ScreenReaderCapture = await IosCollector.RunInspectorCaptureAsync(snapshot, iosInspectorGuide, cancellationToken) };
 
         var savedLarge = Path.Combine(captureDir, "large");
         string? largeTextSkippedReason = null;
