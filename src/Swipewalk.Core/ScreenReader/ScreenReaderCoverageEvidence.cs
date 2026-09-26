@@ -185,11 +185,36 @@ public static class ScreenReaderCoverageEvidence
         return screen.Findings.Count(f => IsCaptureFinding(f) && f.Criteria.Contains(criterion) && otherPaths.Contains(f.NodePath));
     }
 
+    /// <summary>The exact reason TalkBack's harness (<c>harness/android/.../TalkBackCollector.kt</c>) records
+    /// on every ordinary, fully-successful capture -- every single one of that collector's return paths
+    /// passes <c>complete = false</c>, always, because its walk only ever covers focusable/interactive
+    /// elements (never plain informational text, to keep the per-element cost down), not because anything
+    /// went wrong or was cut short. So <see cref="ScreenReaderCapture.Complete"/> being false for a TalkBack
+    /// capture with exactly this reason is the NORMAL case, not a real early stop -- unlike every other
+    /// TalkBack reason (the app not in front, the per-capture element cap reached, TalkBack refusing to
+    /// speak through Swipewalk's engine, more than half the elements silent, or an exception), which IS a
+    /// genuine problem worth a caveat, and unlike the Accessibility Inspector route, where
+    /// <see cref="ScreenReaderCapture.Complete"/> really does mean "the walk actually finished" (a device
+    /// disconnect, a timeout or an order wrap are real early stops there). Comparing this exact literal
+    /// (rather than folding it into the generic incomplete-capture wording below) is what stops the
+    /// "capture stopped before the end of this screen" caveat from appearing on literally every TalkBack
+    /// capture ever made, including ones that walked every focusable element without incident. No automated
+    /// cross-check against the Kotlin string exists: that harness runs outside dotnet test's reach.</summary>
+    internal const string TalkBackFocusableElementsOnlyReason =
+        "only focusable/interactive elements were captured, not plain informational text (to keep the capture fast)";
+
+    /// <summary>Whether an incomplete capture's own reason is worth telling the reader about here -- see
+    /// <see cref="TalkBackFocusableElementsOnlyReason"/>'s remarks for why TalkBack's own, expected
+    /// not-complete reason is excluded.</summary>
+    private static bool IsGenuineEarlyStop(ScreenReaderCapture capture) =>
+        !capture.Complete && !(capture.Source == ScreenReaderSource.TalkBack
+            && capture.NotCompleteReason == TalkBackFocusableElementsOnlyReason);
+
     private static string AppendIncomplete(string text, ScreenReaderCapture capture) =>
-        capture.Complete
-            ? text
-            : text + $" The capture stopped before the end of this screen ({capture.NotCompleteReason ?? "reason not recorded"}), " +
-                     "so later elements were not compared.";
+        IsGenuineEarlyStop(capture)
+            ? text + $" The capture stopped before the end of this screen ({capture.NotCompleteReason ?? "reason not recorded"}), " +
+                     "so later elements were not compared."
+            : text;
 
     private static string AppendOverlap(string text, ScreenResult screen, WcagCriterion criterion)
     {
