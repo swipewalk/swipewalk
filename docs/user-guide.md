@@ -784,7 +784,15 @@ pages:
   supported yet. The first time it would change a physical phone's accessibility settings, Start
   shows a confirmation naming what changes and that TalkBack stays silent while Swipewalk listens;
   choosing Continue is remembered on this Mac so you're not asked again, and Cancel stops the run
-  before anything changes (asked again next time). Use a test device.
+  before anything changes (asked again next time). Use a test device. The build-file picker (Choose…
+  next to "Or install a build first") accepts an Android App Bundle (`.aab`) as well as an `.apk`;
+  for Android, an "Installing an Android App Bundle (.aab)" section below it lets you point at a
+  specific bundletool (optional — it's usually found automatically) and, instead of the standard
+  Android debug key Swipewalk otherwise creates and signs with, a keystore and its key alias to sign
+  with your own key — the same options as the CLI's `--bundletool`/`--keystore`/`--keystore-alias`
+  (see [section 9](#9-troubleshooting)). The keystore's password is never typed into the app or
+  saved: set the `SWIPEWALK_KEYSTORE_PASSWORD` environment variable (and `SWIPEWALK_KEY_PASSWORD` if
+  the key's own password differs) before launching Swipewalk.
 - **Devices** — readiness checks and fix hints for each connected device, the same checks
   `swipewalk doctor` runs.
 - **History** — every saved run, to open or compare. A recording that's still going (here, or in
@@ -873,8 +881,10 @@ Other things you might hit:
   or `JAVA_HOME`); a message says how to get either one if it's missing — Swipewalk never
   downloads bundletool itself. Without `--keystore`, the generated `.apks` are signed with the
   standard Android debug key (`~/.android/debug.keystore`, the same one Android Studio and Gradle
-  use — Swipewalk creates it with `keytool` if it doesn't already exist, since bundletool itself
-  won't) — fine for scanning, but different from your store build's signing key, so it's never a
+  use). If that file doesn't already exist, Swipewalk creates it with `keytool`, using the same
+  standard settings Android Studio and Gradle use — since bundletool itself won't: its own `--ks`
+  help says plainly that without a keystore, "the APKs will not be signed", and it does not create
+  the file itself. Fine for scanning, but different from your store build's signing key, so it's never a
   substitute for a release build. Pass `--keystore <path> --keystore-alias <alias>` to sign with
   your own key instead; set the `SWIPEWALK_KEYSTORE_PASSWORD` environment variable first
   (`SWIPEWALK_KEY_PASSWORD` too if the key's own password differs — rare in practice, since a
