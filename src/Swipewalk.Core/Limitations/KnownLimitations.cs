@@ -23,6 +23,16 @@ public static class KnownLimitations
         },
         new()
         {
+            Id = "jurisdiction-mapping-partial",
+            Area = LimitationArea.Coverage,
+            Title = "US state, other-country and store guidance mapping is opt-in and covers only some jurisdictions",
+            Description = "docs/standards.md lists jurisdiction standards Swipewalk researched (each checked against an official government source -- a statute, regulation, agency policy, or in a few cases an agency's own overview/FAQ page -- with a citation, legal tier and date) -- but they are not part of the default \"relevant to\" labels a finding gets; pass `--standard <id>` to add one. Several researched jurisdictions have no id at all: their own primary source wasn't confirmed (for example Maryland, Utah, Australia, India), their instrument references something other than WCAG 2.x and is shown as-is rather than translated (for example Rhode Island and Vermont's WCAG 1.0 policies, or several states' generic Section 508 citations), their own scope doesn't reach native apps (for example Ontario, Idaho, Iowa), or nothing jurisdiction-specific was found (docs/standards.md lists each reason). Apple and Google Play accessibility guidance is likewise informational (\"also relevant to\"/\"related to\"), never a claim about passing store review, and each only appears for the platform it applies to.",
+            Impact = "A report's default standards table, and the CLI's list of --standard ids in its error message, do not surface every jurisdiction Swipewalk has researched.",
+            ManualCheck = "Run `swipewalk standards` (or read docs/standards.md) for the full list, including jurisdictions researched but not yet mapped, and pass --standard for one that applies to you.",
+            Planned = "More jurisdictions confirmed and mapped as their primary sources are read.",
+        },
+        new()
+        {
             Id = "current-screen-only",
             Area = LimitationArea.Coverage,
             Title = "Only screens that were shown are scanned",

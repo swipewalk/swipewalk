@@ -128,7 +128,10 @@ const string Usage = """
                              capture showed, since there's no way to read the original back), including on an
                              error or Ctrl-C. Off by default. Not supported yet on a physical iPhone (the
                              report says why it was skipped); Simulator and emulator/Android device both work
-      --standard <id>        Focus the report on one standard: ada-title-ii, section-508, en-301-549, en-301-549-v4, uk-public-sector
+      --standard <id>        Focus the report on one standard: ada-title-ii, section-508, en-301-549, en-301-549-v4,
+                             uk-public-sector, or one of the opt-in US state / other-country ids from
+                             `swipewalk standards` (docs/standards.md) -- those never appear on every finding by
+                             default; naming one here adds its own row and narrows headline counts to it
       --expect <names>       record: comma-separated screens you meant to cover; missing ones are listed
       --auto                 record: also scan automatically when the screen changes (default: off -- only
                              "Enter"/"Scan this screen now" captures a screen, so a screen is only captured
@@ -630,7 +633,9 @@ static bool ValidStandard(string? id)
 {
     if (id is null || KnownStandards.Find(id) is not null)
         return true;
-    Console.Error.WriteLine($"Unknown --standard '{id}'. Use one of: {string.Join(", ", KnownStandards.All.Select(s => s.Id))}.");
+    Console.Error.WriteLine(
+        $"Unknown --standard '{id}'. Use one of: {string.Join(", ", KnownStandards.All.Select(s => s.Id))}, " +
+        "or one of the US state / other-country ids listed by `swipewalk standards` (docs/standards.md).");
     return false;
 }
 

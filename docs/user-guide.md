@@ -266,10 +266,25 @@ Each screen also shows:
   check can't see at all), when TalkBack's announcement leaves that text out — on the one such
   control checked so far (a Jetpack Compose button in samples/NativeAndroid), TalkBack's
   announcement included the visible text alongside its overriding name, so nothing was reported.
-- **Relevance to standards** — each finding is labeled with the laws and standards (ADA Title II,
-  Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version and level
-  include its criterion. This says a finding is **relevant to** a standard, never that the app
-  **complies with** it — it's a mapping to help you prioritize, not legal advice.
+- **Relevance to standards** — each finding is labeled with the default laws and standards (ADA
+  Title II, Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version
+  and level include its criterion. This says a finding is **relevant to** a standard, never that the
+  app **complies with** it — it's a mapping to help you prioritize, not legal advice. US states and
+  other countries are researched too, but kept opt-in (never listed on every finding by default, so a
+  report doesn't try to list every state): pass `--standard <id>` with one of their ids (see
+  [docs/standards.md](standards.md)) to add that jurisdiction's own row and narrow headline counts to
+  it, the same way `--standard` already works for the default standards. Because it's computed on the
+  fly from the standard's own WCAG version and level, this works the same way for a jurisdiction
+  standard as for a default one — but results.json's own `relevantStandards` field on each finding
+  always lists only the default set, even when a report is focused on a jurisdiction (recompute it
+  from that standard's WCAG version/level and the finding's criteria if you need it in JSON too). Some
+  researched jurisdictions aren't shipped as a mapped standard at all — their own primary source
+  wasn't fully confirmed, their instrument references something other than WCAG 2.x (shown as-is, not
+  translated), it doesn't reach the kind of app Swipewalk scans, or nothing jurisdiction-specific was
+  found; docs/standards.md lists each one and why. A finding can also carry a small "also relevant
+  to"/"related to" note for Apple's or Google Play's own accessibility guidance, shown only on the
+  platform it applies to (never a claim about passing store review, or that the store itself flagged
+  this specific finding).
 - **Known limitations** — the report lists the limitations that apply to the scanned platform and
   framework (from [docs/limitations.md](limitations.md)), each with what to check by hand instead.
   Read these; they explain gaps like "headings aren't checked yet" or "contrast is measured from
