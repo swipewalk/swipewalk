@@ -156,6 +156,14 @@ public partial class NewScanPage : ContentPage
 		// TalkBack capture is Android only for now (see AndroidHarness.RunScreenReaderCaptureAsync); hide the
 		// option entirely for iOS rather than show a checkbox that would do nothing if left checked.
 		TalkBackOption.IsVisible = Platform == TargetPlatform.Android;
+		// .aab install (bundletool/keystore) is Android only; hide the whole section for iOS the same way.
+		var androidAab = Platform == TargetPlatform.Android;
+		AndroidAabOptionsLabel.IsVisible = androidAab;
+		AndroidAabOptionsCaptionLabel.IsVisible = androidAab;
+		BundletoolRow.IsVisible = androidAab;
+		KeystoreRow.IsVisible = androidAab;
+		KeystoreAliasRow.IsVisible = androidAab;
+		KeystorePasswordHintLabel.IsVisible = androidAab;
 	}
 
 	private DeviceInfo? SelectedDevice() =>
@@ -217,6 +225,22 @@ public partial class NewScanPage : ContentPage
 		var file = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Choose a build to install" });
 		if (file is not null)
 			BuildEntry.Text = file.FullPath;
+	}
+
+	/// <summary>Only the keystore file path is picked here -- its password is never asked for or stored; see
+	/// KeystorePasswordHintLabel and ScanOptions.AndroidKeystore's remarks.</summary>
+	private async void OnChooseKeystore(object? sender, EventArgs e)
+	{
+		var file = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Choose a keystore" });
+		if (file is not null)
+			KeystoreEntry.Text = file.FullPath;
+	}
+
+	private async void OnChooseBundletool(object? sender, EventArgs e)
+	{
+		var file = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Choose bundletool" });
+		if (file is not null)
+			BundletoolEntry.Text = file.FullPath;
 	}
 
 	/// <summary>
@@ -338,6 +362,16 @@ public partial class NewScanPage : ContentPage
 				Package = Platform == TargetPlatform.Android ? appId : null,
 				BundleId = Platform == TargetPlatform.Ios ? appId : null,
 				InstallFile = build,
+				// Android only (the section is hidden for iOS -- OnPlatformChanged -- but guard on Platform
+				// here too, the same reason ScreenReaderCapture below does); ignored anyway unless InstallFile
+				// ends in .aab (see AppInstaller.InstallAndroidAsync), so leaving them blank for a .apk/.ipa
+				// install is harmless.
+				BundletoolPath = Platform == TargetPlatform.Android && !string.IsNullOrWhiteSpace(BundletoolEntry.Text)
+					? BundletoolEntry.Text.Trim() : null,
+				AndroidKeystore = Platform == TargetPlatform.Android && !string.IsNullOrWhiteSpace(KeystoreEntry.Text)
+					? KeystoreEntry.Text.Trim() : null,
+				AndroidKeystoreAlias = Platform == TargetPlatform.Android && !string.IsNullOrWhiteSpace(KeystoreAliasEntry.Text)
+					? KeystoreAliasEntry.Text.Trim() : null,
 				Standard = StandardPicker.SelectedIndex > 0 ? KnownStandards.All[StandardPicker.SelectedIndex - 1].Id : null,
 				LargeText = LargeTextOption.IsChecked,
 				Framework = MauiOption.IsChecked ? AppFramework.Maui : null,

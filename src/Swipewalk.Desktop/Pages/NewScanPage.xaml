@@ -27,13 +27,47 @@
                     <Button Grid.Column="1" x:Name="ChooseAppButton" Text="Choose app…" Clicked="OnChooseApp"
                             SemanticProperties.Hint="Search recently scanned and installed apps on the selected device" />
                 </Grid>
-                <Label Text="Or install a build first (.apk, Simulator .app or .zip, device .ipa):" FontSize="{DynamicResource FontCaption}" />
+                <Label Text="Or install a build first (Android .apk or App Bundle .aab, Simulator .app or .zip, device .ipa):" FontSize="{DynamicResource FontCaption}" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Border Style="{StaticResource FieldFrame}">
                         <Entry x:Name="BuildEntry" Placeholder="Path to a build file (optional)" SemanticProperties.Description="Build file to install" />
                     </Border>
                     <Button Grid.Column="1" Text="Choose…" Clicked="OnChooseBuild" SemanticProperties.Description="Choose a build file to install" />
                 </Grid>
+                <!--
+                    Android only (hidden for iOS in code-behind, NewScanPage.OnPlatformChanged), and only
+                    relevant when the build above is a .aab, shown regardless of that, the same way
+                    TalkBackOption is shown for every Android run rather than only when it would do something.
+                    Installing a .aab needs Google's bundletool (AppInstaller.InstallAndroidBundleAsync); a
+                    keystore password is never entered here or saved anywhere, only the environment variables
+                    named below, read at scan time.
+                -->
+                <Label x:Name="AndroidAabOptionsLabel" Text="Installing an Android App Bundle (.aab)" FontAttributes="Bold" IsVisible="False"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Label x:Name="AndroidAabOptionsCaptionLabel" FontSize="{DynamicResource FontCaption}" IsVisible="False"
+                       Text="Needs Google's bundletool, usually found automatically. Without a keystore below, Swipewalk signs with the standard Android debug key (~/.android/debug.keystore), creating it with keytool if it doesn't already exist, using the same standard settings Android Studio and Gradle use. A debug-signed build differs from your store build, so it's for scanning only." />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="False" x:Name="BundletoolRow">
+                    <Border Style="{StaticResource FieldFrame}">
+                        <Entry x:Name="BundletoolEntry" Placeholder="Path to bundletool (optional)"
+                               SemanticProperties.Description="Path to bundletool, for installing an Android App Bundle" />
+                    </Border>
+                    <Button Grid.Column="1" Text="Choose…" Clicked="OnChooseBundletool" SemanticProperties.Description="Choose bundletool" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="False" x:Name="KeystoreRow">
+                    <Border Style="{StaticResource FieldFrame}">
+                        <Entry x:Name="KeystoreEntry" Placeholder="Keystore to sign the .aab with (optional)"
+                               SemanticProperties.Description="Keystore to sign the Android App Bundle install with" />
+                    </Border>
+                    <Button Grid.Column="1" Text="Choose…" Clicked="OnChooseKeystore" SemanticProperties.Description="Choose a keystore file" />
+                </Grid>
+                <Grid ColumnDefinitions="*" IsVisible="False" x:Name="KeystoreAliasRow">
+                    <Border Style="{StaticResource FieldFrame}">
+                        <Entry x:Name="KeystoreAliasEntry" Placeholder="Key alias inside the keystore (required with a keystore)"
+                               SemanticProperties.Description="Key alias inside the keystore" />
+                    </Border>
+                </Grid>
+                <Label x:Name="KeystorePasswordHintLabel" FontSize="{DynamicResource FontCaption}" IsVisible="False"
+                       Text="A keystore needs the SWIPEWALK_KEYSTORE_PASSWORD environment variable set before launching Swipewalk (SWIPEWALK_KEY_PASSWORD too if the key's own password differs) — never typed here." />
 
                 <Label Text="Law or standard" FontAttributes="Bold" />
                 <controls:SelectButton x:Name="StandardPicker" SemanticProperties.Description="Law or standard" HeightRequest="32" />
