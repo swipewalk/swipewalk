@@ -265,9 +265,7 @@ public static class AppInstaller
         {
             using (var stream = new FileStream(path, options))
             using (var writer = new StreamWriter(stream))
-                // codeql[cs/clear-text-storage-of-sensitive-information] see this method's doc comment: a
-                // private, 0600, per-user temp file deleted immediately after use is bundletool's own safer
-                // alternative to passing the password as a command-line argument.
+                // codeql[cs/clear-text-storage-of-sensitive-information] see this method's doc comment.
                 writer.Write(password);
         }
         catch (PlatformNotSupportedException)
