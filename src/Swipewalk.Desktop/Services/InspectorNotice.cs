@@ -1,11 +1,14 @@
 namespace Swipewalk.Desktop.Services;
 
 /// <summary>
-/// New scan's iOS equivalent of Services/TalkBackNotice: turning on "Read what VoiceOver would say (uses
-/// Xcode's Accessibility Inspector)" reads real accessibility evidence from Xcode's Accessibility Inspector
-/// over the macOS Accessibility API instead of turning VoiceOver on (see
+/// New scan's iOS equivalent of Services/TalkBackNotice: turning on "Read Accessibility Inspector evidence
+/// (what VoiceOver would read)" reads real accessibility evidence from Xcode's Accessibility Inspector over
+/// the macOS Accessibility API instead of turning VoiceOver on (see
 /// Swipewalk.Collectors.Ios.IosCollector.RunInspectorCaptureAsync) -- the same route the CLI's --screen-reader
-/// offers on iOS (Program.cs, IosInspectorGuide.AskAsync). Unlike TalkBack, it needs a person present for
+/// offers on iOS (Program.cs, IosInspectorGuide.AskAsync). Confirmed 2026-09-26 (a hardware experiment):
+/// VoiceOver does not speak during this walk -- it never runs -- so this is Accessibility Inspector evidence,
+/// not a VoiceOver recording; wording here and in the desktop/record text stays framed that way. Unlike
+/// TalkBack, it needs a person present for
 /// TWO separate things every time this option is used: granting the macOS Accessibility permission to whichever
 /// app is running Swipewalk (this app itself, when run from the desktop), and choosing the target device in
 /// Accessibility Inspector and clicking the first element on the app's screen so its walk starts from the top --

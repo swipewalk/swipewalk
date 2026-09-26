@@ -790,14 +790,16 @@ pages:
   what changes and that TalkBack stays silent while Swipewalk listens; choosing Continue is
   remembered on this Mac so you're not asked again, and Cancel stops the run before anything changes
   (asked again next time). Use a test device.
-  For iOS, "Read what VoiceOver would say (uses Xcode's Accessibility Inspector)" is hidden for
+  For iOS, "Read Accessibility Inspector evidence (what VoiceOver would read)" is hidden for
   Android and **off by default** — unlike TalkBack, it needs you present every time it's used, so it
-  can't run unattended. Turning it on and pressing Start shows two alerts: first, what the macOS
-  Accessibility permission is for and that it's confirmed once on this Mac, not asked again; then,
-  every time, the one-time Inspector setup step (open Accessibility Inspector, choose your device,
-  click the first element on the app's screen) — Continue only after you've done it, since nothing
-  here can confirm it was. Cancelling either alert falls back to the predicted transcript for that
-  run, and the report says which route produced its screen-reader evidence.
+  can't run unattended. This reads real accessibility evidence from Xcode's Accessibility Inspector;
+  VoiceOver itself does not run and does not speak. Turning it on and pressing Start shows two
+  alerts: first, what the macOS Accessibility permission is for and that it's confirmed once on this
+  Mac, not asked again; then, every time, the one-time Inspector setup step (open Accessibility
+  Inspector, choose your device, click the first element on the app's screen) — Continue only after
+  you've done it, since nothing here can confirm it was. Cancelling either alert falls back to the
+  predicted transcript for that run, and the report says which route produced its screen-reader
+  evidence.
 - **Devices** — readiness checks and fix hints for each connected device, the same checks
   `swipewalk doctor` runs.
 - **History** — every saved run, to open or compare. A recording that's still going (here, or in

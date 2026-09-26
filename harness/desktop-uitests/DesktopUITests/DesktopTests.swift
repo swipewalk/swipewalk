@@ -954,13 +954,13 @@ final class DesktopTests: XCTestCase {
         XCTAssertTrue(reportHTML.contains("Screen reader (captured)"), "report.html should show the captured TalkBack section")
     }
 
-    /// "Read what VoiceOver would say (uses Xcode's Accessibility Inspector)" (NewScanPage.InspectorOption) is
+    /// "Read Accessibility Inspector evidence (what VoiceOver would read)" (NewScanPage.InspectorOption) is
     /// iOS only (NewScanPage.OnPlatformChanged hides it for Android) and **off by default**, unlike TalkBack:
     /// it needs a person present every time it's used (Services/InspectorNotice), so it can't run unattended.
     func testInspectorOptionIsIOSOnlyAndOffByDefault() throws {
         let app = Desktop.launch(page: "scan")
         defer { app.terminate() }
-        let inspector = app.switches["Read what VoiceOver would say (uses Xcode's Accessibility Inspector)"].firstMatch
+        let inspector = app.switches["Read Accessibility Inspector evidence (what VoiceOver would read)"].firstMatch
         XCTAssertFalse(inspector.waitForExistence(timeout: 3), "Inspector option should be hidden on Android (the default platform)")
 
         app.buttons["Platform"].firstMatch.click()
@@ -977,7 +977,7 @@ final class DesktopTests: XCTestCase {
         XCTAssertFalse(inspector.waitForExistence(timeout: 3), "Inspector option should be hidden again back on Android")
     }
 
-    /// Turning "Read what VoiceOver would say" on for iOS and pressing Start shows the permission-explanation
+    /// Turning "Read Accessibility Inspector evidence" on for iOS and pressing Start shows the permission-explanation
     /// alert (Services/InspectorNotice) before anything else happens -- unlike TalkBack's notice (gated only for
     /// a physical phone), this is shown for the iOS Simulator too, since the macOS Accessibility permission is
     /// about this Mac, not the device under test. Cancel must stop the run before it does anything: no Finish
@@ -1007,7 +1007,7 @@ final class DesktopTests: XCTestCase {
         guard simulatorItem.waitForExistence(timeout: 10) else { throw XCTSkip("No iOS Simulator connected") }
         simulatorItem.click()
 
-        let inspector = app.switches["Read what VoiceOver would say (uses Xcode's Accessibility Inspector)"].firstMatch
+        let inspector = app.switches["Read Accessibility Inspector evidence (what VoiceOver would read)"].firstMatch
         XCTAssertTrue(inspector.waitForExistence(timeout: 10))
         inspector.click()
         let appId = app.textFields["App package or bundle id"].firstMatch
