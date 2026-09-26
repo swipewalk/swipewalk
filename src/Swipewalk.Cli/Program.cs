@@ -17,7 +17,7 @@ const string Usage = """
       swipewalk scan --platform android [--large-text-restart ask|always|never] [options]
       swipewalk scan --platform ios --bundle-id <id> [--large-text-restart ask|always|never] [options]
       swipewalk record --platform android|ios [--bundle-id <id>] [--expect "Login,Home"] [--large-text false]
-                       [--auto] [--large-text-restart ask|always|never] [options]
+                       [--auto] [--large-text-restart ask|always|never] [--screen-reader] [options]
       swipewalk record --continue <run>                           Resume a recording that ended early
       swipewalk limitations [--platform <p>] [--framework <f>]   Print known limitations as Markdown
       swipewalk doctor --platform android|ios [--device <id>] [--package <p> | --bundle-id <id>] [--team <id>]
@@ -69,8 +69,9 @@ const string Usage = """
                              Advanced/testing use only; scans work correctly without it
       --screen-reader        Android only for now: also drive TalkBack over the screen's focusable elements
                              and read back exactly what it says, compared against the predicted transcript
-                             in the report. Off by default -- costs roughly 1-2 seconds per element (a
-                             30-element screen ~1 minute); entirely local, on-device (see
+                             in the report. Works with both scan (once, for the screen shown) and record
+                             (once per screen you scan while recording). Off by default -- costs roughly
+                             1-2 seconds per element (a 30-element screen ~1 minute); entirely local, on-device (see
                              docs/limitations.md). Turns TalkBack on for the capture and temporarily makes
                              a small helper app Swipewalk installs TalkBack's default text-to-speech
                              engine, so it receives the exact spoken text -- TalkBack speaks nothing aloud
@@ -377,7 +378,9 @@ if (command == "doctor")
     return Preflight.CanProceed(checks) ? 0 : 1;
 }
 
-if (scanOptions.ScreenReaderCapture
+// --screen-reader is Android only for now: a physical Android phone connected alongside an iOS target must
+// never gate an iOS run that happens to also pass --screen-reader (it has no effect there).
+if (platformName == "android" && scanOptions.ScreenReaderCapture
     && !await ConfirmScreenReaderOnPhysicalDeviceAsync(scanOptions.Device, options.ContainsKey("screen-reader-confirm")))
 {
     return 1;
@@ -414,7 +417,7 @@ try
         using var input = new ConsoleRecordingInput(control, scanOptions.LargeTextRestartPolicy);
         Console.WriteLine("  Enter   scan the current screen now (e.g. after opening a menu)\n" +
                            "  q       finish and write the report (Ctrl+C stops early instead; the report says so)\n" +
-                           $"  l       when checking larger text needs the app restarted (currently: {input.CurrentPolicyLabel})");
+                           $"  l       some apps need a restart, or go back to their first screen, when the text size changes; what to do about that (currently: {input.CurrentPolicyLabel})");
         var history = new RunHistory(historyDir);
         if (continuingRun is not null)
         {
@@ -534,11 +537,8 @@ static Task<LargeTextRestartChoice> AskScanLargeTextRestartAsync(
 /// </summary>
 static async Task<bool> ConfirmScreenReaderOnPhysicalDeviceAsync(string? device, bool confirmedByFlag)
 {
-    var candidates = await Devices.AndroidAsync();
-    var chosen = device is not null
-        ? candidates.FirstOrDefault(d => d.Id == device)
-        : candidates.Count == 1 ? candidates[0] : null;
-    if (chosen is not { IsPhysical: true } || confirmedByFlag)
+    var chosen = await ScreenReaderCaptureGate.PhysicalDeviceNeedingConfirmationAsync(device);
+    if (chosen is null || confirmedByFlag)
         return true;
     if (Console.IsInputRedirected)
     {
@@ -617,9 +617,9 @@ sealed class ConsoleRecordingInput : IDisposable
 
     private static string Label(LargeTextRestartPolicy policy) => policy switch
     {
-        LargeTextRestartPolicy.Always => "always check",
-        LargeTextRestartPolicy.Never => "never check",
-        _ => "ask",
+        LargeTextRestartPolicy.Always => "restart the app and check",
+        LargeTextRestartPolicy.Never => "don't check larger text on that screen",
+        _ => "ask me each time",
     };
 
     private async Task RunAsync()
@@ -675,7 +675,7 @@ sealed class ConsoleRecordingInput : IDisposable
             _ => LargeTextRestartPolicy.Ask,
         };
         _control.SetLargeTextRestartPolicy(_policy);
-        Console.WriteLine($"  When checking larger text needs the app restarted: {CurrentPolicyLabel}");
+        Console.WriteLine($"  Some apps need a restart, or go back to their first screen, when the text size changes; if that happens: {CurrentPolicyLabel}");
     }
 
     /// <summary>Matches the <c>LargeTextRestartAsker</c> delegate; pass <c>input.AskAsync</c> directly.</summary>

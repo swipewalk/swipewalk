@@ -35,6 +35,22 @@ public sealed class Runner(ScanService service, RunHistory history, IProgress<st
                     continue;
                 }
 
+                // screenReaderCapture changes a physical phone's accessibility settings; a swipewalk.json run
+                // is never interactive, so nobody can answer the CLI's --screen-reader-confirm prompt --
+                // screenReaderConfirm stands in for that answer instead (see ScreenReaderCaptureGate). Never
+                // gates an emulator, or an iOS target -- screenReaderCapture is Android only for now, so an
+                // iOS target with it set must never be blocked over a physical Android phone that happens to
+                // be connected too.
+                if (options.Platform == TargetPlatform.Android && options.ScreenReaderCapture && !config.ScreenReaderConfirm
+                    && await ScreenReaderCaptureGate.PhysicalDeviceNeedingConfirmationAsync(options.Device) is { } physical)
+                {
+                    outcomes.Add(new TargetOutcome(target, null,
+                        $"screenReaderCapture would change {physical.Name}'s accessibility settings; set " +
+                        "\"screenReaderConfirm\": true in swipewalk.json to confirm this on a physical phone, or test on an emulator instead"));
+                    log.Report($"Failed: {outcomes[^1].Error}");
+                    continue;
+                }
+
                 options = options with
                 {
                     // --no-history writes to a local folder instead of the history, like scan/record's own

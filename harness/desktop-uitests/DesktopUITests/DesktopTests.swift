@@ -248,7 +248,8 @@ final class DesktopTests: XCTestCase {
             XCTAssertFalse((choice.value as? String ?? "").isEmpty, "\(name) does not expose its selected value")
         }
         // Native macOS checkboxes (UISwitch, checkbox style) carry their own label and on/off state.
-        for name in ["Also check with large system text (Android 200%, iOS AX3)", "App built with .NET MAUI (fix examples in XAML)"] {
+        for name in ["Also check with large system text (Android 200%, iOS AX3)", "App built with .NET MAUI (fix examples in XAML)",
+                     "Listen with TalkBack (records what TalkBack actually says)"] {
             XCTAssertTrue(app.switches[name].exists || app.checkBoxes[name].exists, "'\(name)' is not a named checkbox")
         }
         XCTAssertEqual(app.textFields.matching(NSPredicate(format: "label IN %@", ["Platform", "Device"])).count, 0,
@@ -285,12 +286,12 @@ final class DesktopTests: XCTestCase {
         appId.typeText("org.swipewalk.buggyapp")
         app.buttons["Start"].firstMatch.click()
 
-        let restartPicker = app.buttons["When checking larger text needs the app restarted"].firstMatch
+        let restartPicker = app.buttons["Some apps need a restart, or go back to their first screen, when the text size changes. If that happens"].firstMatch
         guard restartPicker.waitForExistence(timeout: 60) else {
             XCTFail("Recording did not start (large-text-restart picker never appeared)")
             return
         }
-        XCTAssertEqual(restartPicker.value as? String, "Ask each time", "The picker should default to asking")
+        XCTAssertEqual(restartPicker.value as? String, "Ask me each time", "The picker should default to asking")
 
         app.buttons["Finish"].firstMatch.click()
         let reportPage = app.buttons["Open in browser"].firstMatch
@@ -748,5 +749,208 @@ final class DesktopTests: XCTestCase {
 
         app.terminate()
         app = Desktop.launch(page: "scan", extraArguments: ["--reset-physical-device-notice"])
+    }
+
+    /// "Listen with TalkBack" (NewScanPage.TalkBackOption) is Android only (NewScanPage.OnPlatformChanged hides
+    /// it for iOS rather than leave a checkbox that would do nothing) and on by default, since real TalkBack
+    /// evidence is wanted in every Android report, not just the predicted transcript.
+    func testTalkBackOptionIsAndroidOnlyAndVisibleByDefault() throws {
+        let app = Desktop.launch(page: "scan")
+        defer { app.terminate() }
+        let talkBack = app.switches["Listen with TalkBack (records what TalkBack actually says)"].firstMatch
+        XCTAssertTrue(talkBack.waitForExistence(timeout: 10), "TalkBack option should be visible on Android (the default platform)")
+
+        app.buttons["Platform"].firstMatch.click()
+        let iosItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "ios")).firstMatch
+        XCTAssertTrue(iosItem.waitForExistence(timeout: 10), "iOS platform option did not appear")
+        iosItem.click()
+        XCTAssertFalse(talkBack.waitForExistence(timeout: 3), "TalkBack option should be hidden for iOS")
+
+        app.buttons["Platform"].firstMatch.click()
+        let androidItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "android")).firstMatch
+        XCTAssertTrue(androidItem.waitForExistence(timeout: 10), "Android platform option did not appear")
+        androidItem.click()
+        XCTAssertTrue(talkBack.waitForExistence(timeout: 10), "TalkBack option should reappear back on Android")
+    }
+
+    /// Turning "Listen with TalkBack" on for a physical Android phone shows a real confirmation
+    /// (Services/TalkBackNotice) before Start does anything -- unlike Services/PhysicalDeviceNotice (an FYI
+    /// shown on device selection that never blocks), Cancel here must stop the run from starting at all, since
+    /// TalkBack capture installs a helper app and changes the phone's accessibility settings. Confirmed once
+    /// per Mac (Services/TalkBackNoticePreference, reset here via --reset-talkback-notice) so a returning
+    /// person isn't asked again; declining remembers nothing, so the same phone is asked again next launch.
+    /// Needs a physical Android phone connected; skips otherwise.
+    func testTalkBackNoticeGatesStartOnAPhysicalPhoneOnly() throws {
+        var app = Desktop.launch(page: "scan", extraArguments: ["--reset-talkback-notice", "--reset-physical-device-notice"])
+        defer { app.terminate() }
+        let devicePicker = app.buttons["Device"].firstMatch
+        XCTAssertTrue(devicePicker.waitForExistence(timeout: 10))
+        let loaded = NSPredicate(format: "value != %@", "No device found (see Devices)")
+        expectation(for: loaded, evaluatedWith: devicePicker)
+        waitForExpectations(timeout: 15)
+
+        devicePicker.click()
+        let physicalItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "physical_device")).firstMatch
+        guard physicalItem.waitForExistence(timeout: 10) else { throw XCTSkip("No physical Android device connected") }
+        physicalItem.click()
+
+        // Dismiss the unrelated physical-phone (large-text) notice first, so it isn't mistaken for the
+        // TalkBack one below.
+        let physicalHeading = app.staticTexts["Physical phone selected"]
+        if physicalHeading.waitForExistence(timeout: 10) {
+            app.windows.buttons["OK"].firstMatch.click()
+        }
+
+        XCTAssertTrue(app.switches["Listen with TalkBack (records what TalkBack actually says)"].firstMatch.waitForExistence(timeout: 10),
+                      "TalkBack should default to checked")
+        let appId = app.textFields["App package or bundle id"].firstMatch
+        XCTAssertTrue(appId.waitForExistence(timeout: 10))
+        appId.click()
+        appId.typeText("org.swipewalk.buggyapp")
+
+        app.buttons["Start"].firstMatch.click()
+        let heading = app.staticTexts["Turn on TalkBack for this phone?"]
+        guard heading.waitForExistence(timeout: 10) else { XCTFail("TalkBack notice did not appear for the physical phone"); return }
+        XCTAssertTrue(app.staticTexts.containing("test device").exists, "The notice should say to use a test device")
+        XCTAssertTrue(app.staticTexts.containing("speak nothing aloud").exists,
+                      "The notice body should be shown in full, not truncated")
+        XCTAssertTrue(app.windows.buttons["Continue"].exists, "The notice should offer Continue")
+        XCTAssertTrue(app.windows.buttons["Cancel"].exists, "The notice should offer Cancel")
+
+        // Cancel must stop the run before it does anything -- Start stays clickable, and nothing was recorded
+        // as confirmed, so the same phone is asked again below.
+        app.windows.buttons["Cancel"].firstMatch.click()
+        XCTAssertFalse(heading.waitForExistence(timeout: 3), "Cancel should close the notice")
+        XCTAssertTrue(app.buttons["Start"].firstMatch.isEnabled, "Cancel should leave Start ready to try again")
+        XCTAssertFalse(app.buttons["Finish"].firstMatch.exists, "Cancel must not have started a recording")
+
+        app.terminate()
+        app = Desktop.launch(page: "scan")
+        let currentPicker = app.buttons["Device"].firstMatch
+        XCTAssertTrue(currentPicker.waitForExistence(timeout: 10))
+        expectation(for: loaded, evaluatedWith: currentPicker)
+        waitForExpectations(timeout: 15)
+        currentPicker.click()
+        let currentPhysicalItem = app.menuItems.matching(NSPredicate(format: "identifier CONTAINS %@", "physical_device")).firstMatch
+        guard currentPhysicalItem.waitForExistence(timeout: 10) else { XCTFail("Physical device disappeared between launches"); return }
+        currentPhysicalItem.click()
+        if app.staticTexts["Physical phone selected"].waitForExistence(timeout: 10) {
+            app.windows.buttons["OK"].firstMatch.click()
+        }
+        let currentAppId = app.textFields["App package or bundle id"].firstMatch
+        XCTAssertTrue(currentAppId.waitForExistence(timeout: 10))
+        currentAppId.click()
+        currentAppId.typeText("org.swipewalk.buggyapp")
+        app.buttons["Start"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Turn on TalkBack for this phone?"].waitForExistence(timeout: 10),
+                      "Declining once must not suppress the notice for good")
+
+        app.terminate()
+        app = Desktop.launch(page: "scan", extraArguments: ["--reset-talkback-notice"])
+    }
+
+    /// End to end, from the desktop app itself (not just the CLI, which already had this): a single scan with
+    /// "Listen with TalkBack" (on by default -- NewScanPage.TalkBackOption) produces a real TalkBack capture,
+    /// not only the predicted transcript -- checked in the actual results.json and report.html this run wrote,
+    /// not just something the UI claims. Polls for report.html on disk (Desktop.waitForReportFile) rather than
+    /// querying the Report page's WebView, which was found flaky (see the fix in
+    /// testScanShowsReportAndSavesToHistory's history). Large text is turned off so this test isn't also
+    /// paying for that capture, which is unrelated to what it checks. Needs CF_E2E=1 and the Android emulator
+    /// (BuggyApp).
+    func testTalkBackCaptureAppearsInScanReport() throws {
+        guard ProcessInfo.processInfo.environment["CF_E2E"] == "1" else { throw XCTSkip("CF_E2E not set") }
+        let device = ProcessInfo.processInfo.environment["CF_E2E_DEVICE_NAME"] ?? "sdk_gphone"
+        let historyDir = Desktop.freshHistoryDir()
+        let app = Desktop.launch(page: "devices", history: historyDir)
+        defer { app.terminate() }
+        let scanOnDevice = app.buttons.containing("New scan on Google \(device)")
+        guard scanOnDevice.waitForExistence(timeout: 20) else { throw XCTSkip("Device '\(device)' not connected") }
+        scanOnDevice.click()
+
+        let picker = app.buttons["Device"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        let selected = NSPredicate(format: "value CONTAINS %@", device)
+        expectation(for: selected, evaluatedWith: picker)
+        waitForExpectations(timeout: 15)
+
+        XCTAssertTrue(app.switches["Listen with TalkBack (records what TalkBack actually says)"].firstMatch.waitForExistence(timeout: 10),
+                      "TalkBack should default to checked")
+        app.switches["Also check with large system text (Android 200%, iOS AX3)"].firstMatch.click()
+
+        let appId = app.textFields["App package or bundle id"].firstMatch
+        XCTAssertTrue(appId.waitForExistence(timeout: 10))
+        appId.click()
+        appId.typeText("org.swipewalk.buggyapp")
+        app.buttons["Start"].firstMatch.click()
+
+        guard let reportFile = Desktop.waitForReportFile(in: historyDir, timeout: 120) else {
+            let dump = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("talkback-scan-failure.txt")
+            try? app.debugDescription.write(to: dump, atomically: true, encoding: .utf8)
+            XCTFail("The report did not appear after the scan; screen saved to \(dump.path)")
+            return
+        }
+        let reportHTML = try String(contentsOf: reportFile, encoding: .utf8)
+        let resultsJSON = try String(contentsOf: reportFile.deletingLastPathComponent().appendingPathComponent("results.json"), encoding: .utf8)
+        XCTAssertTrue(resultsJSON.contains("\"talkBack\""), "results.json should have a talkBack screenReaderCapture")
+        XCTAssertTrue(reportHTML.contains("Screen reader (captured)"), "report.html should show the captured TalkBack section")
+    }
+
+    /// Same evidence as above, for Record: one "Scan this screen now" press, then Finish, with TalkBack on.
+    /// Needs CF_E2E=1 and the Android emulator (BuggyApp).
+    func testTalkBackCaptureAppearsInRecordReport() throws {
+        guard ProcessInfo.processInfo.environment["CF_E2E"] == "1" else { throw XCTSkip("CF_E2E not set") }
+        let device = ProcessInfo.processInfo.environment["CF_E2E_DEVICE_NAME"] ?? "sdk_gphone"
+        let historyDir = Desktop.freshHistoryDir()
+        let app = Desktop.launch(page: "devices", history: historyDir)
+        defer { app.terminate() }
+        let scanOnDevice = app.buttons.containing("New scan on Google \(device)")
+        guard scanOnDevice.waitForExistence(timeout: 20) else { throw XCTSkip("Device '\(device)' not connected") }
+        scanOnDevice.click()
+
+        let picker = app.buttons["Device"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        let selected = NSPredicate(format: "value CONTAINS %@", device)
+        expectation(for: selected, evaluatedWith: picker)
+        waitForExpectations(timeout: 15)
+
+        let modePicker = app.buttons["What to scan"].firstMatch
+        XCTAssertTrue(modePicker.waitForExistence(timeout: 10))
+        modePicker.click()
+        app.menuItems["Record: each screen as I use the app"].firstMatch.click()
+
+        XCTAssertTrue(app.switches["Listen with TalkBack (records what TalkBack actually says)"].firstMatch.waitForExistence(timeout: 10),
+                      "TalkBack should default to checked")
+        app.switches["Also check with large system text (Android 200%, iOS AX3)"].firstMatch.click()
+
+        let appId = app.textFields["App package or bundle id"].firstMatch
+        XCTAssertTrue(appId.waitForExistence(timeout: 10))
+        appId.click()
+        appId.typeText("org.swipewalk.buggyapp")
+        app.buttons["Start"].firstMatch.click()
+
+        let scanNow = app.buttons["Scan this screen now"]
+        guard scanNow.waitForExistence(timeout: 60) else {
+            XCTFail("Recording did not start")
+            return
+        }
+        scanNow.click()
+        // Wait for the capture to finish (TalkBack adds roughly 1-2 s per element) before pressing Finish --
+        // the progress log gets a "Screen 1: ..." line once the scan completes.
+        guard app.staticTexts.containing("Screen 1").waitForExistence(timeout: 90) else {
+            XCTFail("Screen 1 was not captured within the time limit")
+            return
+        }
+        app.buttons["Finish"].firstMatch.click()
+
+        guard let reportFile = Desktop.waitForReportFile(in: historyDir, timeout: 120) else {
+            let dump = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("talkback-record-failure.txt")
+            try? app.debugDescription.write(to: dump, atomically: true, encoding: .utf8)
+            XCTFail("The report did not appear after recording; screen saved to \(dump.path)")
+            return
+        }
+        let reportHTML = try String(contentsOf: reportFile, encoding: .utf8)
+        let resultsJSON = try String(contentsOf: reportFile.deletingLastPathComponent().appendingPathComponent("results.json"), encoding: .utf8)
+        XCTAssertTrue(resultsJSON.contains("\"talkBack\""), "results.json should have a talkBack screenReaderCapture")
+        XCTAssertTrue(reportHTML.contains("Screen reader (captured)"), "report.html should show the captured TalkBack section")
     }
 }

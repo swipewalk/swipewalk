@@ -210,9 +210,10 @@ Each screen also shows:
   default text-to-speech engine: Google's TalkBack sends its speech to whichever engine is set
   there (seen with TalkBack 16 and 17) — this gets Swipewalk the exact utterance text, entirely
   on-device. **TalkBack speaks nothing aloud for the length of the capture** — don't run this on a
-  phone someone is relying on TalkBack with right now. Off by default, and adds roughly 1-2 seconds
-  per focusable element to the capture (a 30-element screen about a minute) — pass `--screen-reader`
-  to `scan` or `record` to turn it on. The accessibility settings this changes (which service is
+  phone someone is relying on TalkBack with right now. Off by default in the CLI, and adds roughly
+  1-2 seconds per focusable element to the capture (a 30-element screen about a minute) — pass `--screen-reader`
+  to `scan` or `record` to turn it on (the desktop app's "Listen with TalkBack" option, on by default
+  for Android — see [section 7](#7-the-desktop-app)). The accessibility settings this changes (which service is
   enabled, touch exploration, the default text-to-speech engine) are restored three ways:
   automatically when the capture finishes, from a marker file read back at the start of the next
   `--screen-reader` run or by pre-flight if the process was killed first, and by a timer armed on
@@ -612,6 +613,10 @@ For a repeatable, scriptable run, describe it once in a `swipewalk.json` file an
                                     // (the CLI's --appearance both; here it's a plain boolean)
   "orientation": false,            // scan only for now; true = also check the other orientation
                                     // (the CLI's --orientation both; here it's a plain boolean)
+  "screenReaderCapture": false,    // Android only for now; true = also drive TalkBack and capture what it
+                                    // says (the CLI's --screen-reader) -- see section 4
+  "screenReaderConfirm": false,    // required alongside screenReaderCapture on a physical Android phone
+                                    // (the CLI's --screen-reader-confirm, since swipewalk run doesn't prompt for this)
   "failOn": "wcag-issues"          // exit code 3 when WCAG issues are found; "never" to always exit 0
 }
 ```
@@ -671,6 +676,13 @@ pages:
   check changes the phone's own text size and restores it afterwards; it appears again next time
   unless you choose Don't Show Again, rather than just OK. While a physical phone and the
   large-text option are both selected, a short reminder of the same fact stays next to that option.
+  For Android, "Listen with TalkBack (records what TalkBack actually says)" is on by default — the
+  same real TalkBack capture as the CLI's `--screen-reader` (see [section 4](#4-reading-a-report)),
+  for both a single scan and every screen you scan while recording; it's hidden for iOS, which isn't
+  supported yet. The first time it would change a physical phone's accessibility settings, Start
+  shows a confirmation naming what changes and that TalkBack stays silent while Swipewalk listens;
+  choosing Continue is remembered on this Mac so you're not asked again, and Cancel stops the run
+  before anything changes (asked again next time). Use a test device.
 - **Devices** — readiness checks and fix hints for each connected device, the same checks
   `swipewalk doctor` runs.
 - **History** — every saved run, to open or compare. A recording that's still going (here, or in

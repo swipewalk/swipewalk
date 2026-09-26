@@ -18,9 +18,10 @@ are welcome: open an issue, or comment on one of the items below.
   hint, and icon contrast on iOS. Apple's accessibility audit runs on iOS, and Google's Accessibility Test
   Framework runs on Android (through a small instrumentation harness that ships with Swipewalk); both engines'
   findings are included.
-- Real TalkBack capture on Android (opt-in, `--screen-reader`): drives TalkBack itself over a screen's focusable
-  elements and reports differences from the predicted transcript, running locally with no cloud service. Tested
-  on an Android emulator with the system language set to English, Spanish, Hindi, Arabic and Japanese in turn.
+- Real TalkBack capture on Android (`--screen-reader`, on by default in the desktop app's New scan page): drives
+  TalkBack itself over a screen's focusable elements and reports differences from the predicted transcript,
+  running locally with no cloud service. Tested on an Android emulator with the system language set to English,
+  Spanish, Hindi, Arabic and Japanese in turn.
 - WCAG 2.2 mapping, and "relevant to" labels for ADA Title II, Section 508, EN 301 549 and the UK public
   sector regulations.
 - HTML and JSON reports with a predicted screen-reader transcript, swipe order, and (on Android with

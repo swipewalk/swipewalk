@@ -63,6 +63,21 @@ public class RunConfigTests
         Assert.Equal(expected, options.LargeTextRestartPolicy);
     }
 
+    /// <summary>screenReaderCapture/screenReaderConfirm (Android only, off by default -- see
+    /// ScanOptions.ScreenReaderCapture) reach ToOptions unchanged; the physical-device confirmation itself is
+    /// checked by Runner at run time (device-dependent, so not unit tested here -- see ScreenReaderCaptureGate).</summary>
+    [Fact]
+    public void ScreenReaderCapture_DefaultsOffAndReachesOptions()
+    {
+        var defaulted = Load("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ] }""");
+        Assert.False(defaulted.ToOptions(defaulted.Targets[0], "out").ScreenReaderCapture);
+
+        var enabled = Load(
+            """{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "screenReaderCapture": true, "screenReaderConfirm": true }""");
+        Assert.True(enabled.ScreenReaderConfirm);
+        Assert.True(enabled.ToOptions(enabled.Targets[0], "out").ScreenReaderCapture);
+    }
+
     [Theory]
     [InlineData("""{ "targets": [] }""", "at least one")]
     [InlineData("""{ "app": { "ios": {} }, "targets": [ { "platform": "ios" } ] }""", "app.ios")]
