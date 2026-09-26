@@ -51,6 +51,16 @@
                     reads the same everywhere.
                 -->
                 <Label x:Name="PhysicalDeviceTextSizeLabel" FontSize="{DynamicResource FontCaption}" IsVisible="False" />
+                <!--
+                    Android only (hidden for iOS in code-behind, NewScanPage.OnPlatformChanged): drives real
+                    TalkBack over the screen and reports what it actually said, next to the predicted transcript
+                    (see AndroidHarness.RunScreenReaderCaptureAsync). On by default, since real evidence is
+                    wanted in every Android report, not only the prediction. A physical phone additionally
+                    needs a one-time confirmation before this changes its accessibility settings; see
+                    Services/TalkBackNotice.
+                -->
+                <controls:CheckOption x:Name="TalkBackOption" Text="Listen with TalkBack (records what TalkBack actually says)" IsChecked="True" HeightRequest="28"
+                                       SemanticProperties.Hint="Android only. Turns TalkBack on for this run so the report shows what it actually says next to the predicted transcript; TalkBack stays silent while Swipewalk listens, and the phone's accessibility settings are restored afterwards." />
                 <controls:CheckOption x:Name="MauiOption" Text="App built with .NET MAUI (fix examples in XAML)" HeightRequest="28" />
                 <controls:CheckOption x:Name="AutoScanOption" Text="Scan automatically when the screen changes" HeightRequest="28"
                                        SemanticProperties.Hint="Record only: off by default, so a screen you're still navigating through is never captured on its own. When off, use Scan this screen now." />
@@ -63,13 +73,16 @@
                 <!-- Visible only while Start (and Choose app…) are disabled for lack of a chosen device;
                      see NewScanPage.UpdateDeviceRequiredControls. -->
                 <Label x:Name="NoDeviceHintLabel" Text="Choose a device above before starting." FontSize="{DynamicResource FontCaption}" IsVisible="False" />
-                <Label x:Name="LargeTextRestartLabel" Text="When checking larger text needs the app restarted:" Margin="0,8,0,0"
+                <Label x:Name="LargeTextRestartLabel" Text="Some apps need a restart, or go back to their first screen, when the text size changes. If that happens:" Margin="0,8,0,0"
                        IsVisible="{Binding Source={x:Reference LargeTextOption}, Path=IsChecked}" />
                 <controls:SelectButton x:Name="LargeTextRestartPicker" HeightRequest="32"
                                        SelectedIndexChanged="OnLargeTextRestartPolicyChanged"
-                                       SemanticProperties.Description="When checking larger text needs the app restarted"
+                                       SemanticProperties.Description="Some apps need a restart, or go back to their first screen, when the text size changes. If that happens"
                                        SemanticProperties.Hint="For a recording, can be changed at any time while it's running"
                                        IsVisible="{Binding Source={x:Reference LargeTextOption}, Path=IsChecked}" />
+                <Label Text="Checking means restarting the app. When recording, you navigate back to the screen afterwards (on Android, twice)."
+                       FontSize="{DynamicResource FontCaption}"
+                       IsVisible="{Binding Source={x:Reference LargeTextOption}, Path=IsChecked}" />
             </VerticalStackLayout>
         </ScrollView>
 

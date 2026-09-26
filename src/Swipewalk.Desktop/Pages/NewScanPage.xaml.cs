@@ -121,7 +121,7 @@ public partial class NewScanPage : ContentPage
 		ModePicker.SelectedIndex = 0;
 		PlatformPicker.Items = ["Android", "iOS"];
 		PlatformPicker.SelectedIndex = 0;
-		LargeTextRestartPicker.Items = ["Ask each time", "Always check", "Never check"];
+		LargeTextRestartPicker.Items = ["Ask me each time", "Restart the app and check", "Don't check larger text on that screen"];
 		LargeTextRestartPicker.SelectedIndex = 0;
 		PhysicalDeviceTextSizeLabel.Text = PhysicalDeviceTextSizeNotice.Text;
 		LargeTextOption.PropertyChanged += (_, e) =>
@@ -153,6 +153,9 @@ public partial class NewScanPage : ContentPage
 		DevicePicker.Items = [.. _devices.Select(d => d.ToString())];
 		SelectDevice();
 		UpdateDeviceRequiredControls();
+		// TalkBack capture is Android only for now (see AndroidHarness.RunScreenReaderCaptureAsync); hide the
+		// option entirely for iOS rather than show a checkbox that would do nothing if left checked.
+		TalkBackOption.IsVisible = Platform == TargetPlatform.Android;
 	}
 
 	private DeviceInfo? SelectedDevice() =>
@@ -308,6 +311,15 @@ public partial class NewScanPage : ContentPage
 			await DisplayAlertAsync("Which app?", "Enter the app's package or bundle id, or choose a build file to install.", "OK");
 			return;
 		}
+		// TalkBack capture changes a physical phone's accessibility settings (temporarily -- see
+		// Services/TalkBackNotice); confirm once before the first run that does this on a given phone, the
+		// same way the CLI's --screen-reader asks on a physical device (Program.cs,
+		// ConfirmScreenReaderOnPhysicalDeviceAsync). An emulator isn't gated at all.
+		if (Platform == TargetPlatform.Android && TalkBackOption.IsChecked && SelectedDevice() is { IsPhysical: true }
+			&& !TalkBackNoticePreference.Confirmed && !await TalkBackNotice.ShowAsync(this))
+		{
+			return;
+		}
 
 		_log.Clear();
 		SetRunning(true, record: Recording);
@@ -330,6 +342,10 @@ public partial class NewScanPage : ContentPage
 				LargeText = LargeTextOption.IsChecked,
 				Framework = MauiOption.IsChecked ? AppFramework.Maui : null,
 				AutoScanOnScreenChange = AutoScanOption.IsChecked,
+				// Android only for now (TalkBackOption is hidden for iOS -- OnPlatformChanged -- but guard
+				// on Platform here too, so a stale checked state from before a platform switch can never
+				// silently turn this on for an iOS run).
+				ScreenReaderCapture = Platform == TargetPlatform.Android && TalkBackOption.IsChecked,
 				// Same picker, same mapping as OnLargeTextRestartPolicyChanged: it now applies to a single
 				// scan too, not just a recording's later screens.
 				LargeTextRestartPolicy = LargeTextRestartPicker.SelectedIndex switch

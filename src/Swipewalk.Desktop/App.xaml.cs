@@ -11,6 +11,9 @@ public partial class App : Application
 		// app's bundle id however a previous run left it.
 		if (Services.AppState.HasFlag("--reset-physical-device-notice"))
 			Services.PhysicalDeviceNoticePreference.Reset();
+		// UI-test-only: same reasoning as above, for the TalkBack confirmation (Services/TalkBackNoticePreference).
+		if (Services.AppState.HasFlag("--reset-talkback-notice"))
+			Services.TalkBackNoticePreference.Reset();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

@@ -47,6 +47,16 @@ public sealed record RunConfig
     /// Swipewalk.Engine.LargeTextRestartPolicies.Default); pass "ask" for an interactive `swipewalk run` at a
     /// terminal, either mode.</summary>
     public string? LargeTextRestart { get; init; }
+
+    /// <summary>Android only for now: also drive TalkBack over every screen and capture what it actually
+    /// says -- see Swipewalk.Engine.ScanOptions.ScreenReaderCapture. Off by default.</summary>
+    public bool ScreenReaderCapture { get; init; }
+
+    /// <summary>Required, alongside <see cref="ScreenReaderCapture"/>, before it changes a physical Android
+    /// phone's accessibility settings -- swipewalk.json runs are non-interactive, so nothing can answer the
+    /// CLI's --screen-reader-confirm prompt; this stands in for that answer instead. Ignored for emulators, and
+    /// for <see cref="ScreenReaderCapture"/> false.</summary>
+    public bool ScreenReaderConfirm { get; init; }
     public string? Framework { get; init; }
     public IReadOnlyList<string> Expect { get; init; } = [];
 
@@ -146,6 +156,7 @@ public sealed record RunConfig
             LargeTextRestartPolicy = LargeTextRestart is null
                 ? LargeTextRestartPolicies.Default(interactive: false, recordMode: Mode == "record")
                 : LargeTextRestartPolicies.Parse(LargeTextRestart),
+            ScreenReaderCapture = ScreenReaderCapture,
             ExpectedScreens = Expect,
             OutputDirectory = outDir,
             Team = IosSigning?.Team,
