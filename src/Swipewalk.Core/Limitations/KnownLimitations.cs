@@ -116,8 +116,18 @@ public static class KnownLimitations
             Area = LimitationArea.Coverage,
             Title = "Findings are mapped to WCAG 2.2; laws reference different WCAG versions",
             Description = "Each finding cites WCAG 2.2 criteria and is labelled with the standards whose WCAG version and level include it (for example ADA Title II references WCAG 2.1 AA, Section 508 WCAG 2.0 AA). WCAG 2.2 adds criteria that are not in 2.0 or 2.1, such as 2.5.8 Target Size (Minimum), and removes 4.1.1 Parsing. Section 508 and EN 301 549 apply WCAG to non-web software with some criteria excluded or reworded; the mapping uses version, level and the known exclusions only.",
-            Impact = "\"Relevant to\" is a mapping, not a legal conclusion. Standards' own exceptions and requirements beyond WCAG are not evaluated, and 4.1.1 Parsing is not assessed.",
+            Impact = "\"Relevant to\" is a mapping, not a legal conclusion. Standards' own exceptions are not evaluated; requirements beyond WCAG are listed with a per-run status in the report's Beyond WCAG section (see \"beyond-wcag-clauses\"), most needing a person; 4.1.1 Parsing is not assessed.",
             ManualCheck = "Confirm which standard, WCAG version and level your contract or regulation requires (see docs/standards.md), and scan with --standard to focus the report on it.",
+        },
+        new()
+        {
+            Id = "beyond-wcag-clauses",
+            Area = LimitationArea.Coverage,
+            Title = "Requirements beyond WCAG are listed; few are partly checked by automation",
+            Description = "Section 508 (Chapters 5 and 6) and EN 301 549 (clauses 5, 6, 7 and 11) add requirements beyond what they reference from WCAG. The report's \"Beyond WCAG\" section lists each clause with an honest status: partly checked by automation (reusing an existing signal, for example the large-text and dark/light rescans, or the accessible names Swipewalk already reads for WCAG 4.1.2 -- carrying no finding count of its own; those stay under the WCAG criterion), needing a guided check with 1-3 steps, or not testable by Swipewalk (documentation, support services or platform/OS behaviour). Clauses that only apply when the app has a specific feature (two-way voice calling, video, biometric sign-in, content authoring) are reported as \"not tested\": Swipewalk does not yet detect whether a scanned app actually has that feature, so it never assumes a conditional clause doesn't apply. An always-applicable clause whose evidence (the large-text or dark/light rescan) didn't run this time is also \"not tested\", naming what to run.",
+            Impact = "A conditional clause always needs a person to first decide whether it applies at all, then check it by hand. \"Not tested\" here does not mean the clause is irrelevant.",
+            ManualCheck = "For each conditional clause in the report, decide from the app's real features whether it applies, then follow its guided steps or the standard's own text.",
+            Planned = "Per-feature detection (e.g. video or call controls in the tree) so an app confirmed not to have the feature is reported as not applicable instead of not tested.",
         },
         new()
         {

@@ -346,6 +346,32 @@ The table links each criterion to its source (the W3C "Understanding" page, or t
 "Applying SC ... to non-web software" page) and, for record mode, shows how many of the scanned
 screens each check actually ran on.
 
+### Beyond WCAG
+
+Section 508 and EN 301 549 also add requirements that go beyond what they reference from WCAG (for
+example assistive-technology interoperability, following the platform's user preferences, or
+requirements that only apply to apps with video or voice calling). Every report includes a "Beyond
+WCAG" section — one table per standard that has any such clauses, listing each one with a status in
+the same vocabulary as the WCAG 2.2 coverage table above:
+
+- **Partly checked by automation** — an existing Swipewalk signal (for example the large-text or
+  dark/light rescan, or the accessible names already read for WCAG 4.1.2) covers part of it. This
+  status carries no finding count of its own — any findings stay under the WCAG criterion they were
+  found against.
+- **Needs a guided check** — 1-3 plain steps for a person to follow.
+- **Not testable by Swipewalk** — documentation, support services or platform/OS or hardware
+  behaviour, out of scope for a running-app scan.
+- **Not tested** — either the clause only applies when the app has a specific feature (voice calling,
+  video, biometric sign-in, content authoring) and Swipewalk does not yet detect whether the scanned
+  app has it, so it never assumes the clause doesn't apply; or it's an always-applicable clause whose
+  evidence (the large-text or dark/light rescan) didn't run on any scanned screen this time, in which
+  case the report names what to run (`--large-text` or `--appearance both`).
+
+Pass `--standard <id>` to narrow the report's "Beyond WCAG" section (and the rest of the report) to
+one standard; the section is simply absent when that standard has no beyond-WCAG clauses (ADA Title
+II, the UK regulations). Without `--standard`, every standard that has beyond-WCAG clauses is shown.
+See [docs/standards.md](standards.md) for the full clause list.
+
 ## 5. Record mode and the large-text check
 
 `scan` only checks the one screen visible when you run it. `record` watches while you use the app;
