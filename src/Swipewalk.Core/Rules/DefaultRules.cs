@@ -36,7 +36,7 @@ public static class DefaultRules
     [
         new("missing-name", "Interactive elements without an accessible name; images without a text alternative",
             [WcagCriteria.NonTextContent, WcagCriteria.NameRoleValue]),
-        new("target-size", "Touch targets below 24×24 (with the spacing exception) and below platform guidelines",
+        new("target-size", "Touch targets below 24×24 (with the spacing exception, and a needs-review flag when it looks inline in text) and below platform guidelines",
             [WcagCriteria.TargetSizeMinimum]),
         new("identifier-name", "Accessible names that look like developer identifiers (for review)",
             [WcagCriteria.NonTextContent, WcagCriteria.HeadingsAndLabels]),

@@ -27,7 +27,7 @@ public static class RuleCatalog
             "WCAG issue (an interactive control with no accessible name); needs review (a text field whose name is ambiguous, or an image that may be decorative)",
             BothPlatforms),
         new("target-size",
-            "WCAG issue (below 24×24 with no spacing exception); needs review (below 24×24 but nested in another target, a near-miss risk); platform advisory (not reported as a WCAG issue -- e.g. at least 24×24, or below 24×24 but meeting the spacing exception -- yet below the platform's own 44 pt / 48 dp guideline)",
+            "WCAG issue (below 24×24 with no spacing exception, and not shaped like an inline text link); needs review (below 24×24 but nested in another target, a near-miss risk; or below 24×24, no spacing exception, and shaped like an inline text link next to other text -- WCAG 2.5.8's inline exception may apply, check by hand); platform advisory (not reported as a WCAG issue -- e.g. at least 24×24, or below 24×24 but meeting the spacing exception -- yet below the platform's own 44 pt / 48 dp guideline)",
             BothPlatforms),
         new("identifier-name", "Needs review", BothPlatforms),
         new("label-in-name", "WCAG issue", BothPlatforms),

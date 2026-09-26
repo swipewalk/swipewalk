@@ -52,7 +52,14 @@ public static class RuleSources
     // coverage) can finally run on real data; ScreenReaderCaptureComparer's Missing-diff check is never
     // reported for FocusableElementsOnly captures at all, complete or not, since the harness can't yet say
     // which exact elements it walked.
-    public const string RulesetVersion = "2026.09.28";
+    // Then to 2026.09.29 for target-size's WCAG 2.5.8 inline-exception check: the tree cannot tell a target that
+    // is genuinely "in a sentence" (the criterion's own wording,
+    // w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) from one that merely sits beside an
+    // unrelated text label, so no exception is granted automatically -- a small target shaped like a
+    // plain-text link next to other text is instead reported as needs-review (not a WCAG issue, not
+    // silently exempted) when the spacing exception doesn't already explain it. Platform advisories
+    // (Apple 44 pt, Android 48 dp) are unchanged.
+    public const string RulesetVersion = "2026.09.29";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);
