@@ -1237,7 +1237,11 @@ public class RecorderContinuationAndRescanTests
             var resultsPath = Path.Combine(dir, "results.json");
             // Wait for results.json to exist AND be fully written/parseable with a screen in it -- the
             // capture.marker file (written earlier, by the capture step itself) is not proof of that, and
-            // reading too early raced with the save in practice (FileNotFoundException/empty read).
+            // reading too early raced with the save in practice (FileNotFoundException/empty read, or --
+            // seen on CI, Release config, 2026-09-26 -- a torn write read as truncated, valid-looking JSON
+            // that only fails to parse with a JsonException, not an IOException: ReportWriter.WriteAsync
+            // isn't an atomic write-then-rename, so a read landing mid-write can see partial bytes without
+            // the OS ever reporting the file as locked).
             string? firstScreenId = null;
             await TestWait.UntilAsync(() =>
             {
@@ -1247,7 +1251,7 @@ public class RecorderContinuationAndRescanTests
                     firstScreenId = report?.Screens.Count > 0 ? report.Screens[0].ScreenId : null;
                     return firstScreenId is not null;
                 }
-                catch (IOException)
+                catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException)
                 {
                     return false; // still being written
                 }
