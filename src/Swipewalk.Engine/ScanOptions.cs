@@ -22,8 +22,29 @@ public sealed record ScanOptions
     /// <summary>iOS bundle id of the app under test.</summary>
     public string? BundleId { get; init; }
 
-    /// <summary>Already-built app to install first (.apk, Simulator .app/.zip, device .ipa).</summary>
+    /// <summary>Already-built app to install first (.apk, Android App Bundle .aab, Simulator .app/.zip, device .ipa).</summary>
     public string? InstallFile { get; init; }
+
+    /// <summary>
+    /// Android only: path to bundletool (a .jar, or an executable such as Homebrew's wrapper), used to install
+    /// an <see cref="InstallFile"/> ending in .aab. Found automatically when not given -- on PATH, then bundled
+    /// with the installed .NET Android SDK workload -- see <see cref="Swipewalk.Collectors.Android.Bundletool"/>.
+    /// Ignored for a .apk/.ipa/.app install.
+    /// </summary>
+    public string? BundletoolPath { get; init; }
+
+    /// <summary>
+    /// Android only: keystore to sign a .aab's device-specific .apks with, instead of the standard Android
+    /// debug key (~/.android/debug.keystore, created by Swipewalk with keytool if it doesn't already exist) -- see
+    /// <see cref="Swipewalk.Collectors.AppInstaller.AndroidBundleSigning"/>. Needs
+    /// <see cref="AndroidKeystoreAlias"/> too, and the SWIPEWALK_KEYSTORE_PASSWORD environment variable
+    /// (SWIPEWALK_KEY_PASSWORD as well if the key's own password differs) -- a keystore password never goes on
+    /// the command line or in swipewalk.json. Ignored unless <see cref="InstallFile"/> ends in .aab.
+    /// </summary>
+    public string? AndroidKeystore { get; init; }
+
+    /// <summary>Key alias inside <see cref="AndroidKeystore"/>; required together with it.</summary>
+    public string? AndroidKeystoreAlias { get; init; }
 
     public AppFramework? Framework { get; init; }
 

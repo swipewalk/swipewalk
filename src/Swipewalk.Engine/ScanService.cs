@@ -27,7 +27,11 @@ public sealed class ScanService(IProgress<string> log)
         log.Report($"Installing {Path.GetFileName(file)}...");
         if (options.Platform == TargetPlatform.Android)
         {
-            var package = await AppInstaller.InstallAndroidAsync(file, options.Device) ?? options.Package;
+            var signing = options.AndroidKeystore is { } keystore
+                ? new AppInstaller.AndroidBundleSigning(keystore, options.AndroidKeystoreAlias
+                    ?? throw new InvalidOperationException("--keystore needs --keystore-alias too."))
+                : null;
+            var package = await AppInstaller.InstallAndroidAsync(file, options.Device, options.BundletoolPath, signing, log) ?? options.Package;
             if (package is null)
             {
                 log.Report("Installed. Open the app screen to scan.");

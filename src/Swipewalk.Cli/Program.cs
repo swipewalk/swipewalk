@@ -48,8 +48,24 @@ const string Usage = """
       --profile <uuid|name>  iOS physical devices: installed provisioning profile to sign the harness with (by
                              default a fitting installed development profile is used, else Xcode automatic signing)
       --harness-bundle-prefix <p>  iOS: harness bundle id prefix, to fit a company wildcard profile (com.company.*)
-      --install <file>       Install an already-built app first: Android .apk; iOS Simulator .app (or .zip); iOS
-                             device .ipa signed for the device. The app is never rebuilt or re-signed
+      --install <file>       Install an already-built app first: Android .apk or App Bundle .aab; iOS Simulator
+                             .app (or .zip); iOS device .ipa signed for the device. The app is never rebuilt or
+                             re-signed. An .aab is installed via Google's bundletool (usually found on PATH, or
+                             bundled with the .NET Android SDK workload; see --bundletool): bundletool builds a
+                             set of .apks for the connected device, then installs them, signed with the standard
+                             Android debug key (~/.android/debug.keystore, created by Swipewalk with keytool if
+                             it doesn't already exist) unless --keystore is given -- a debug-signed build
+                             differs from your store build, for scanning only. Installing over an app already installed
+                             with a different key fails; uninstall it first, or pass the matching --keystore
+      --bundletool <path>    Android: path to bundletool (a .jar, or an executable) for installing a .aab;
+                             usually found automatically when not given
+      --keystore <path>      Android: keystore to sign a .aab install with, instead of the standard Android
+                             debug key. Needs --keystore-alias, and the SWIPEWALK_KEYSTORE_PASSWORD environment
+                             variable (SWIPEWALK_KEY_PASSWORD too if the key's own password differs -- rare for
+                             a PKCS12 keystore, the default format since Java 8u60, which doesn't reliably
+                             support a key password different from the keystore's own) -- a keystore password
+                             is never taken on the command line or put in swipewalk.json
+      --keystore-alias <alias>  Android: key alias inside --keystore; required together with it
       --package <name>       Android: app package; the pre-flight check confirms it is installed and in front
       --skip-checks          Skip the pre-flight checks that run before scan and record
       --team <id>            iOS physical devices: Apple developer team that signs the scanning harness (found
@@ -522,6 +538,9 @@ static ScanOptions ToScanOptions(string platform, Dictionary<string, string> o, 
     Package = o.GetValueOrDefault("package"),
     BundleId = o.GetValueOrDefault("bundle-id"),
     InstallFile = o.GetValueOrDefault("install"),
+    BundletoolPath = o.GetValueOrDefault("bundletool"),
+    AndroidKeystore = o.GetValueOrDefault("keystore"),
+    AndroidKeystoreAlias = o.GetValueOrDefault("keystore-alias"),
     Framework = o.GetValueOrDefault("framework") is { } f ? Enum.Parse<AppFramework>(f, ignoreCase: true) : null,
     Standard = o.GetValueOrDefault("standard"),
     ScreenName = o.GetValueOrDefault("screen") ?? "Screen 1",

@@ -72,6 +72,10 @@ internal sealed class Adb(string? serial)
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Android/sdk"),
         }.OfType<string>().Where(Directory.Exists);
 
+    /// <summary>The resolved adb executable path (SDK roots first, else just "adb" on PATH) -- exposed for
+    /// bundletool, which needs an explicit --adb=&lt;path&gt; rather than finding adb itself.</summary>
+    internal static string ExecutablePath() => AdbPath();
+
     private static string AdbPath()
     {
         foreach (var sdk in new[] { Environment.GetEnvironmentVariable("ANDROID_HOME"), Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT"),

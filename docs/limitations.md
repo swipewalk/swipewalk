@@ -170,13 +170,13 @@ Swipewalk finds some accessibility issues automatically. This page lists what it
 
 ## Android · All frameworks
 
-### Android bundles and IDE-only debug builds can't be installed from a file
+### Android App Bundles need bundletool and Java, and IDE-only debug builds can't be installed from a file
 
 `android-install-files` · Limitation · Devices
 
-- **What:** --install takes any signed .apk, debug or release. An .aab (Play bundle) has to be converted to an .apk first, and .NET MAUI Debug builds that use fast deployment cannot run on their own (detected and explained).
-- **Impact:** Those files are refused; the app can still be scanned once installed another way.
-- **Check manually:** Use bundletool build-apks --mode=universal for .aab files, or build MAUI apps in Release (or with EmbedAssembliesIntoApk=true).
+- **What:** --install takes a signed .apk (debug or release) directly, and an Android App Bundle (.aab) via Google's bundletool: it's usually found automatically (on PATH, or bundled with the installed .NET Android SDK workload), needs a Java runtime to run, and builds a set of .apks for the connected device, signed with the standard Android debug key (~/.android/debug.keystore, created by Swipewalk with keytool if it doesn't already exist) unless --keystore is given -- a debug-signed build differs from your store build, for scanning only, and installing over an app already installed with a different key fails until it's uninstalled or the matching --keystore is given. .NET MAUI Debug builds that use fast deployment still cannot run on their own, in either format (detected and explained).
+- **Impact:** A .aab install needs bundletool and a Java runtime present (a clear message says how to get them if not); a MAUI Debug fast-deployment build is refused either way. The app can still be scanned once installed another way.
+- **Check manually:** Install bundletool (brew install bundletool, or the .NET Android SDK workload already has it, pointed at with --bundletool if it isn't found automatically) and a JRE if the message says they're missing, or build MAUI apps in Release (or with EmbedAssembliesIntoApk=true).
 
 ### The Android tree comes from uiautomator, not TalkBack
 

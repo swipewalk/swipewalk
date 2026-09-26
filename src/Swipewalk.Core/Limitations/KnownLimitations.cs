@@ -193,10 +193,10 @@ public static class KnownLimitations
             Id = "android-install-files",
             Area = LimitationArea.Devices,
             Platforms = [Platform.Android],
-            Title = "Android bundles and IDE-only debug builds can't be installed from a file",
-            Description = "--install takes any signed .apk, debug or release. An .aab (Play bundle) has to be converted to an .apk first, and .NET MAUI Debug builds that use fast deployment cannot run on their own (detected and explained).",
-            Impact = "Those files are refused; the app can still be scanned once installed another way.",
-            ManualCheck = "Use bundletool build-apks --mode=universal for .aab files, or build MAUI apps in Release (or with EmbedAssembliesIntoApk=true).",
+            Title = "Android App Bundles need bundletool and Java, and IDE-only debug builds can't be installed from a file",
+            Description = "--install takes a signed .apk (debug or release) directly, and an Android App Bundle (.aab) via Google's bundletool: it's usually found automatically (on PATH, or bundled with the installed .NET Android SDK workload), needs a Java runtime to run, and builds a set of .apks for the connected device, signed with the standard Android debug key (~/.android/debug.keystore, created by Swipewalk with keytool if it doesn't already exist) unless --keystore is given -- a debug-signed build differs from your store build, for scanning only, and installing over an app already installed with a different key fails until it's uninstalled or the matching --keystore is given. .NET MAUI Debug builds that use fast deployment still cannot run on their own, in either format (detected and explained).",
+            Impact = "A .aab install needs bundletool and a Java runtime present (a clear message says how to get them if not); a MAUI Debug fast-deployment build is refused either way. The app can still be scanned once installed another way.",
+            ManualCheck = "Install bundletool (brew install bundletool, or the .NET Android SDK workload already has it, pointed at with --bundletool if it isn't found automatically) and a JRE if the message says they're missing, or build MAUI apps in Release (or with EmbedAssembliesIntoApk=true).",
         },
         new()
         {
