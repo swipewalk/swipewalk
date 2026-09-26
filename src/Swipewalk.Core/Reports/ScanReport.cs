@@ -50,6 +50,19 @@ public sealed record ScanReport
     /// <summary>One-line summary of <see cref="Coverage"/>; see <see cref="CoverageReport.Summary"/>.</summary>
     public string CoverageSummary => CoverageReport.Summary(Coverage);
 
+    /// <summary>
+    /// Requirements Section 508 and EN 301 549 add beyond what they reference from WCAG (see
+    /// Swipewalk.Core.Standards.KnownBeyondWcagClauses), with an honest per-run status for each (see
+    /// Swipewalk.Core.Coverage.BeyondWcagCoverageReport). One entry per standard that has a WCAG basis in
+    /// scope for this run (<see cref="FocusStandard"/> narrows it to just that standard); standards with no
+    /// beyond-WCAG clauses in the catalog (ADA Title II, the UK regulations) are omitted. Computed from
+    /// <see cref="Screens"/> rather than stored, like <see cref="Coverage"/>.
+    /// </summary>
+    public IReadOnlyList<BeyondWcagStandardCoverage> BeyondWcag =>
+        BeyondWcagCoverageReport.BuildAll(
+            FocusStandard is { } id ? [.. KnownStandards.All.Where(s => s.Id == id)] : KnownStandards.All,
+            Screens);
+
     /// <summary>Known limitations and framework notes that apply to the scanned platforms and frameworks.</summary>
     public IReadOnlyList<Limitation> Limitations =>
         [.. KnownLimitations.All.Where(l => Screens.Any(s => l.AppliesTo(s.Platform, s.Framework)))];

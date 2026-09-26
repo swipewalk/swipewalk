@@ -50,6 +50,7 @@ public static class HtmlReport
 
         RenderWcagGaps(html, report);
         RenderStandards(html, report);
+        RenderBeyondWcag(html, report);
         RenderCoverage(html, report);
 
         for (var i = 0; i < report.Screens.Count; i++)
@@ -228,6 +229,40 @@ public static class HtmlReport
               <p class="hint">{E(report.StandardsNotice)} "Outside its WCAG basis" counts findings under WCAG criteria the standard does not reference or does not apply to apps (for example WCAG 2.2 criteria under a WCAG 2.1 standard). Requirements these standards add beyond WCAG are not checked.</p>
             </section>
             """);
+    }
+
+    /// <summary>
+    /// Requirements Section 508 and EN 301 549 add beyond what they reference from WCAG, one subsection per
+    /// standard that has any in the catalog (see <see cref="ScanReport.BeyondWcag"/>; standards with none,
+    /// such as ADA Title II and the UK regulations, are simply not shown). No colour or checkmark implies a
+    /// pass for any status -- see <see cref="Coverage.BeyondWcagDisplay"/> for how each status is worded.
+    /// Renders nothing when the catalog has no entries for the standard(s) in scope.
+    /// </summary>
+    private static void RenderBeyondWcag(StringBuilder html, ScanReport report)
+    {
+        var standards = report.BeyondWcag;
+        if (standards.Count == 0)
+            return;
+
+        html.Append($"""
+            <section class="beyond-wcag" aria-labelledby="beyond-wcag-title">
+              <h2 id="beyond-wcag-title">Beyond WCAG</h2>
+              <p class="hint">Requirements these standards add beyond what they reference from WCAG. Statuses describe what this scan did, not whether the app meets the requirement.</p>
+              <details class="sources"><summary>What's not listed here</summary><p class="hint">{E(KnownBeyondWcagClauses.SkippedNote)}</p></details>
+            """);
+        foreach (var sc in standards)
+        {
+            html.Append($"""
+                <h3>{E(sc.StandardName)}</h3>
+                <table class="coverage beyond-wcag-table">
+                  <thead><tr><th scope="col">Clause</th><th scope="col">Status</th></tr></thead>
+                  <tbody>
+                """);
+            foreach (var c in sc.Clauses)
+                html.Append($"""<tr><td>{E($"{c.ClauseNumber} {c.Title}")}<br><span class="meta">{E(c.Summary)}</span></td><td>{E(c.Label)}</td></tr>""");
+            html.Append("</tbody></table>");
+        }
+        html.Append("</section>");
     }
 
     /// <summary>Which screens were scanned (with links), and expected screens that were not.</summary>
@@ -894,6 +929,9 @@ public static class HtmlReport
         .standards { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 16px; }
         .standards h2 { font-size: 18px; margin: 4px 0 8px; } .standards .coverage { margin-bottom: 8px; }
         .standards tr.focus td { background: var(--advisory-bg); font-weight: 600; }
+        .beyond-wcag { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-top: 16px; }
+        .beyond-wcag h2 { font-size: 18px; margin: 4px 0 8px; } .beyond-wcag h3 { font-size: 15px; margin: 16px 0 6px; }
+        .beyond-wcag-table { margin-bottom: 8px; }
         .notice.stale { border-color: var(--mark-review); background: var(--review-bg); }
         .sources { font-size: 14px; margin: 8px 0; } .sources summary { cursor: pointer; font-weight: 600; } .sources ul { margin: 4px 0; padding-left: 20px; }
         .chip.law { border-style: dashed; } .chip.beyond { color: var(--muted); }
