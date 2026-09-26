@@ -1,4 +1,5 @@
 using Swipewalk.Collectors;
+using Swipewalk.Collectors.Ios;
 using Swipewalk.Collectors.Preflight;
 using Swipewalk.Core.Limitations;
 using Swipewalk.Core.Model;
@@ -67,11 +68,12 @@ const string Usage = """
                              automatically, and on an iPhone when installed with --install; overrides detection)
       --result-bundle        iOS: use the physical-device result-bundle capture path even on a Simulator.
                              Advanced/testing use only; scans work correctly without it
-      --screen-reader        Android only for now: also drive TalkBack over the screen's focusable elements
-                             and read back exactly what it says, compared against the predicted transcript
-                             in the report. Works with both scan (once, for the screen shown) and record
-                             (once per screen you scan while recording). Off by default -- costs roughly
-                             1-2 seconds per element (a 30-element screen ~1 minute); entirely local, on-device (see
+      --screen-reader        Real screen-reader evidence next to the predicted transcript in the report.
+                             Android: drives TalkBack over the screen's focusable elements and reads back
+                             exactly what it says. Works with both scan (once, for the screen shown) and
+                             record (once per screen you scan while recording). Off by default -- costs
+                             roughly 1-2 seconds per element (a 30-element screen ~1 minute); entirely
+                             local, on-device (see
                              docs/limitations.md). Turns TalkBack on for the capture and temporarily makes
                              a small helper app Swipewalk installs TalkBack's default text-to-speech
                              engine, so it receives the exact spoken text -- TalkBack speaks nothing aloud
@@ -90,8 +92,19 @@ const string Usage = """
                              wording does not. Needs TalkBack (Android Accessibility Suite) installed on
                              the device. On a physical phone, asks for confirmation first
                              (--screen-reader-confirm skips the prompt for a non-interactive run); use a
-                             test device
-      --screen-reader-confirm  Skip --screen-reader's physical-device confirmation prompt (required
+                             test device.
+                             iOS (scan only for now -- not yet wired into record): walks Xcode's
+                             Accessibility Inspector on this Mac over the macOS Accessibility API; VoiceOver
+                             itself is never turned on. Takes extra time per element (a large screen can
+                             take a minute or more). Interactive only: asks to use the macOS Accessibility
+                             permission for whichever app is running Swipewalk (normally your terminal) --
+                             which lets that app operate other apps on this Mac; used here only for the
+                             Inspector, revocable any time in System Settings -- then for a one-time manual
+                             step this can't do itself: opening Accessibility Inspector, choosing the target
+                             device in its toolbar, and clicking the first element (e.g. its title) on the
+                             app's screen. Declining, or a non-interactive run, falls back to the predicted
+                             transcript; the report records why
+      --screen-reader-confirm  Skip --screen-reader's Android physical-device confirmation prompt (required
                              instead of the prompt for a non-interactive run on a physical phone)
 
       --large-text           scan: also capture at a large system text size (Android 200%; iOS AX3, about 235%,
@@ -385,6 +398,11 @@ if (platformName == "android" && scanOptions.ScreenReaderCapture
 {
     return 1;
 }
+// The Accessibility Inspector route (see AskIosInspectorGuideAsync) is wired into `scan` only for now --
+// `record` still reports predicted-only screen-reader evidence on iOS, same as before --screen-reader existed
+// there. Say so up front rather than silently ignoring the flag.
+if (command == "record" && platformName == "ios" && scanOptions.ScreenReaderCapture)
+    Console.WriteLine("Note: --screen-reader's Accessibility Inspector route isn't wired into record mode yet; use scan for now.");
 
 // The run's own StartedAt (RunRecord/History/Dashboard ordering) must stay the original recording's start, not
 // when this continued session began.
@@ -451,7 +469,8 @@ try
     }
     else
     {
-        result = await service.ScanAsync(scanOptions, largeTextRestartAsk: AskScanLargeTextRestartAsync);
+        result = await service.ScanAsync(scanOptions, largeTextRestartAsk: AskScanLargeTextRestartAsync,
+            iosInspectorGuide: platformName == "ios" && scanOptions.ScreenReaderCapture ? AskIosInspectorGuideAsync : null);
     }
 
     Console.WriteLine($"{ReportWriter.Summary(result.Report)}\n  {result.HtmlPath}\n  {result.JsonPath}");
@@ -562,6 +581,46 @@ static async Task<bool> ConfirmScreenReaderOnPhysicalDeviceAsync(string? device,
     var key = Console.ReadKey(intercept: true);
     Console.WriteLine();
     return key.Key == ConsoleKey.Y;
+}
+
+/// <summary>
+/// --screen-reader on iOS reads real accessibility evidence from Xcode's Accessibility Inspector instead of
+/// Android's on-device TalkBack capture -- VoiceOver itself is never turned on (see
+/// Swipewalk.Collectors.Ios.IosCollector.RunInspectorCaptureAsync). This needs the macOS Accessibility
+/// permission -- which lets the app running Swipewalk (normally the terminal), and anything it runs, operate
+/// other apps on this Mac -- for whichever app is responsible for this process, and a one-time manual step
+/// neither Swipewalk nor a script can do over the AX API: opening Accessibility Inspector, choosing the
+/// target device in its own toolbar, and clicking the first element on the app's screen. Interactive only --
+/// a non-interactive run (CI, redirected input) declines without asking, the same as other Swipewalk
+/// confirmations; the report and results.json record why, and the predicted transcript still applies.
+/// </summary>
+static Task<bool> AskIosInspectorGuideAsync(CancellationToken cancellationToken)
+{
+    if (Console.IsInputRedirected)
+        return Task.FromResult(false);
+    Console.WriteLine(
+        "--screen-reader on iOS reads real accessibility evidence from Xcode's Accessibility Inspector -- it does " +
+        "not turn VoiceOver on. This uses macOS's Accessibility permission (System Settings > Privacy & Security > " +
+        "Accessibility), which lets the app running Swipewalk (normally your terminal), and anything run from it, " +
+        "operate other apps on this Mac; Swipewalk uses it only to step through Accessibility Inspector, and you " +
+        "can turn it off there at any time, including right after this scan. Use it now? [y/N]");
+    var key = Console.ReadKey(intercept: true);
+    Console.WriteLine();
+    if (key.Key != ConsoleKey.Y)
+        return Task.FromResult(false);
+    if (!IosAccessibilityPermission.IsTrusted())
+    {
+        Console.WriteLine(
+            "That permission isn't granted yet. Grant it in System Settings > Privacy & Security > Accessibility " +
+            "(for your terminal, or whichever app is running this), then run again with --screen-reader.");
+        return Task.FromResult(false);
+    }
+    Console.WriteLine(
+        "Open Accessibility Inspector (Xcode > Open Developer Tool > Accessibility Inspector) if it isn't open " +
+        "already. Choose your device from its target menu, then click the first element on the app's screen -- " +
+        "for example its title or top-most control, so the walk starts from the top. Press Enter here when done.");
+    Console.ReadLine();
+    return Task.FromResult(true);
 }
 
 /// <summary>Ctrl+C / kill finish the report instead of exiting; works with or without a terminal.</summary>

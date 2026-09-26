@@ -523,6 +523,48 @@ public static class IosCollector
         }
     }
 
+    /// <summary>
+    /// Asks whether to use the Accessibility Inspector route for a screen-reader capture (<c>--screen-reader</c>
+    /// on iOS -- see <see cref="RunInspectorCaptureAsync"/>). The Inspector route needs two things Swipewalk
+    /// cannot do itself over the AX API: the macOS Accessibility permission for whichever app is responsible
+    /// for this process (which lets that app, and anything it runs, operate other apps on the Mac -- not
+    /// only the Inspector, though Swipewalk itself only ever uses it for the Inspector), and a one-time
+    /// manual step (opening the Inspector, choosing the target device in its toolbar, and clicking the first
+    /// element on the app's screen so the walk starts from the top) -- so this is a person-answered prompt,
+    /// not a plain bool. Implemented by the CLI (a console prompt) or a future desktop dialog; returns
+    /// whether to proceed (having already, if true, made sure the permission is granted and the one-time
+    /// step is done). Null is "no interactive prompt available" (a non-interactive run), resolved as decline
+    /// -- the predicted transcript still applies then, same as any other Swipewalk confirmation with nothing
+    /// to ask on.
+    /// </summary>
+    public delegate Task<bool> IosInspectorGuide(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Evidence for <paramref name="snapshot"/> from Xcode's Accessibility Inspector, walked over the macOS
+    /// Accessibility API (harness/mac-inspector-walk/InspectorWalk.swift, via <see cref="IosInspectorWalk"/>)
+    /// and matched to this screen's tree (<see cref="IosInspectorCapture"/>). VoiceOver itself is never
+    /// turned on -- the Inspector reports the same accessibility properties VoiceOver would read (label,
+    /// value, traits, identifier, hint, class), and its own navigation order, without VoiceOver running,
+    /// which is why this is a distinct <see cref="ScreenReaderSource"/> from a real recorded voice, alongside
+    /// Android's on-device TalkBack capture (<see cref="Android.AndroidHarness.RunScreenReaderCaptureAsync"/>).
+    /// Never throws: every path -- <paramref name="guide"/> null, declined, or the walk itself failing --
+    /// returns a <see cref="ScreenReaderCapture"/> that is simply incomplete, with why in
+    /// <see cref="Model.ScreenReaderCapture.NotCompleteReason"/>.
+    /// </summary>
+    public static async Task<ScreenReaderCapture> RunInspectorCaptureAsync(
+        ScreenSnapshot snapshot, IosInspectorGuide? guide, CancellationToken cancellationToken = default)
+    {
+        if (guide is null)
+            return IosInspectorCapture.Skipped(
+                "no interactive prompt was available to ask about the Accessibility Inspector route for this run; the manual VoiceOver route still applies");
+        if (!await guide(cancellationToken))
+            return IosInspectorCapture.Skipped(
+                "the Accessibility Inspector route was declined, or the macOS Accessibility permission it needs was not granted, for this run; the manual VoiceOver route still applies");
+
+        var raw = await IosInspectorWalk.RunAsync(cancellationToken: cancellationToken);
+        return IosInspectorCapture.Build(snapshot, raw);
+    }
+
     /// <summary>The pure decision behind <see cref="CaptureLargeTextAsync"/>, once a capture attempt has finished
     /// (or never succeeded): no snapshot means the app never came back to front; a snapshot of a different screen
     /// means it restarted or navigated away.</summary>

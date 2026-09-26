@@ -201,11 +201,38 @@ Each screen also shows:
   announce, built from the accessibility tree in swipe order. This is a prediction, not a
   recording: VoiceOver can't be scripted and doesn't run in the Simulator, so the real screen
   reader was never listening. Compare it with TalkBack or VoiceOver by hand.
-- **Screen reader (captured)** (Android only, with `--screen-reader`) — real evidence, next to the
-  predicted transcript above: Swipewalk drives TalkBack itself over the screen's focusable elements
-  and reads back exactly what it said, then reports every difference for you to check by hand
-  (never as a confirmed WCAG failure by itself — the difference could be the app, or Swipewalk's own
-  prediction, that's wrong). It works by temporarily making a small app Swipewalk installs
+- **Screen reader (captured)** (with `--screen-reader`) — real evidence next to the predicted
+  transcript above; Swipewalk reports every difference for you to check by hand (never as a
+  confirmed WCAG failure by itself — the difference could be the app, or Swipewalk's own prediction,
+  that's wrong). On iOS, `scan` only for now (`record` still reports predicted-only evidence):
+  Swipewalk walks Xcode's Accessibility Inspector on your Mac over the macOS Accessibility API
+  instead of turning VoiceOver on — the Inspector reports the same accessibility properties (label,
+  value, traits, identifier, hint, class) VoiceOver would read, for each element it walks. This is
+  interactive only, and takes extra time per element (a large screen can take a minute or more): it
+  asks to use the macOS Accessibility permission (System Settings > Privacy & Security >
+  Accessibility) for whichever app is running Swipewalk — this permission lets that app, and
+  anything it runs, operate other apps on your Mac; Swipewalk itself uses it only to step through
+  the Inspector, and you can turn it off in System Settings any time, including right after the
+  scan — then for a one-time step per Inspector session it can't do itself: opening Accessibility
+  Inspector, choosing your device in its target menu, and clicking the first element (for example
+  its title) on the app's screen, so the walk starts from the top. Observed once on a physical
+  iPhone, across one screen change: after that click, the Inspector followed the app onto a
+  different screen with no more clicking needed, and the next scan captured that new screen in
+  full — one data point, not a guarantee for every app; if a walk comes back empty or short after
+  navigating, click an element in the Inspector and scan again. If that click landed on the
+  app's window or background instead of an element, Swipewalk notices (every captured item comes
+  back empty, or far fewer than expected) and reports the screen as not covered, with a prompt to
+  click an element and scan again, rather than a false clean pass. Declining, or a non-interactive
+  run, falls back to the predicted transcript, and the report records why. Because the Inspector
+  reports no on-screen position for each element, a captured item is matched to the scanned tree by
+  its identifier, then its accessible name, then position alone as a last resort — recorded per item
+  in results.json as Exact/Likely/Weak/unmatched, so a Weak or unmatched item is a hint to check by
+  hand, not confirmed evidence. Swipe order differences aren't reported from this route at all: the
+  walk starts wherever you clicked, not necessarily the top of the screen, and the Inspector's own
+  order is circular, so an unanchored walk can't be told apart from a real order difference. See
+  the "Accessibility Inspector route..." limitation for what this still doesn't cover.
+  On Android, with `--screen-reader`: Swipewalk drives TalkBack itself over the screen's focusable
+  elements and reads back exactly what it said. It works by temporarily making a small app Swipewalk installs
   (shown in the device's text-to-speech settings as "Swipewalk (testing only)") the device's
   default text-to-speech engine: Google's TalkBack sends its speech to whichever engine is set
   there (seen with TalkBack 16 and 17) — this gets Swipewalk the exact utterance text, entirely
@@ -229,17 +256,16 @@ Each screen also shows:
   TalkBack said its own role and hint words (for example "Button") in that language every time, but
   did not translate the app's own accessible names in any of them, and the comparison is built to
   match. Needs TalkBack (Android Accessibility Suite) installed on the device. See the "TalkBack
-  capture is opt-in..." limitation for what this can get wrong (it doesn't check plain text, and
-  only Android is supported so far). When this capture completed and matched a control with more
-  than weak confidence, Swipewalk also checks WCAG 2.5.3 Label in Name against it: for a control
-  with visible text (its own, or its only descendant's), it checks whether the name TalkBack
-  actually said contains that text, and reports it for review — never as a confirmed failure by
-  itself, since this shows what TalkBack said, not whether speech-input software such as Voice
-  Access would match on it — when it doesn't. This could catch a control whose visible text sits
-  only on a child node (a shape the tree-only Label in Name check can't see at all), when TalkBack's
-  announcement leaves that text out — on the one such control checked so far (a Jetpack Compose
-  button in samples/NativeAndroid), TalkBack's announcement included the visible text alongside its
-  overriding name, so nothing was reported.
+  capture is opt-in..." limitation for what this can get wrong (it doesn't check plain text). When
+  this capture completed and matched a control with more than weak confidence, Swipewalk also checks
+  WCAG 2.5.3 Label in Name against it: for a control with visible text (its own, or its only
+  descendant's), it checks whether the name TalkBack actually said contains that text, and reports
+  it for review — never as a confirmed failure by itself, since this shows what TalkBack said, not
+  whether speech-input software such as Voice Access would match on it — when it doesn't. This could
+  catch a control whose visible text sits only on a child node (a shape the tree-only Label in Name
+  check can't see at all), when TalkBack's announcement leaves that text out — on the one such
+  control checked so far (a Jetpack Compose button in samples/NativeAndroid), TalkBack's
+  announcement included the visible text alongside its overriding name, so nothing was reported.
 - **Relevance to standards** — each finding is labeled with the laws and standards (ADA Title II,
   Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version and level
   include its criterion. This says a finding is **relevant to** a standard, never that the app

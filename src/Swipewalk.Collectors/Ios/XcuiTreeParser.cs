@@ -147,7 +147,17 @@ public static class XcuiTreeParser
             IsEnabled = element.GetProperty("enabled").GetBoolean(),
             // Approximation of isAccessibilityElement, which XCUITest does not expose: controls, text and
             // labelled images/containers are reachable by VoiceOver; unlabelled images and containers are not.
-            IsAccessible = type != "application" && (interactive || role == "text" || label is not null),
+            // toolbar/scrollBar are the exception to "labelled container is reachable": on a real physical
+            // iPhone (2026-09-25, samples/NativeiOS), Xcode's Accessibility Inspector's own Next/Previous
+            // Item walk never stopped on a UIToolbar's own container (only the buttons inside it, which are
+            // separate elements and unaffected by this) or on a scroll view's built-in scroll-position
+            // indicator, even though XCUITest gives both a real accessibility label ("Toolbar", "Vertical
+            // scroll bar, 1 page") that would otherwise make them look like ordinary named, reachable
+            // elements. This was one capture on one device, through the Inspector only -- VoiceOver itself
+            // was not run, and it may still reach a scroll bar's indicator by touch even though the
+            // Inspector's own keyboard-style walk did not -- see ScreenReaderPredictor and KnownLimitations
+            // "ios-inspector-walk-capture".
+            IsAccessible = type != "application" && type is not ("toolbar" or "scrollBar") && (interactive || role == "text" || label is not null),
             Children = children,
         };
     }

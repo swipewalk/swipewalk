@@ -1,6 +1,6 @@
 # Case study: what Swipewalk finds, and what it misses
 
-Six studies. The first scans a sample app with known bugs, so the results can be checked against an
+Seven studies. The first scans a sample app with known bugs, so the results can be checked against an
 answer key. The second scans real apps: Microsoft's official .NET MAUI samples, on emulators,
 simulators and physical phones. The third looks at one more of those samples in detail, comparing a
 light-mode and a dark-mode scan of the same screen and comparing Google's Accessibility Test Framework
@@ -8,7 +8,9 @@ against Swipewalk's own rules. The fourth applies the same approach to Swipewalk
 The fifth plants the same known bugs from the first study into native (no .NET MAUI) Android and iOS
 apps, one screen per UI toolkit (Views, Jetpack Compose, UIKit, SwiftUI), to see how the same mistake
 shows up -- or doesn't -- depending on the toolkit. The sixth drives TalkBack itself, in five
-languages, to check what a real capture finds beyond a predicted transcript.
+languages, to check what a real capture finds beyond a predicted transcript. The seventh does the
+same for iOS with Xcode's Accessibility Inspector, on a physical iPhone, across a MAUI app and a
+native one.
 
 None of these studies is a statement of conformance. Automated checks find only some accessibility issues,
 and manual testing with assistive technology is still required.
@@ -752,3 +754,76 @@ results aren't included here because they aren't Swipewalk's own test fixtures.
   five-language study. A managed device or a phone maker's own TalkBack build that doesn't honor the
   text-to-speech engine setting would skip the capture entirely, with a reason shown in the report,
   rather than silently miscapturing — that skip path wasn't exercised in this study.
+
+## 7. Real Accessibility Inspector capture on iOS
+
+Section 5's iOS screens compare Swipewalk's predicted transcript against the accessibility tree only
+— VoiceOver can't be scripted, so until now iOS never had section 6's kind of real evidence.
+`--screen-reader` on iOS (`scan` only for now) closes part of that gap a different way: instead of
+turning a screen reader on, it walks Xcode's Accessibility Inspector on the Mac over the macOS
+Accessibility API and reads back its panel — the same accessibility properties VoiceOver would read,
+without VoiceOver running (see [known limitations](limitations.md), "The Accessibility Inspector
+route..."). This study is from a physical iPhone, across BuggyApp (.NET MAUI) and `samples/NativeiOS`
+(no MAUI), including a screen change followed without touching the Inspector again.
+
+BuggyApp's first screen captured 18 elements, complete, with real traits for each one. One of them
+confirmed exactly the gap [known limitations](limitations.md) already names ("XCUITest doesn't expose
+isAccessibilityElement or traits"): Swipewalk predicts **Terms** as a button (it's rendered and reads
+like one), but the Inspector reported it with no Button trait at all, just Static Text — real evidence
+that a control looking tappable doesn't make it one, not something a tree scan alone could show.
+
+Two problems in this same capture were found and fixed before they could ship. First, the Inspector's
+own panel doesn't leave an empty field blank: it prints the literal text **"None"** for an unset
+label, value, hint or identifier, and **"Empty string"** for an empty text field's value — which, read
+at face value, made BuggyApp's planted bug B7 (an `ImageButton` with only an `AutomationId`, no
+accessible name) look like it was actually named "None", a false difference from the correctly-null
+predicted name. Second, a separate capture of `samples/NativeiOS`'s root menu — where the one-time
+setup click had apparently landed on the app's window rather than a button — came back as a single,
+entirely empty item, reported as a normal, *complete* walk; taken at face value that would have turned
+every one of the screen's real elements into a false "not reported by the Inspector" review item.
+Both are now caught automatically: Inspector placeholder text is normalized away before any name is
+compared, and a walk whose items are all empty or far short of the screen's predicted stops is marked
+incomplete with a reason to click an element and try again, rather than a false clean pass.
+
+A later capture of the same NativeiOS root menu, redone after that fix, correctly found all 5 of its
+elements. From there, the person opened the app's "Views screen" **without touching the Inspector
+again** — no re-picking the target, no re-clicking an element — and the next scan's walk followed the
+screen change on its own and captured it in full: 17 elements, complete. That's one observed case, not
+a guarantee for every app or every screen change, but it's a real data point for something the route's
+design had only assumed until this study: the one-time setup (choosing the target, clicking one
+element) can cover more than the one screen it was made on. If a walk comes back empty or short after
+navigating, the fix described above catches it, and the route asks for the same one-time click again.
+
+That second capture's real findings were left exactly as found, not suppressed: an unlabeled "Plate
+number" text field (the same gap the tree scan already reports as a missing-name WCAG issue), a button
+whose Inspector label is the literal identifier `img_btn_email_receipt` (planted for exactly this
+reason — real evidence the tree alone can approximate but not confirm), and a "Search" button whose
+name comes from Apple's own default description for its SF Symbol icon (see
+[known limitations](limitations.md), "A UIButton or SwiftUI Button built from a common SF Symbol may
+already have a name"). It also surfaced a third problem, since fixed the same way as the first two: a
+`UIToolbar`'s own container and a scroll view's built-in scroll-position indicator each get a real
+XCUITest accessibility label ("Toolbar", "Vertical scroll bar, 1 page") that Xcode's Accessibility
+Inspector's own Next/Previous Item walk never actually stopped on in this capture (VoiceOver itself
+was not run, and it may still reach a scroll bar's indicator by touch even though this walk did not) —
+five false "not reported by the Inspector" findings from this one screen alone. That fix goes further
+than the Inspector comparison: both are now excluded from Swipewalk's predicted transcript everywhere
+on iOS, Inspector capture or not, since the tree parser was the thing telling the predictor they were
+ordinary named, reachable elements in the first place.
+
+### What this study doesn't show
+
+- This is one physical iPhone, one iOS version, two apps. Whether the Inspector's placeholder text
+  ("None", "Empty string") or its element naming for other system containers is the same on other iOS
+  versions or in other languages wasn't checked.
+- The Inspector's own walk order was not compared against the predicted order at all in this study —
+  the route doesn't report order differences yet, because the walk starts wherever the person clicked
+  rather than the top of the screen (see [known limitations](limitations.md)), and that wasn't
+  re-examined here.
+- Only one screen change (NativeiOS's launcher to its "Views screen") was followed without re-picking
+  the Inspector's target; a wider sample of screen changes, and record mode (which doesn't use this
+  route yet), would give more confidence that one selection usually covers a whole session.
+- record mode doesn't use this route at all yet — every capture in this study was a `scan`.
+- Excluding the toolbar container and scroll-bar indicator from the predicted transcript rests on the
+  Accessibility Inspector's own walk not reaching them, not on VoiceOver itself: VoiceOver was never
+  turned on, and it may still reach a scroll bar's indicator by touch (a common iOS pattern) even
+  though this walk did not.

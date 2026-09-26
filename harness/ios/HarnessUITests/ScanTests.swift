@@ -410,6 +410,8 @@ final class ScanTests: XCTestCase {
         case .navigationBar: return "navigationBar"
         case .tabBar: return "tabBar"
         case .scrollView: return "scrollView"
+        case .scrollBar: return "scrollBar"
+        case .toolbar: return "toolbar"
         case .table: return "table"
         case .collectionView: return "collectionView"
         case .picker: return "picker"

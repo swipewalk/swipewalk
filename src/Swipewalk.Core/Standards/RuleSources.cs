@@ -26,8 +26,11 @@ public static class RuleSources
     // (screen-reader-label-in-name: WCAG 2.5.3 checked against real screen-reader capture, opt-in with
     // --screen-reader), rebased on top of it, then to 2026.09.23 for the new orientation-restricted rule
     // (scan --orientation both; WCAG 1.3.4), then to 2026.09.24 for the beyond-WCAG clause catalog and
-    // its per-run "Beyond WCAG" coverage section, rebased on top of both changes.
-    public const string RulesetVersion = "2026.09.24";
+    // its per-run "Beyond WCAG" coverage section, rebased on top of both changes, then to 2026.09.25 for
+    // the screen-reader-capture rule's iOS route (scan only for now): Xcode's Accessibility Inspector,
+    // walked over the macOS Accessibility API, instead of Android's TalkBack -- see KnownLimitations
+    // "ios-inspector-walk-capture".
+    public const string RulesetVersion = "2026.09.25";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);

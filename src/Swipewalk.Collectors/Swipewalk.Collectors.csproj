@@ -14,6 +14,10 @@
     <!-- The iOS harness source ships next to the assemblies, so installed copies (dotnet tool, desktop app) can build it. -->
     <None Include="..\..\harness\ios\**\*" Exclude="..\..\harness\ios\**\xcuserdata\**;..\..\harness\ios\**\.DS_Store"
           LinkBase="harness/ios" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- The Accessibility Inspector walk script (Mac-side, run with `xcrun swift`, not an Xcode project)
+         ships next to the assemblies the same way, so IosInspectorWalk.FindScript finds it in an installed copy. -->
+    <None Include="..\..\harness\mac-inspector-walk\**\*"
+          LinkBase="harness/mac-inspector-walk" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>
