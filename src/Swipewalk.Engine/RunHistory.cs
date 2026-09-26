@@ -222,9 +222,24 @@ public sealed class RunHistory(string? root = null)
             ? source
             : CopyInto(source, NewRunFolder(options.AppId ?? "unknown-app"));
 
+        var record = Build(result, options, mode, startedAt, folder, recordingInProgress);
+        await File.WriteAllTextAsync(Path.Combine(folder, "run.json"), JsonSerializer.Serialize(record, Json));
+        return record;
+    }
+
+    /// <summary>
+    /// Builds a <see cref="RunRecord"/> for <paramref name="result"/> without writing anything to disk or
+    /// copying its output anywhere -- the pure computation <see cref="SaveAsync"/> itself does before writing
+    /// run.json. Used by <c>swipewalk run --no-history</c> (see <c>Runner.RunAsync</c>), which still needs a
+    /// record's <see cref="RunRecord.Counts"/> and <see cref="RunRecord.EndedEarlyReason"/> for its own exit
+    /// code, but must not save the run into the history or copy its output there.
+    /// </summary>
+    public static RunRecord Build(
+        RunResult result, ScanOptions options, string mode, DateTimeOffset startedAt, string folder, bool recordingInProgress = false)
+    {
         var report = result.Report;
         using var currentProcess = recordingInProgress ? Process.GetCurrentProcess() : null;
-        var record = new RunRecord
+        return new RunRecord
         {
             Id = Path.GetFileName(folder),
             // Never fall back to a screen name (e.g. "Screen 1") here: it isn't an app, and this value is
@@ -248,16 +263,14 @@ public sealed class RunHistory(string? root = null)
             ToolVersion = report.ToolVersion,
             RulesetVersion = report.RulesetVersion,
             Folder = folder,
-            // While still recording, there is no final ended-early reason yet -- see the remarks above. Once
-            // the recording actually stops, report.EndedEarlyReason is whatever Recorder itself determined
-            // (null on a clean Finish).
+            // While still recording, there is no final ended-early reason yet -- see SaveAsync's remarks.
+            // Once the recording actually stops, report.EndedEarlyReason is whatever Recorder itself
+            // determined (null on a clean Finish).
             EndedEarlyReason = recordingInProgress ? null : report.EndedEarlyReason,
             RecordingInProgress = recordingInProgress,
             RecordingProcessId = currentProcess?.Id,
             RecordingProcessStartedAt = currentProcess is null ? null : new DateTimeOffset(currentProcess.StartTime),
         };
-        await File.WriteAllTextAsync(Path.Combine(folder, "run.json"), JsonSerializer.Serialize(record, Json));
-        return record;
     }
 
     /// <summary>

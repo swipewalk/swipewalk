@@ -746,4 +746,80 @@ public class RunHistoryTests
         Assert.False(RunHistory.IsOwningProcessRunning(null, DateTimeOffset.UtcNow));
         Assert.False(RunHistory.IsOwningProcessRunning(1234, null));
     }
+
+    // Covers RunHistory.Build, the pure computation SaveAsync itself does before writing run.json -- used by
+    // `swipewalk run --no-history` (see Runner.RunAsync) so it can still report Counts/EndedEarlyReason for its
+    // own exit code without saving the run into the history or copying its output there.
+
+    [Fact]
+    public void Build_DoesNotTouchTheFileSystem()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"cf-history-{Guid.NewGuid():N}"); // deliberately never created
+        var folder = Path.Combine(Path.GetTempPath(), $"cf-nohistory-{Guid.NewGuid():N}"); // deliberately never created
+        var report = new ScanReport
+        {
+            ToolVersion = "1.0.0",
+            Screens = [new ScreenResult { Platform = Platform.Android, ScreenName = "Home", Findings = [] }],
+        };
+        var options = new ScanOptions { Platform = TargetPlatform.Android, Package = "org.example.app", OutputDirectory = folder };
+
+        var run = RunHistory.Build(
+            new RunResult(report, Path.Combine(folder, "report.html"), Path.Combine(folder, "results.json")),
+            options, "run", DateTimeOffset.Now, folder);
+
+        Assert.Equal("org.example.app", run.App);
+        Assert.Equal(folder, run.Folder);
+        Assert.False(Directory.Exists(folder), "Build must not create the output folder, or anything in it.");
+        Assert.False(Directory.Exists(root), "Build must never touch the history root.");
+    }
+
+    [Fact]
+    public async Task Build_ComputesTheSameCountsAndAppAsSaveAsync()
+    {
+        var history = NewHistory(out var root);
+        try
+        {
+            var folder = history.NewRunFolder("org.example.app");
+            var report = new ScanReport
+            {
+                ToolVersion = "1.0.0",
+                Screens = [new ScreenResult { Platform = Platform.Android, ScreenName = "Home", Findings = [] }],
+            };
+            var options = new ScanOptions { Platform = TargetPlatform.Android, Package = "org.example.app", OutputDirectory = folder };
+            var startedAt = DateTimeOffset.Now;
+            var result = new RunResult(report, Path.Combine(folder, "report.html"), Path.Combine(folder, "results.json"));
+
+            var saved = await history.SaveAsync(result, options, "run", startedAt);
+            var built = RunHistory.Build(result, options, "run", startedAt, folder);
+
+            Assert.Equal(saved.App, built.App);
+            Assert.Equal(saved.AppKey, built.AppKey);
+            Assert.Equal(saved.Platform, built.Platform);
+            Assert.Equal(saved.Counts, built.Counts);
+            Assert.Equal(saved.EndedEarlyReason, built.EndedEarlyReason);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Build_RecordsEndedEarlyReasonFromTheReport()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"cf-nohistory-{Guid.NewGuid():N}");
+        var report = new ScanReport
+        {
+            ToolVersion = "1.0.0",
+            Screens = [new ScreenResult { Platform = Platform.Android, ScreenName = "Home", Findings = [] }],
+            EndedEarlyReason = "An error interrupted the recording: device disconnected. Screens after that were not scanned.",
+        };
+        var options = new ScanOptions { Platform = TargetPlatform.Android, Package = "org.example.app", OutputDirectory = folder };
+
+        var run = RunHistory.Build(
+            new RunResult(report, Path.Combine(folder, "report.html"), Path.Combine(folder, "results.json")),
+            options, "run", DateTimeOffset.Now, folder);
+
+        Assert.Equal(report.EndedEarlyReason, run.EndedEarlyReason);
+    }
 }

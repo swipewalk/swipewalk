@@ -12,7 +12,8 @@ const string Usage = """
     swipewalk - accessibility scanner for Android and iOS apps (Windows planned)
 
     Usage:
-      swipewalk run [--config swipewalk.json]                    Install, check, scan and save, as configured
+      swipewalk run [--config swipewalk.json] [--history <dir>] [--no-history]
+                                                                    Install, check, scan and save, as configured
       swipewalk scan --platform android [--large-text-restart ask|always|never] [options]
       swipewalk scan --platform ios --bundle-id <id> [--large-text-restart ask|always|never] [options]
       swipewalk record --platform android|ios [--bundle-id <id>] [--expect "Login,Home"] [--large-text false]
@@ -54,9 +55,9 @@ const string Usage = """
                              those checks, never the scan -- see the report/results.json for why)
       --screen <name>        Name for the scanned screen in the report (default: "Screen 1")
       --out <dir>            Output directory (default: ./swipewalk-report); runs are also saved to the history
-      --no-history           Don't save this run to the history
-      --history <dir>        History folder to save to (default: the user's Swipewalk/runs folder). Given
-                             explicitly, runs re-scanned with --from are saved too
+      --no-history           Don't save this run to the history (scan, record and run)
+      --history <dir>        History folder to save to (scan, record and run; default: the user's Swipewalk/runs
+                             folder). Given explicitly, runs re-scanned with --from are saved too
       --from <dir>           Re-scan a saved capture directory instead of a live device
       --framework <maui>     App framework for fix examples (Android, and iOS on the Simulator, detect MAUI
                              automatically, and on an iPhone when installed with --install; overrides detection)
@@ -256,8 +257,12 @@ if (args is ["run", ..])
         // AskScanLargeTextRestartAsync function scan itself uses, not ConsoleRecordingInput.
         using var input = config.Mode == "record" ? new ConsoleRecordingInput(control, initialPolicy) : null;
         LargeTextRestartAsker largeTextRestartAsk = input is not null ? input.AskAsync : AskScanLargeTextRestartAsync;
-        var outcomes = await new Runner(service, new RunHistory(), new ConsoleLog()).RunAsync(
-            config, control, largeTextRestartAsk, input is null ? null : input.RevisitAsync, cancellationToken: cancel.Token);
+        // Same --history/--no-history convention as scan/record (see the "run" saveToHistory branch in
+        // Runner.RunAsync): saved to the local history by default, a given --history folder instead, or not
+        // saved at all with --no-history.
+        var saveToHistory = !runOptions.ContainsKey("no-history");
+        var outcomes = await new Runner(service, new RunHistory(runOptions.GetValueOrDefault("history")), new ConsoleLog()).RunAsync(
+            config, control, largeTextRestartAsk, input is null ? null : input.RevisitAsync, cancellationToken: cancel.Token, saveToHistory: saveToHistory);
         return Runner.ExitCode(config, outcomes);
     }
     catch (InvalidOperationException ex)

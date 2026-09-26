@@ -514,7 +514,8 @@ swipewalk run --config swipewalk.json
 ```
 
 `run` installs the app if you gave it a build file, runs the pre-flight checks, scans (or
-records) every target, and saves each run to history. Its exit codes are built for CI:
+records) every target, and saves each run to history (unless you pass `--no-history`). Its exit
+codes are built for CI:
 
 - **0** — the run completed; if `failOn` is `"wcag-issues"`, no WCAG issues were found (still not a
   statement of conformance — see [section 4](#4-reading-a-report)).
@@ -522,9 +523,13 @@ records) every target, and saves each run to history. Its exit codes are built f
 - **3** — `failOn` is `"wcag-issues"` and at least one WCAG issue was found, for the standard in
   focus if `--standard`/`"standard"` was set.
 
-Every run (from `run`, and from `scan`/`record` unless you pass `--no-history`) is saved to a local
-history — `~/Library/Application Support/Swipewalk/runs` on macOS by default, or the directory you
-pass with `--history <dir>`. List saved runs with:
+Every run from `run`, `scan` and `record` is saved to a local history unless you pass
+`--no-history` — `~/Library/Application Support/Swipewalk/runs` on macOS by default, or the
+directory you pass with `--history <dir>`. `swipewalk run --history <dir>` saves into a different
+folder (useful for a test or CI history separate from your own); `swipewalk run --no-history` skips
+the history altogether (the report is still written, to a timestamped folder for each target under
+`"out"` in swipewalk.json, or under `swipewalk-report/` in the current directory if `"out"` isn't
+set). List saved runs with:
 
 ```bash
 swipewalk history

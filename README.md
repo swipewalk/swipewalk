@@ -70,7 +70,7 @@ swipewalk run                 # install (optional), check, scan, save to history
 swipewalk history             # list saved runs
 ```
 
-`run` exits with code 3 when `failOn` is `"wcag-issues"` and issues were found (for CI), and 2 when a target couldn't be scanned. Exit code 0 means only that the automated checks found no WCAG issues; manual testing is still required. Every run is saved to a local history (`~/Library/Application Support/Swipewalk/runs` on macOS) that the desktop app reads.
+`run` exits with code 3 when `failOn` is `"wcag-issues"` and issues were found (for CI), and 2 when a target couldn't be scanned. Exit code 0 means only that the automated checks found no WCAG issues; manual testing is still required. Every run is saved to a local history (`~/Library/Application Support/Swipewalk/runs` on macOS, or the folder you pass with `--history <dir>`, unless you pass `--no-history`) that the desktop app reads.
 
 Or use the individual commands:
 
