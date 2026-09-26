@@ -339,6 +339,35 @@ public class ScreenReaderCoverageEvidenceTests
         Assert.Contains("not included", summary);
     }
 
+    [Fact]
+    public void TalkBackFocusableElementsOnlyReason_MatchesTheHarnessKotlinString()
+    {
+        // ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason is a duplicate of the literal
+        // TalkBackCollector.kt uses on every ordinary, fully-successful capture (Swipewalk.Core cannot
+        // reference the Kotlin harness, and the harness isn't reachable from dotnet test at all) -- matching
+        // it by string equality is brittle by nature, so this test is the guard that keeps the duplicate
+        // honest: if the harness's wording ever changes without updating the constant here, the caveat this
+        // constant is meant to suppress would silently come back on every real TalkBack capture (see
+        // ScreenReaderCoverageEvidenceTests.NameRoleValue_TalkBack_OwnExpectedNotCompleteReason_...).
+        var path = FindRepoFile("harness/android/harness/src/androidTest/java/org/swipewalk/harness/TalkBackCollector.kt");
+        Assert.True(path is not null, "Could not find TalkBackCollector.kt from the test's working directory.");
+
+        var kotlinSource = File.ReadAllText(path!);
+
+        Assert.Contains($"\"{ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason}\"", kotlinSource);
+    }
+
+    private static string? FindRepoFile(string relative)
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, relative);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+        return null;
+    }
+
     private static void AssertNoVerdictWords(string text)
     {
         foreach (var word in VerdictWords.All)
