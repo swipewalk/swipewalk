@@ -36,9 +36,12 @@ namespace Swipewalk.Core.Rules;
 /// the whole sequence a rotation of the true order, which this comparer's rank-based check cannot tell apart
 /// from a genuine difference (every element would then wrongly report an order mismatch). This is
 /// suppressed until the walk's starting point can be anchored (see KnownLimitations
-/// "ios-inspector-walk-capture"). A source confirmed to capture the reader's real navigation order, anchored
-/// correctly, would report 1.3.2 Meaningful Sequence and 2.4.3 Focus Order here instead -- see
-/// <see cref="Criteria"/>.</item>
+/// "ios-inspector-walk-capture"). <see cref="ScreenReaderSource.VoiceOverCaptions"/> DOES report
+/// OrderMismatch, as 1.3.2 Meaningful Sequence and 2.4.3 Focus Order (see <see cref="Criteria"/>): a
+/// person-driven session's order is the reader's own real navigation, not an artifact of how Swipewalk drove
+/// it. Not yet confirmed on hardware that a person naturally starts from the very first element on the
+/// screen, which the same rotation risk above would apply to if they don't -- see KnownLimitations
+/// "ios-voiceover-captions-capture".</item>
 /// <item><see cref="ScreenReaderDifferenceKind.Missing"/> and <see cref="ScreenReaderDifferenceKind.TextMismatch"/>
 /// -- mapped from the underlying tree node, via <see cref="NodeCriteria"/>: 4.1.2 Name, Role, Value for an
 /// interactive or focusable element (a user interface component's name/role is what's in question); 1.1.1
@@ -73,6 +76,12 @@ public sealed class ScreenReaderCaptureRule : IRule
             // order, not a real navigation order, so an order difference here is meaningless; the
             // Accessibility Inspector route's walk is not anchored to the top of the screen (confirmed on a
             // real device), so an order difference there would be a rotation artifact reported as if it were real.
+            // VoiceOverCaptions IS reported here: unlike those two, a person-driven session's order is the
+            // reader's own real navigation order (see ScreenReaderCaptureRuleTests
+            // .OrderMismatch_IsNeedsReviewUnderMeaningfulSequenceAndFocusOrder) -- not yet confirmed on
+            // hardware that a person naturally starts from the very first element, so treat a reported order
+            // difference from this source with that caveat until it is (see KnownLimitations
+            // "ios-voiceover-captions-capture").
             if (diff.Kind == ScreenReaderDifferenceKind.OrderMismatch
                 && capture.Source is ScreenReaderSource.TalkBack or ScreenReaderSource.AccessibilityInspector)
                 continue;

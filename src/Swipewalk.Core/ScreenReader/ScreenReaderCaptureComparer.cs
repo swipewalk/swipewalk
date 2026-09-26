@@ -95,8 +95,14 @@ public static class ScreenReaderCaptureComparer
                 continue;
             }
 
+            // A captured item can revisit a node already matched -- normal for a person-driven session
+            // (VoiceOverCaptions: someone can swipe back to something they already heard), and each
+            // dictionary below is keyed by node path, so a second entry for the same path would collide.
+            // Only the first visit is compared; a repeat says nothing new about the app.
+            if (!matchedPaths.Add(item.MatchedNodePath))
+                continue;
+
             matched.Add((stop, item));
-            matchedPaths.Add(item.MatchedNodePath);
         }
 
         // Rank each matched pair among the matched pairs only, independently by predicted order and by

@@ -201,10 +201,12 @@ Each screen also shows:
   announce, built from the accessibility tree in swipe order. This is a prediction, not a
   recording: VoiceOver can't be scripted and doesn't run in the Simulator, so the real screen
   reader was never listening. Compare it with TalkBack or VoiceOver by hand.
-- **Screen reader (captured)** (with `--screen-reader`) — real evidence next to the predicted
+- **Screen reader (captured)** (with `--screen-reader`, or `--voiceover-captions` on iOS `record` —
+  see below) — real evidence next to the predicted
   transcript above; Swipewalk reports every difference for you to check by hand (never as a
   confirmed WCAG failure by itself — the difference could be the app, or Swipewalk's own prediction,
-  that's wrong). On iOS, `scan` only for now (`record` still reports predicted-only evidence):
+  that's wrong). On iOS, `--screen-reader` is `scan` only for now (`record` still reports
+  predicted-only evidence from `--screen-reader`; `--voiceover-captions` is the `record`-only route):
   Swipewalk walks Xcode's Accessibility Inspector on your Mac over the macOS Accessibility API
   instead of turning VoiceOver on — the Inspector reports the same accessibility properties (label,
   value, traits, identifier, hint, class) VoiceOver would read, for each element it walks. This is
@@ -266,6 +268,22 @@ Each screen also shows:
   check can't see at all), when TalkBack's announcement leaves that text out — on the one such
   control checked so far (a Jetpack Compose button in samples/NativeAndroid), TalkBack's
   announcement included the visible text alongside its overriding name, so nothing was reported.
+- **Screen reader (captured), a person's own VoiceOver session** (with `--voiceover-captions` on
+  `record`, iOS, physical iPhone only) — **draft, not yet verified on a real device.** Unlike
+  `--screen-reader`'s Accessibility Inspector route above, VoiceOver itself IS turned on here, but by
+  you, not Swipewalk: you turn on VoiceOver and its Caption Panel (Settings > Accessibility >
+  VoiceOver > Caption Panel) yourself and swipe through the screen, while Swipewalk polls
+  screenshots of the phone over the cable (no XCUITest session, no extra permission) and reads the
+  on-screen caption text with on-device text recognition. Nothing is spoken by Swipewalk itself, and
+  nothing leaves your Mac. Per screen you scan while recording, it asks whether to capture (needs
+  `--device <udid>` for a physical iPhone — VoiceOver doesn't run in the Simulator); once you say
+  yes, swipe through the screen with VoiceOver and press Enter when you're done, or wait for the
+  90-second limit. Each caption is matched to a scanned element by a best-effort detection of
+  VoiceOver's own on-screen cursor rectangle, then by the caption text naming exactly one element,
+  the same shape TalkBack's and the Inspector's evidence use — so far confirmed only against
+  synthetic test images, never a real Caption Panel or a real VoiceOver cursor on a device. See the
+  "VoiceOver-captions capture is a draft..." limitation before relying on this for anything beyond a
+  first look.
 - **Relevance to standards** — each finding is labeled with the default laws and standards (ADA
   Title II, Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version
   and level include its criterion. This says a finding is **relevant to** a standard, never that the
@@ -427,6 +445,9 @@ versions always did:
 swipewalk record --platform android --expect "Login,Home,Settings" --out report
 swipewalk record --platform ios --bundle-id com.example.app --out report
 swipewalk record --platform android --auto --out report   # scan every new screen automatically too
+swipewalk record --platform ios --bundle-id com.example.app --device <udid> --voiceover-captions --out report
+                                            # physical iPhone only -- see "Screen reader (captured), a
+                                            # person's own VoiceOver session" above; draft, unverified on hardware
 ```
 
 `--expect "Login,Home,Settings"` names the screens you meant to cover; any that weren't scanned are

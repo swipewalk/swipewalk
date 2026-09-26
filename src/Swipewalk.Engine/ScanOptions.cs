@@ -112,6 +112,18 @@ public sealed record ScanOptions
     /// </summary>
     public bool ScreenReaderCapture { get; init; }
 
+    /// <summary>
+    /// iOS record only, for now (<c>--voiceover-captions</c>): capture a person's own real VoiceOver session
+    /// passively, one screen at a time -- they turn VoiceOver and its Caption Panel on themselves and swipe
+    /// through the screen, while Swipewalk polls screenshots over the cable and reads the on-screen caption
+    /// (VoiceOver is never scripted or turned on by Swipewalk). See
+    /// Swipewalk.Collectors.Ios.IosCollector.RunVoiceOverCaptionCaptureAsync and
+    /// Swipewalk.Core.Model.ScreenReaderCapture's <c>VoiceOverCaptions</c> source. Opt-in and false by default;
+    /// distinct from <see cref="ScreenReaderCapture"/> (Android's automatic TalkBack capture, and iOS's
+    /// Accessibility Inspector walk, neither of which needs a person to drive a screen reader by hand).
+    /// </summary>
+    public bool VoiceOverCaptions { get; init; }
+
     /// <summary>The app identifier for the platform (package or bundle id), when known.</summary>
     public string? AppId => Platform == TargetPlatform.Ios ? BundleId : Package;
 }
