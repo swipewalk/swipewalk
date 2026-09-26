@@ -183,7 +183,12 @@ Each report groups findings into three kinds:
 - **WCAG issues** — a possible failure of one or more WCAG 2.2 success criteria.
 - **Needs review** — automated checks can't decide on their own; a person should review it against
   the cited criteria. For example, contrast ratios between 3:1 and 4.5:1 need review because text
-  size can't always be read from the screenshot.
+  size can't always be read from the screenshot. A small touch target lands here instead of as a
+  WCAG issue when WCAG 2.5.8's spacing exception doesn't already explain it, but the target looks like
+  a plain-text link (no separate button styling) sitting next to other text on the same line: Swipewalk
+  can't tell from the accessibility tree whether it's genuinely part of a sentence or run of text (WCAG
+  2.5.8's inline exception), so it's flagged for a person to check rather than counted as a WCAG issue
+  or waved through — see docs/limitations.md for what this check can and can't tell apart.
 - **Platform advisories** — below a platform guideline (Apple Human Interface Guidelines, Android
   accessibility guidance) but not a WCAG failure. Touch-target guidelines are a common example: WCAG 2.5.8
   asks for 24×24 CSS pixels, while Apple recommends 44×44 pt and Android 48×48 dp — a target that
