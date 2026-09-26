@@ -10,6 +10,15 @@ namespace Swipewalk.Desktop.Pages;
 
 public partial class DevicesPage : ContentPage
 {
+	// Discards a refresh overtaken by a newer one (see RefreshAsync) -- this page is a Shell tab page, created
+	// once and reused for the app's life (AppShell.xaml), so it never leaks, but without this guard every
+	// text-size change (Fonts.Changed, e.g. a person holding Command-=) queues another RefreshAsync on top of
+	// whatever's already running: each one shells out to adb/xcrun twice, and letting them pile up unbounded
+	// (Process.Start on macOS forks the process) is exactly the kind of concurrent load that produced a real
+	// hang elsewhere in this app, and interleaving their DeviceList.Children.Clear()/Add() calls in whatever
+	// order they happen to finish is also just visibly wrong.
+	private int _refreshGeneration;
+
 	public DevicesPage()
 	{
 		InitializeComponent();
@@ -27,10 +36,14 @@ public partial class DevicesPage : ContentPage
 
 	private async Task RefreshAsync()
 	{
+		var generation = ++_refreshGeneration;
 		Busy.IsRunning = Busy.IsVisible = true;
 		DeviceList.Children.Clear();
 		var android = await Task.Run(Devices.AndroidAsync);
 		var ios = await Task.Run(Devices.IosWithStatusAsync);
+		if (generation != _refreshGeneration)
+			return;
+		DeviceList.Children.Clear();
 		foreach (var device in android)
 			DeviceList.Children.Add(Row(device, null));
 		foreach (var (device, problem) in ios.Where(d => d.Device.IsPhysical || d.Problem is null))

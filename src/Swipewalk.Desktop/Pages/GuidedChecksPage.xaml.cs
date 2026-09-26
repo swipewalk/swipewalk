@@ -39,7 +39,23 @@ public partial class GuidedChecksPage : ContentPage
 				? AssistiveTechnologyPicker.Items[AssistiveTechnologyPicker.SelectedIndex] : "None";
 			RenderScreen();
 		};
+	}
+
+	// This page is created fresh on every "guide?folder=..." navigation (Routing.RegisterRoute, not a Shell tab
+	// page reused for the app's life -- see AppShell.xaml). Subscribing in the constructor and only ever
+	// unsubscribing in OnDisappearing would leak every earlier instance forever (kept referenced by Fonts' static
+	// event, each one re-rendering on every later text-size change) -- see ComparePage's matching fix for why
+	// OnAppearing/OnDisappearing is used instead of the constructor.
+	protected override void OnAppearing()
+	{
+		base.OnAppearing();
 		Fonts.Changed += RenderScreen;
+	}
+
+	protected override void OnDisappearing()
+	{
+		Fonts.Changed -= RenderScreen;
+		base.OnDisappearing();
 	}
 
 	public string Folder

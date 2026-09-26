@@ -15,7 +15,28 @@ public partial class ComparePage : ContentPage
 	{
 		InitializeComponent();
 		AppMenus.Attach(this);
+	}
+
+	// Unlike Dashboard/New scan/Devices/History (Shell tab pages, created once and reused for the app's life --
+	// see AppShell.xaml), this page is created fresh on every "compare?run=..." navigation (Routing.RegisterRoute,
+	// not a ShellContent). Subscribing in the constructor and only ever unsubscribing in OnDisappearing would leak
+	// every earlier instance forever (kept referenced by Fonts' static event, each one re-rendering on every later
+	// text-size change) -- and it would also leave this exact instance permanently unresponsive to text-size
+	// changes if it's ever merely covered rather than popped (e.g. this page is still reachable by Back after
+	// opening Compare from Dashboard, is covered rather than destroyed, and OnAppearing runs again on the same
+	// instance without the constructor running again). Subscribing/unsubscribing symmetrically in
+	// OnAppearing/OnDisappearing instead keeps exactly one live subscription while shown, none while not, however
+	// many times this instance is covered and revealed again.
+	protected override void OnAppearing()
+	{
+		base.OnAppearing();
 		Fonts.Changed += Render;
+	}
+
+	protected override void OnDisappearing()
+	{
+		Fonts.Changed -= Render;
+		base.OnDisappearing();
 	}
 
 	public string Run
