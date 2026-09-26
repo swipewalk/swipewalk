@@ -18,7 +18,8 @@ const string Usage = """
       swipewalk scan --platform android [--large-text-restart ask|always|never] [options]
       swipewalk scan --platform ios --bundle-id <id> [--large-text-restart ask|always|never] [options]
       swipewalk record --platform android|ios [--bundle-id <id>] [--expect "Login,Home"] [--large-text false]
-                       [--auto] [--large-text-restart ask|always|never] [--screen-reader] [options]
+                       [--auto] [--large-text-restart ask|always|never] [--screen-reader] [--voiceover-captions]
+                       [options]
       swipewalk record --continue <run>                           Resume a recording that ended early
       swipewalk limitations [--platform <p>] [--framework <f>]   Print known limitations as Markdown
       swipewalk doctor --platform android|ios [--device <id>] [--package <p> | --bundle-id <id>] [--team <id>]
@@ -106,6 +107,17 @@ const string Usage = """
                              transcript; the report records why
       --screen-reader-confirm  Skip --screen-reader's Android physical-device confirmation prompt (required
                              instead of the prompt for a non-interactive run on a physical phone)
+      --voiceover-captions    iOS, record only, physical iPhone only (--device <udid> required; VoiceOver
+                             does not run in the Simulator): DRAFT, not yet verified on a real device.
+                             Per screen you scan while recording, offers to capture a person-driven VoiceOver
+                             session -- you turn on VoiceOver and its Caption Panel (Settings > Accessibility
+                             > VoiceOver > Caption Panel) yourself and swipe through the screen; Swipewalk
+                             never turns VoiceOver on or scripts it. It polls screenshots of the phone over
+                             the cable (no automation, no extra permission) and reads the on-screen caption
+                             text with on-device text recognition, so the caption text Swipewalk managed to
+                             read appears in the report next to the predicted transcript -- it can miss or
+                             misread a caption, so treat it as a first look, not settled fact. Interactive
+                             only; declining, or a non-interactive run, falls back to the predicted transcript
 
       --large-text           scan: also capture at a large system text size (Android 200%; iOS AX3, about 235%,
                              set through the Settings app on a physical iPhone). On a physical device this
@@ -407,6 +419,31 @@ if (platformName == "android" && scanOptions.ScreenReaderCapture
 if (command == "record" && platformName == "ios" && scanOptions.ScreenReaderCapture)
     Console.WriteLine("Note: --screen-reader's Accessibility Inspector route isn't wired into record mode yet; use scan for now.");
 
+if (scanOptions.VoiceOverCaptions)
+{
+    // --voiceover-captions needs a person driving VoiceOver on the phone one screen at a time, which is what
+    // record mode is for; a single scan has no later "navigate on" moment to hang the capture off, and it
+    // doesn't apply to Android (that platform's real evidence is TalkBack's own automatic capture, --screen-reader).
+    if (platformName != "ios")
+    {
+        Console.Error.WriteLine("--voiceover-captions is iOS only (Android's real screen-reader evidence is --screen-reader's automatic TalkBack capture).");
+        return 1;
+    }
+    if (command != "record")
+    {
+        Console.Error.WriteLine("--voiceover-captions is record only for now: a person needs to navigate the screen with VoiceOver, which only a recording gives a moment for.");
+        return 1;
+    }
+    // VoiceOver does not run in the Simulator, so this always needs a real device explicitly -- checked once
+    // here, rather than only when the guide is actually asked for the first screen, so a run that can never
+    // work fails immediately instead of after installing the app and passing pre-flight.
+    if (scanOptions.Device is null)
+    {
+        Console.Error.WriteLine("--voiceover-captions needs a physical iPhone (VoiceOver does not run in the Simulator); pass --device <udid>.");
+        return 1;
+    }
+}
+
 // The run's own StartedAt (RunRecord/History/Dashboard ordering) must stay the original recording's start, not
 // when this continued session began.
 var started = continuingRun?.StartedAt ?? DateTimeOffset.Now;
@@ -468,7 +505,8 @@ try
         if (saveToHistory)
             await history.StartRecordingAsync(scanOptions, started, scanOptions.OutputDirectory, continuingReport);
         var onScreen = saveToHistory ? history.OnScreenSaved(scanOptions, command, started, scanOptions.OutputDirectory, new ConsoleLog()) : null;
-        result = await service.RecordAsync(scanOptions, control, cancel.Token, onScreen, input.AskAsync, input.RevisitAsync, continuation);
+        result = await service.RecordAsync(scanOptions, control, cancel.Token, onScreen, input.AskAsync, input.RevisitAsync, continuation,
+            iosVoiceOverCaptionGuide: scanOptions.VoiceOverCaptions ? (snapshot, ct) => AskIosVoiceOverCaptionGuideAsync(snapshot, scanOptions.Device, input, ct) : null);
     }
     else
     {
@@ -518,6 +556,7 @@ static ScanOptions ToScanOptions(string platform, Dictionary<string, string> o, 
     AndroidHarnessDir = o.GetValueOrDefault("android-harness"),
     ForceResultBundle = o.ContainsKey("result-bundle"),
     ScreenReaderCapture = o.ContainsKey("screen-reader"),
+    VoiceOverCaptions = o.ContainsKey("voiceover-captions"),
 };
 
 /// <summary>
@@ -626,6 +665,70 @@ static Task<bool> AskIosInspectorGuideAsync(CancellationToken cancellationToken)
     return Task.FromResult(true);
 }
 
+/// <summary>
+/// --voiceover-captions' guide: DRAFT, not yet verified on a real device (see KnownLimitations
+/// "ios-voiceover-captions-capture"). A person turns VoiceOver and its Caption Panel on themselves and swipes
+/// through the current screen, while this Mac polls screenshots over the cable and reads the on-screen caption
+/// -- VoiceOver is never scripted or turned on by Swipewalk (see
+/// Swipewalk.Collectors.Ios.IosVoiceOverCaptionWalk). Interactive only -- a non-interactive run declines
+/// without asking, same as other Swipewalk confirmations. Only ever offered for a physical iPhone: VoiceOver
+/// does not run in the Simulator, so this needs an explicit --device UDID rather than falling back to the
+/// booted Simulator the way other iOS commands do. Both prompts below go through <paramref name="input"/>
+/// (the same object the record loop's Enter/q keys go through), not a separate Console read: two independent
+/// readers on the same stdin raced against each other in an earlier version of this (found in review) --
+/// answering "start capturing" or "I'm done" could be swallowed as a plain "scan now"/"finish" instead.
+/// </summary>
+static async Task<ScreenReaderCapture?> AskIosVoiceOverCaptionGuideAsync(
+    ScreenSnapshot snapshot, string? device, ConsoleRecordingInput input, CancellationToken cancellationToken)
+{
+    if (Console.IsInputRedirected)
+        return null;
+    if (device is null)
+    {
+        Console.WriteLine("  --voiceover-captions needs a physical iPhone (VoiceOver does not run in the Simulator); pass --device <udid> to use it.");
+        return null;
+    }
+    Console.WriteLine(
+        "  --voiceover-captions (DRAFT, not yet verified on a real device) tries to read the captions VoiceOver " +
+        "shows while you navigate this screen with it yourself, next to Swipewalk's predicted transcript -- it can " +
+        "miss or misread a caption. Swipewalk does not turn VoiceOver on for you and does not speak anything " +
+        "itself: it takes screenshots of the phone over the cable (no automation) and reads the on-screen Caption " +
+        "Panel text with on-device text recognition; nothing leaves this Mac. Turn on VoiceOver (Settings > " +
+        "Accessibility > VoiceOver) and its Caption Panel (VoiceOver > Caption Panel) on the phone now if you " +
+        "haven't already. Press Enter to capture this screen, or N and Enter to not check it this way.");
+    if (!await input.AskVoiceOverCaptionStartAsync(cancellationToken))
+        return null;
+
+    const int maxSeconds = 90;
+    Console.WriteLine($"  Capturing for up to {maxSeconds} seconds -- swipe through this screen with VoiceOver now. " +
+                       "Press Enter here when you're done (or wait for the time limit).");
+    // Not disposed: a background continuation below can still reference it after this method returns (the
+    // person's "I'm done" Enter can arrive slightly after the capture's own duration bound already finished
+    // it), and CancellationTokenSource needs no timely disposal to behave correctly, just eventually.
+    var stopCts = new CancellationTokenSource();
+    // Fire-and-forget on purpose: races against the capture below rather than being awaited directly.
+    _ = input.WaitForVoiceOverCaptionStopAsync(cancellationToken).ContinueWith(_ =>
+    {
+        try { stopCts.Cancel(); } catch (ObjectDisposedException) { }
+    }, TaskScheduler.Default);
+    var startedAt = DateTimeOffset.UtcNow;
+    var raw = await IosVoiceOverCaptionWalk.RunLiveAsync(
+        device, TimeSpan.FromSeconds(maxSeconds), stopCts.Token, cancellationToken: cancellationToken);
+    var capture = IosVoiceOverCaptionCapture.Build(snapshot, raw, startedAt);
+
+    // VoiceOver running at the same time as the XCUITest-driven captures this screen's own large-text check
+    // (and the next screen's capture) uses is reported to make both unreliable -- Apple's own forum has an
+    // engineer calling it possibly a bug, not officially documented, so this is treated as a real constraint
+    // rather than a maybe. VoiceOver must be off again before Swipewalk automates anything further.
+    if (!Console.IsInputRedirected)
+    {
+        Console.WriteLine("  Turn VoiceOver off now (for example triple-click the side button if you set that as " +
+                           "the Accessibility Shortcut), then press Enter to continue.");
+        await input.WaitForVoiceOverCaptionStopAsync(cancellationToken);
+    }
+    return capture;
+}
+
 /// <summary>Ctrl+C / kill finish the report instead of exiting; works with or without a terminal.</summary>
 static SignalCancellation CancelOnSignals() => new();
 
@@ -668,6 +771,8 @@ sealed class ConsoleRecordingInput : IDisposable
     private LargeTextRestartPolicy _policy;
     private TaskCompletionSource<LargeTextRestartChoice>? _pending;
     private TaskCompletionSource<bool>? _pendingRevisit;
+    private TaskCompletionSource<bool>? _pendingVoiceOverStart;
+    private TaskCompletionSource<bool>? _pendingVoiceOverStop;
 
     public ConsoleRecordingInput(RecorderControl control, LargeTextRestartPolicy initialPolicy)
     {
@@ -693,7 +798,34 @@ sealed class ConsoleRecordingInput : IDisposable
             while (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(intercept: true);
-                if (_pendingRevisit is { } pendingRevisit)
+                // --voiceover-captions' two prompts take priority over everything else below, and swallow
+                // every key while armed (not only the ones that answer them): this is the fix for a real
+                // race found in review -- the plain record loop's own Enter="scan now"/q="finish" handling
+                // below must never fire while one of these is waiting for its own answer, or a person
+                // answering "start capturing" or "I'm done" can accidentally also trigger a normal scan or
+                // end the recording.
+                if (_pendingVoiceOverStop is { } pendingStop)
+                {
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        _pendingVoiceOverStop = null;
+                        pendingStop.TrySetResult(true);
+                    }
+                }
+                else if (_pendingVoiceOverStart is { } pendingStart)
+                {
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        _pendingVoiceOverStart = null;
+                        pendingStart.TrySetResult(true);
+                    }
+                    else if (key.KeyChar is 'n' or 'N')
+                    {
+                        _pendingVoiceOverStart = null;
+                        pendingStart.TrySetResult(false);
+                    }
+                }
+                else if (_pendingRevisit is { } pendingRevisit)
                 {
                     _pendingRevisit = null;
                     pendingRevisit.TrySetResult(key.KeyChar is 'y' or 'Y');
@@ -769,6 +901,29 @@ sealed class ConsoleRecordingInput : IDisposable
         var tcs = new TaskCompletionSource<bool>();
         _pendingRevisit = tcs;
         // See AskAsync: a cancellation here is not the person answering "no, finish now".
+        cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        return tcs.Task;
+    }
+
+    /// <summary>--voiceover-captions' "start capturing this screen?" question -- Enter to start, N to
+    /// decline. Redirected input declines without arming anything (nothing would ever answer it).</summary>
+    public Task<bool> AskVoiceOverCaptionStartAsync(CancellationToken cancellationToken)
+    {
+        if (Console.IsInputRedirected)
+            return Task.FromResult(false);
+        var tcs = new TaskCompletionSource<bool>();
+        _pendingVoiceOverStart = tcs;
+        cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        return tcs.Task;
+    }
+
+    /// <summary>--voiceover-captions' "press Enter when you're done" stop signal, awaited alongside the
+    /// capture's own duration bound. Never armed on redirected input (the caller only reaches this after
+    /// <see cref="AskVoiceOverCaptionStartAsync"/> already returned true, which redirected input never does).</summary>
+    public Task WaitForVoiceOverCaptionStopAsync(CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        _pendingVoiceOverStop = tcs;
         cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
         return tcs.Task;
     }

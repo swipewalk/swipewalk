@@ -731,7 +731,8 @@ public static class HtmlReport
             "What TalkBack actually said as Swipewalk moved its focus to each focusable element in turn, captured by making Swipewalk's own text-to-speech engine TalkBack's default so it receives the exact spoken text (no audio is recorded or played). The order shown is Swipewalk's own walk order, not TalkBack's swipe order.",
         ScreenReaderSource.AccessibilityInspector =>
             "Captured from Xcode's Accessibility Inspector: the label, value and traits it reports -- the properties VoiceOver reads -- in the Inspector's own navigation order, starting wherever the person clicked to set this up, not necessarily the top of the screen (its order is circular, confirmed on a real device), so this list's order is not shown as a swipe-order finding. This is not recorded speech.",
-        ScreenReaderSource.VoiceOverCaptions => "VoiceOver captions recorded while navigating this screen.",
+        ScreenReaderSource.VoiceOverCaptions =>
+            "Caption text Swipewalk managed to read from VoiceOver's own Caption Panel while a person navigated this screen with VoiceOver themselves (no audio is recorded or played; Swipewalk never turns VoiceOver on). DRAFT: this route is not yet verified on a real device, so a caption can be missed or misread. The order shown is the person's own real navigation order.",
         _ => "",
     };
 

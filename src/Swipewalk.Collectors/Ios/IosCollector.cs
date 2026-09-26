@@ -565,6 +565,36 @@ public static class IosCollector
         return IosInspectorCapture.Build(snapshot, raw);
     }
 
+    /// <summary>
+    /// Asks whether, and for how long, to run a VoiceOver-captions session for <paramref name="snapshot"/>'s
+    /// screen (<c>--voiceover-captions</c> -- see <see cref="Model.ScreenReaderCapture"/>'s
+    /// <c>VoiceOverCaptions</c> source): a person turns VoiceOver and its Caption Panel on themselves, swipes
+    /// through the screen, and tells Swipewalk when they're done, while this Mac polls screenshots over the
+    /// cable and reads the on-screen caption -- VoiceOver is never scripted. Implemented by the CLI (a console
+    /// prompt) or a future desktop dialog; returns the completed evidence (built via
+    /// <see cref="IosVoiceOverCaptionCapture.Build"/>, so the guide implementation has whatever device/session
+    /// details it needs, e.g. the target UDID, in its own closure), or null when declined or unavailable (a
+    /// non-interactive run). Never throws itself; whatever it returns (or null) is used as-is.
+    /// </summary>
+    public delegate Task<ScreenReaderCapture?> IosVoiceOverCaptionGuide(ScreenSnapshot snapshot, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Evidence for <paramref name="snapshot"/> from a person's own real VoiceOver session, captured passively
+    /// (see <see cref="IosVoiceOverCaptionGuide"/>). Never throws: every path -- <paramref name="guide"/> null,
+    /// declined, or the session itself failing -- returns a <see cref="ScreenReaderCapture"/> that is simply
+    /// incomplete, with why in <see cref="Model.ScreenReaderCapture.NotCompleteReason"/>.
+    /// </summary>
+    public static async Task<ScreenReaderCapture> RunVoiceOverCaptionCaptureAsync(
+        ScreenSnapshot snapshot, IosVoiceOverCaptionGuide? guide, CancellationToken cancellationToken = default)
+    {
+        if (guide is null)
+            return IosVoiceOverCaptionCapture.Skipped(
+                "no interactive prompt was available to ask about a VoiceOver-captions capture for this run; the predicted transcript still applies");
+        var result = await guide(snapshot, cancellationToken);
+        return result ?? IosVoiceOverCaptionCapture.Skipped(
+            "the VoiceOver-captions capture was declined, or not run, for this screen; the predicted transcript still applies");
+    }
+
     /// <summary>The pure decision behind <see cref="CaptureLargeTextAsync"/>, once a capture attempt has finished
     /// (or never succeeded): no snapshot means the app never came back to front; a snapshot of a different screen
     /// means it restarted or navigated away.</summary>

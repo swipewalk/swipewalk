@@ -72,7 +72,8 @@ public sealed class Recorder(
     IReadOnlyList<string> expectedScreens, bool largeText, string? focusStandard, bool autoScanOnScreenChange,
     RecorderControl control, IProgress<string> log,
     LargeTextRestartPolicy largeTextRestartPolicy = LargeTextRestartPolicy.Never, LargeTextRestartAsker? largeTextRestartAsk = null,
-    RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null, RecordContinuation? continuation = null)
+    RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null, RecordContinuation? continuation = null,
+    bool iosVoiceOverCaptions = false, Swipewalk.Collectors.Ios.IosCollector.IosVoiceOverCaptionGuide? iosVoiceOverCaptionGuide = null)
 {
     /// <summary>Raised after each screen is scanned, for live views.</summary>
     public event Action<ScreenResult>? ScreenScanned;
@@ -413,6 +414,21 @@ public sealed class Recorder(
             Framework = framework ?? captured.Framework,
             FrameworkVersion = frameworkVersion ?? captured.FrameworkVersion,
         };
+
+        // iOS only, opt-in (--voiceover-captions): a person drives VoiceOver by hand for this screen while
+        // Swipewalk polls screenshots passively -- see Swipewalk.Collectors.Ios.IosCollector
+        // .RunVoiceOverCaptionCaptureAsync. Before the large-text check, same position as the Accessibility
+        // Inspector walk in ScanService.ScanAsync, so a screen checked at large text also carries its normal-size
+        // VoiceOver evidence, not the enlarged capture's.
+        if (iosVoiceOverCaptions && source.Platform == Platform.iOS)
+        {
+            log.Report($"Screen {number}: ready for a VoiceOver-captions capture...");
+            snapshot = snapshot with
+            {
+                ScreenReaderCapture = await Swipewalk.Collectors.Ios.IosCollector.RunVoiceOverCaptionCaptureAsync(
+                    snapshot, iosVoiceOverCaptionGuide, cancellationToken),
+            };
+        }
 
         if (!largeText)
         {

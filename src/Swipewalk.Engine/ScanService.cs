@@ -536,10 +536,14 @@ public sealed class ScanService(IProgress<string> log)
     /// <param name="continuation">Resumes an earlier, ended-early session of the same run instead of starting a
     /// fresh one -- see <see cref="ResolveContinuation"/>. Null (the default) starts a
     /// fresh recording, as before.</param>
+    /// <param name="iosVoiceOverCaptionGuide">iOS only, and only when <see cref="ScanOptions.VoiceOverCaptions"/>
+    /// is set: the CLI/desktop prompt for a person-driven VoiceOver-captions session on the current screen (see
+    /// <see cref="IosCollector.RunVoiceOverCaptionCaptureAsync"/>). Null (the default) declines without asking,
+    /// same as any other unset confirmation.</param>
     public async Task<RunResult> RecordAsync(
         ScanOptions options, RecorderControl control, CancellationToken cancellationToken = default, Action<ScreenResult>? onScreen = null,
         LargeTextRestartAsker? largeTextRestartAsk = null, RevisitSkippedScreensAsker? revisitSkippedScreensAsk = null,
-        RecordContinuation? continuation = null)
+        RecordContinuation? continuation = null, IosCollector.IosVoiceOverCaptionGuide? iosVoiceOverCaptionGuide = null)
     {
         var outDir = Path.GetFullPath(options.OutputDirectory);
         if (options.Platform == TargetPlatform.Ios)
@@ -556,7 +560,9 @@ public sealed class ScanService(IProgress<string> log)
 
         var recorder = new Recorder(source, outDir, ToolVersion, options.Framework, options.FrameworkVersion, options.ExpectedScreens,
             options.LargeText, options.Standard, options.AutoScanOnScreenChange, control, log, options.LargeTextRestartPolicy, largeTextRestartAsk,
-            revisitSkippedScreensAsk, continuation);
+            revisitSkippedScreensAsk, continuation,
+            iosVoiceOverCaptions: options.Platform == TargetPlatform.Ios && options.VoiceOverCaptions,
+            iosVoiceOverCaptionGuide: iosVoiceOverCaptionGuide);
         if (onScreen is not null)
             recorder.ScreenScanned += onScreen;
         var report = await recorder.RunAsync(cancellationToken);

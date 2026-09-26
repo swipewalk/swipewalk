@@ -344,4 +344,27 @@ public class ScreenReaderCaptureComparerTests
 
         Assert.Empty(ScreenReaderCaptureComparer.Compare(predicted, capture));
     }
+
+    [Fact]
+    public void RevisitingTheSameNodeTwice_DoesNotCrash_AndOnlyTheFirstVisitIsCompared()
+    {
+        // Normal for a person-driven session (VoiceOverCaptions): someone can swipe back to an element they
+        // already heard, so the same MatchedNodePath can appear twice in one capture. Compare ranks matched
+        // items by node path, so a naive dictionary build over duplicate paths would throw -- this must not.
+        var predicted = new[]
+        {
+            new Announcement(1, "0", "Search, Button", AnyBounds, HasName: true),
+            new Announcement(2, "1", "Cancel, Button", AnyBounds, HasName: true),
+        };
+        var capture = Capture(ScreenReaderSource.VoiceOverCaptions,
+        [
+            TalkBackItem(1, "Search, Button", "0"),
+            TalkBackItem(2, "Cancel, Button", "1"),
+            TalkBackItem(3, "Search, Button", "0"), // swiped back to the first element again
+        ]);
+
+        var diffs = ScreenReaderCaptureComparer.Compare(predicted, capture);
+
+        Assert.DoesNotContain(diffs, d => d.Kind is ScreenReaderDifferenceKind.OrderMismatch or ScreenReaderDifferenceKind.TextMismatch);
+    }
 }

@@ -18,6 +18,10 @@
          ships next to the assemblies the same way, so IosInspectorWalk.FindScript finds it in an installed copy. -->
     <None Include="..\..\harness\mac-inspector-walk\**\*"
           LinkBase="harness/mac-inspector-walk" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- The VoiceOver-captions capture script (Mac-side, run with `xcrun swift`, not an Xcode project) ships
+         next to the assemblies the same way, so IosVoiceOverCaptionWalk.FindScript finds it in an installed copy. -->
+    <None Include="..\..\harness\mac-voiceover-captions\**\*"
+          LinkBase="harness/mac-voiceover-captions" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>
