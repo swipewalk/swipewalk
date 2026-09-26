@@ -320,7 +320,8 @@ Each screen also shows:
   "order" is a real navigation order yet — for TalkBack, Swipewalk moves its focus to each element
   itself in the tree's own walk order, not TalkBack's own swipe order; for the Accessibility
   Inspector, the walk starts wherever you clicked, not necessarily the top of the screen, and its
-  order is circular (see the "Accessibility Inspector route..." limitation above).
+  order is circular (see the "Accessibility Inspector route..." limitation in
+  [docs/limitations.md](limitations.md)).
 - **Relevance to standards** — each finding is labeled with the default laws and standards (ADA
   Title II, Section 508, EN 301 549 v3.2.1/v4.1.1, UK public sector regulations) whose WCAG version
   and level include its criterion. This says a finding is **relevant to** a standard, never that the

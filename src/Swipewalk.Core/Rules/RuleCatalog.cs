@@ -55,7 +55,7 @@ public static class RuleCatalog
             "Needs review (content kept changing on its own across more than one interval between captures -- always for review, never a confirmed failure, since a pause/stop/hide control may exist, or the update may be essential to the screen)",
             BothPlatforms),
         new("screen-reader-capture", "Needs review (every difference from the predicted transcript is reported for a person to check, never as a confirmed WCAG failure by itself)",
-            "Android (needs --screen-reader and the instrumentation harness; TalkBack)"),
+            "Android (TalkBack; needs --screen-reader and the instrumentation harness); iOS (Xcode's Accessibility Inspector; needs --screen-reader and a person present)"),
         new("screen-reader-label-in-name", "Needs review (a real screen-reader capture is evidence of the accessible name a speech-input user relies on, not proof of it)",
             "Android (needs --screen-reader and the instrumentation harness; TalkBack)"),
     ];
