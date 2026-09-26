@@ -14,6 +14,10 @@ public partial class App : Application
 		// UI-test-only: same reasoning as above, for the TalkBack confirmation (Services/TalkBackNoticePreference).
 		if (Services.AppState.HasFlag("--reset-talkback-notice"))
 			Services.TalkBackNoticePreference.Reset();
+		// UI-test-only: same reasoning as above, for the Accessibility Inspector permission confirmation
+		// (Services/InspectorNoticePreference).
+		if (Services.AppState.HasFlag("--reset-inspector-notice"))
+			Services.InspectorNoticePreference.Reset();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

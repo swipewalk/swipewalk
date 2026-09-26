@@ -51,6 +51,12 @@ Every change is checked with:
 - The notice shown when a physical phone is selected (large-text checks change the phone's own text size) is a
   native system alert rather than a page in the app. On a Mac with VoiceOver, the notice's title and body were
   read, and a real Escape key closed it.
+- New scan's "Read Accessibility Inspector evidence (properties VoiceOver uses)" option (iOS only) shows the
+  same kind of native system alert -- the macOS Accessibility permission explanation, then the one-time
+  Inspector setup step -- as the physical-phone and TalkBack notices above. It has not yet been checked with
+  VoiceOver directly (covered by the general "not yet tested by a person using VoiceOver" row in Known issues
+  below, not a dedicated one); based on the other native alerts above reading correctly, we expect its title
+  and body to be read in full too, but that is not yet confirmed for this one.
 - The Guided checks page (walks a run's screens with step-by-step WCAG questions) sets an accessible name via
   `SemanticProperties` on every interactive control -- the screen and assistive-technology pickers, each
   criterion's result choice, the evidence/reason/note/tester fields and the Save button -- and marks each

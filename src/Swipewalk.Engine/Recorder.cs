@@ -380,6 +380,14 @@ public sealed class Recorder(
         log.Report($"Screen {number}: capturing...");
 
         var captured = await source.CaptureAsync(dir, "", cancellationToken);
+        // Never attempted for a large-text capture (those call source.CaptureLargeTextAsync/CompleteLargeTextAsync,
+        // not this normal-capture path) -- the same choice ScanService.RunAppearanceRescanAsync/CaptureOtherOrientationAsync
+        // make for their own second captures: a rescan under a changed condition isn't what --screen-reader asked
+        // to capture again. Android's default no-op returns null (its TalkBack capture, when requested, already
+        // arrives attached to `captured` from CaptureAsync above); iOS's Accessibility Inspector walk is a
+        // separate, Mac-side step -- see IScreenSource.CaptureScreenReaderAsync and IosScreenSource's override.
+        if (await source.CaptureScreenReaderAsync(captured, log, cancellationToken) is { } screenReaderCapture)
+            captured = captured with { ScreenReaderCapture = screenReaderCapture };
         var fingerprint = ScreenIdentity.Fingerprint(captured);
 
         // Same screen already kept in this run (this session, or an earlier one continued into it -- see

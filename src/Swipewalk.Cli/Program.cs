@@ -93,17 +93,18 @@ const string Usage = """
                              the device. On a physical phone, asks for confirmation first
                              (--screen-reader-confirm skips the prompt for a non-interactive run); use a
                              test device.
-                             iOS (scan only for now -- not yet wired into record): walks Xcode's
-                             Accessibility Inspector on this Mac over the macOS Accessibility API; VoiceOver
-                             itself is never turned on. Takes extra time per element (a large screen can
-                             take a minute or more). Interactive only: asks to use the macOS Accessibility
-                             permission for whichever app is running Swipewalk (normally your terminal) --
-                             which lets that app operate other apps on this Mac; used here only for the
-                             Inspector, revocable any time in System Settings -- then for a one-time manual
-                             step this can't do itself: opening Accessibility Inspector, choosing the target
-                             device in its toolbar, and clicking the first element (e.g. its title) on the
-                             app's screen. Declining, or a non-interactive run, falls back to the predicted
-                             transcript; the report records why
+                             iOS (scan and record): walks Xcode's Accessibility Inspector on this Mac over
+                             the macOS Accessibility API; VoiceOver itself is never turned on. Takes extra
+                             time per element (a large screen can take a minute or more). Interactive only:
+                             asks to use the macOS Accessibility permission for whichever app is running
+                             Swipewalk (normally your terminal) -- which lets that app operate other apps
+                             on this Mac; used here only for the Inspector, revocable any time in System
+                             Settings -- then for a one-time manual step this can't do itself: opening
+                             Accessibility Inspector, choosing the target device in its toolbar, and
+                             clicking the first element (e.g. its title) on the app's screen. In record,
+                             this is asked once per recording session (continuing a recording later asks
+                             again), not once per screen. Declining, or a non-interactive run, falls back
+                             to the predicted transcript; the report records why
       --screen-reader-confirm  Skip --screen-reader's Android physical-device confirmation prompt (required
                              instead of the prompt for a non-interactive run on a physical phone)
 
@@ -427,12 +428,6 @@ if (platformName == "android" && scanOptions.ScreenReaderCapture
 {
     return 1;
 }
-// The Accessibility Inspector route (see AskIosInspectorGuideAsync) is wired into `scan` only for now --
-// `record` still reports predicted-only screen-reader evidence on iOS, same as before --screen-reader existed
-// there. Say so up front rather than silently ignoring the flag.
-if (command == "record" && platformName == "ios" && scanOptions.ScreenReaderCapture)
-    Console.WriteLine("Note: --screen-reader's Accessibility Inspector route isn't wired into record mode yet; use scan for now.");
-
 // The run's own StartedAt (RunRecord/History/Dashboard ordering) must stay the original recording's start, not
 // when this continued session began.
 var started = continuingRun?.StartedAt ?? DateTimeOffset.Now;
@@ -494,7 +489,8 @@ try
         if (saveToHistory)
             await history.StartRecordingAsync(scanOptions, started, scanOptions.OutputDirectory, continuingReport);
         var onScreen = saveToHistory ? history.OnScreenSaved(scanOptions, command, started, scanOptions.OutputDirectory, new ConsoleLog()) : null;
-        result = await service.RecordAsync(scanOptions, control, cancel.Token, onScreen, input.AskAsync, input.RevisitAsync, continuation);
+        result = await service.RecordAsync(scanOptions, control, cancel.Token, onScreen, input.AskAsync, input.RevisitAsync, continuation,
+            iosInspectorGuide: platformName == "ios" && scanOptions.ScreenReaderCapture ? input.AskInspectorGuideAsync : null);
     }
     else
     {
@@ -627,31 +623,23 @@ static async Task<bool> ConfirmScreenReaderOnPhysicalDeviceAsync(string? device,
 /// </summary>
 static Task<bool> AskIosInspectorGuideAsync(CancellationToken cancellationToken)
 {
-    if (Console.IsInputRedirected)
-        return Task.FromResult(false);
-    Console.WriteLine(
-        "--screen-reader on iOS reads real accessibility evidence from Xcode's Accessibility Inspector -- it does " +
-        "not turn VoiceOver on. This uses macOS's Accessibility permission (System Settings > Privacy & Security > " +
-        "Accessibility), which lets the app running Swipewalk (normally your terminal), and anything run from it, " +
-        "operate other apps on this Mac; Swipewalk uses it only to step through Accessibility Inspector, and you " +
-        "can turn it off there at any time, including right after this scan. Use it now? [y/N]");
-    var key = Console.ReadKey(intercept: true);
-    Console.WriteLine();
-    if (key.Key != ConsoleKey.Y)
-        return Task.FromResult(false);
-    if (!IosAccessibilityPermission.IsTrusted())
-    {
-        Console.WriteLine(
-            "That permission isn't granted yet. Grant it in System Settings > Privacy & Security > Accessibility " +
-            "(for your terminal, or whichever app is running this), then run again with --screen-reader.");
-        return Task.FromResult(false);
-    }
-    Console.WriteLine(
-        "Open Accessibility Inspector (Xcode > Open Developer Tool > Accessibility Inspector) if it isn't open " +
-        "already. Choose your device from its target menu, then click the first element on the app's screen -- " +
-        "for example its title or top-most control, so the walk starts from the top. Press Enter here when done.");
-    Console.ReadLine();
-    return Task.FromResult(true);
+    // Scan is a single screen with nobody else reading the console at the same time, so this reads directly
+    // and synchronously -- unlike record mode (ConsoleRecordingInput.AskInspectorGuideAsync below), which must
+    // route through the recording's own single key-reading loop instead of a second, competing blocking read.
+    return IosInspectorGuide.AskAsync(
+        recordMode: false,
+        readYesNo: _ =>
+        {
+            var key = Console.ReadKey(intercept: true);
+            Console.WriteLine();
+            return Task.FromResult(key.Key == ConsoleKey.Y);
+        },
+        waitForContinue: _ =>
+        {
+            Console.ReadLine();
+            return Task.CompletedTask;
+        },
+        cancellationToken);
 }
 
 /// <summary>Ctrl+C / kill finish the report instead of exiting; works with or without a terminal.</summary>
@@ -682,6 +670,62 @@ static Dictionary<string, string>? ParseOptions(string[] args)
 }
 
 /// <summary>
+/// Shared wording and flow for --screen-reader's Accessibility Inspector guide (the CLI's console prompt, both
+/// for a single `scan` and for `record` -- see <see cref="ConsoleRecordingInput.AskInspectorGuideAsync"/>): the
+/// macOS Accessibility permission explanation, a check that it's actually granted, then the one-time
+/// device-and-click setup step. How each step's answer is actually read (<paramref name="readYesNo"/>,
+/// <paramref name="waitForContinue"/>) is left to the caller, since record mode must read through its own
+/// single console-key loop (<see cref="ConsoleRecordingInput"/>) rather than a second, independent blocking
+/// read racing it for the same key presses -- found 2026-09-26, before this route was ever driven
+/// interactively in record mode: <see cref="ConsoleRecordingInput.RunAsync"/> already polls
+/// <see cref="Console.ReadKey(bool)"/> continuously for the whole recording (Enter = scan now, q = finish), so
+/// a second, unrelated blocking <see cref="Console.ReadKey(bool)"/>/<see cref="Console.ReadLine"/> call could
+/// have its key presses silently swallowed by that loop instead of ever completing.
+/// </summary>
+static class IosInspectorGuide
+{
+    public static async Task<bool> AskAsync(
+        bool recordMode, Func<CancellationToken, Task<bool>> readYesNo, Func<CancellationToken, Task> waitForContinue, CancellationToken cancellationToken)
+    {
+        // A non-interactive run (CI, redirected input) declines without asking, the same as every other
+        // Swipewalk confirmation -- checked centrally here, not just by the scan-mode caller, since record
+        // mode's own ConsoleRecordingInput.RunAsync never starts its key-reading loop when input is redirected
+        // either (Console.IsInputRedirected), so readYesNo/waitForContinue would otherwise wait forever for a
+        // key press that can never come.
+        if (Console.IsInputRedirected)
+            return false;
+        Console.WriteLine(
+            "--screen-reader on iOS reads real accessibility evidence from Xcode's Accessibility Inspector -- it does " +
+            "not turn VoiceOver on. This uses macOS's Accessibility permission (System Settings > Privacy & Security > " +
+            "Accessibility), which lets the app running Swipewalk (normally your terminal), and anything run from it, " +
+            "operate other apps on this Mac; Swipewalk uses it only to step through Accessibility Inspector, and you " +
+            $"can turn it off there at any time, including right after this {(recordMode ? "recording" : "scan")}. " +
+            (recordMode ? "You'll only be asked once, for this recording session (continuing a recording later asks again). " : "") +
+            "Use it now? [y/N]");
+        if (!await readYesNo(cancellationToken))
+            return false;
+        if (!IosAccessibilityPermission.IsTrusted())
+        {
+            Console.WriteLine(
+                "That permission isn't granted yet. Grant it in System Settings > Privacy & Security > Accessibility " +
+                "(for your terminal, or whichever app is running this) -- add it with the \"+\" button if it isn't " +
+                "listed yet -- then run again with --screen-reader.");
+            return false;
+        }
+        Console.WriteLine(
+            "Open Accessibility Inspector (Xcode > Open Developer Tool > Accessibility Inspector) if it isn't open " +
+            "already. Choose your device from its target menu, then click the first element on the app's screen -- " +
+            "for example its title or top-most control, so the walk starts from the top. Press Enter here when done." +
+            (recordMode ? " This is asked once for the whole recording session, not for every screen: later screens " +
+                          "usually follow along without another click (seen so far on one app, not a guarantee for " +
+                          "every app); if one ever comes back short or incomplete, click an element in the Inspector " +
+                          "and press Scan this screen now again." : ""));
+        await waitForContinue(cancellationToken);
+        return true;
+    }
+}
+
+/// <summary>
 /// The console's one reader of keyboard input while recording: normally Enter requests a scan, q stops, and
 /// l cycles what to do once the larger size needs a restart (see LargeTextRestartPolicy). While a per-screen
 /// question is pending (<see cref="AskAsync"/>, C/D/A/N) or a Finish-time offer to revisit screens is pending
@@ -696,6 +740,15 @@ sealed class ConsoleRecordingInput : IDisposable
     private LargeTextRestartPolicy _policy;
     private TaskCompletionSource<LargeTextRestartChoice>? _pending;
     private TaskCompletionSource<bool>? _pendingRevisit;
+
+    /// <summary>The Accessibility Inspector guide's y/N question (see <see cref="AskInspectorGuideAsync"/>) --
+    /// any key answers, same as <see cref="_pendingRevisit"/>.</summary>
+    private TaskCompletionSource<bool>? _pendingInspectorYesNo;
+
+    /// <summary>The Accessibility Inspector guide's "press Enter here when done" step -- unlike every other
+    /// pending question here, only Enter itself resolves this; any other key while it's pending is ignored
+    /// (there is no shorter answer, and Enter isn't overloaded as "scan now" again until this resolves).</summary>
+    private TaskCompletionSource<bool>? _pendingInspectorContinue;
 
     public ConsoleRecordingInput(RecorderControl control, LargeTextRestartPolicy initialPolicy)
     {
@@ -721,7 +774,22 @@ sealed class ConsoleRecordingInput : IDisposable
             while (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(intercept: true);
-                if (_pendingRevisit is { } pendingRevisit)
+                if (_pendingInspectorYesNo is { } pendingInspectorYesNo)
+                {
+                    _pendingInspectorYesNo = null;
+                    pendingInspectorYesNo.TrySetResult(key.KeyChar is 'y' or 'Y');
+                }
+                else if (_pendingInspectorContinue is { } pendingInspectorContinue)
+                {
+                    // Only Enter completes this step -- see this field's remarks; any other key while it's
+                    // pending is simply ignored, not read as "scan now" or anything else.
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        _pendingInspectorContinue = null;
+                        pendingInspectorContinue.TrySetResult(true);
+                    }
+                }
+                else if (_pendingRevisit is { } pendingRevisit)
                 {
                     _pendingRevisit = null;
                     pendingRevisit.TrySetResult(key.KeyChar is 'y' or 'Y');
@@ -799,6 +867,33 @@ sealed class ConsoleRecordingInput : IDisposable
         // See AskAsync: a cancellation here is not the person answering "no, finish now".
         cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
         return tcs.Task;
+    }
+
+    /// <summary>
+    /// Matches <c>IosCollector.IosInspectorGuide</c>; pass <c>input.AskInspectorGuideAsync</c> directly for
+    /// record mode's --screen-reader on iOS (see <see cref="IosInspectorGuide.AskAsync"/> for the shared
+    /// wording with scan's own <c>AskIosInspectorGuideAsync</c>). Reads through this reader's own loop (via
+    /// <see cref="_pendingInspectorYesNo"/>/<see cref="_pendingInspectorContinue"/>) rather than a second,
+    /// independent blocking <see cref="Console.ReadKey(bool)"/>/<see cref="Console.ReadLine"/> call, which would
+    /// race this loop for the same key presses -- see <see cref="IosInspectorGuide"/>'s remarks.
+    /// </summary>
+    public Task<bool> AskInspectorGuideAsync(CancellationToken cancellationToken) =>
+        IosInspectorGuide.AskAsync(recordMode: true, ReadInspectorYesNoAsync, WaitForInspectorContinueAsync, cancellationToken);
+
+    private Task<bool> ReadInspectorYesNoAsync(CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        _pendingInspectorYesNo = tcs;
+        cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        return tcs.Task;
+    }
+
+    private async Task WaitForInspectorContinueAsync(CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        _pendingInspectorContinue = tcs;
+        cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        await tcs.Task;
     }
 
     public void Dispose() => _stop.Cancel();

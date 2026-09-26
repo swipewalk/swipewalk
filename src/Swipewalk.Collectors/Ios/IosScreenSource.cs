@@ -44,8 +44,20 @@ public sealed class IosScreenSource : IScreenSource
     /// Simulator path reuses <see cref="_originalContentSize"/> instead.</summary>
     private TextSizeState? _pendingPhysicalOriginal;
 
+    private readonly bool _captureScreenReader;
+    private readonly IosCollector.IosInspectorGuide? _inspectorGuide;
+
+    /// <summary>
+    /// Built lazily, on the first <see cref="CaptureScreenReaderAsync"/> call: caches
+    /// <see cref="_inspectorGuide"/>'s answer for the whole recording, so every later screen reuses it silently
+    /// instead of asking again -- the one-time permission-and-setup step is per recording, not per screen. See
+    /// <see cref="CachedInspectorGuide"/>.
+    /// </summary>
+    private CachedInspectorGuide? _cachedInspectorGuide;
+
     private IosScreenSource(
-        string bundleId, string udid, string? harnessProject, SigningPlan? signing, DeviceInfo? device, IosCollector.DetectedFramework framework)
+        string bundleId, string udid, string? harnessProject, SigningPlan? signing, DeviceInfo? device, IosCollector.DetectedFramework framework,
+        bool captureScreenReader, IosCollector.IosInspectorGuide? inspectorGuide)
     {
         TargetApp = bundleId;
         _udid = udid;
@@ -53,6 +65,8 @@ public sealed class IosScreenSource : IScreenSource
         _signing = signing;
         _device = device;
         _framework = framework;
+        _captureScreenReader = captureScreenReader;
+        _inspectorGuide = inspectorGuide;
     }
 
     public Platform Platform => Platform.iOS;
@@ -85,9 +99,18 @@ public sealed class IosScreenSource : IScreenSource
     /// (manual capture, the default), nothing is built or started here -- the first action (normally
     /// <see cref="EnsureInFrontAsync"/>, called once before the recording loop starts) does that instead.
     /// </summary>
+    /// <param name="captureScreenReader">Record mode's equivalent of <c>--screen-reader</c> on iOS: when true,
+    /// <see cref="CaptureScreenReaderAsync"/> walks Xcode's Accessibility Inspector for each normally captured
+    /// screen (see that method's remarks). False (the default) never attempts it, whatever
+    /// <paramref name="inspectorGuide"/> is.</param>
+    /// <param name="inspectorGuide">The CLI/desktop prompt for the Inspector route's one-time
+    /// permission-and-setup step (see <see cref="IosCollector.RunInspectorCaptureAsync"/>), asked at most once
+    /// for the whole recording -- see <see cref="CaptureScreenReaderAsync"/>. Null (the default) declines
+    /// without asking, same as any other unset confirmation.</param>
     public static async Task<IosScreenSource> StartAsync(
         string bundleId, string? device = null, string? harnessProject = null,
-        string? team = null, string? profile = null, string? bundlePrefix = null, bool liveSession = false)
+        string? team = null, string? profile = null, string? bundlePrefix = null, bool liveSession = false,
+        bool captureScreenReader = false, IosCollector.IosInspectorGuide? inspectorGuide = null)
     {
         var udid = device ?? await IosCollector.BootedSimulatorAsync()
             ?? throw new InvalidOperationException("No booted iOS Simulator found; boot one or pass --device <udid>.");
@@ -106,7 +129,7 @@ public sealed class IosScreenSource : IScreenSource
             ? new IosCollector.DetectedFramework(AppFramework.Unknown, null)
             : await IosCollector.DetectFrameworkAsync(udid, bundleId);
 
-        var source = new IosScreenSource(bundleId, udid, harnessProject, signing, info, framework);
+        var source = new IosScreenSource(bundleId, udid, harnessProject, signing, info, framework, captureScreenReader, inspectorGuide);
         if (liveSession)
             source._persistent = await IosHarnessSession.StartAsync(bundleId, udid, info?.IsPhysical == true, harnessProject, signing, CancellationToken.None);
         return source;
@@ -152,6 +175,42 @@ public sealed class IosScreenSource : IScreenSource
         return _framework.Framework == AppFramework.Unknown
             ? snapshot
             : snapshot with { Framework = _framework.Framework, FrameworkVersion = _framework.Version };
+    }
+
+    /// <summary>
+    /// Record mode's iOS screen-reader evidence (see <see cref="IScreenSource.CaptureScreenReaderAsync"/>):
+    /// walks Xcode's Accessibility Inspector on the Mac -- a separate, Mac-side step from the device capture
+    /// <see cref="CaptureAsync"/> just did -- via <c>IosCollector.RunInspectorCaptureAsync</c>, the same
+    /// orchestration <c>scan</c> uses. The one-time guide it needs (the macOS Accessibility permission, then
+    /// choosing the device and clicking the first element in the Inspector) is asked at most once for the
+    /// whole recording: <see cref="_cachedInspectorGuide"/> (<see cref="CachedInspectorGuide"/>) caches the
+    /// answer the first time this runs, so every later "Scan this screen now" reuses it silently -- its
+    /// <see cref="CachedInspectorGuide.AskAsync"/> is what's passed down to <c>RunInspectorCaptureAsync</c>,
+    /// which only ever calls the real <see cref="_inspectorGuide"/> once. A walk
+    /// that comes back short or incomplete (the Inspector's selection went stale, e.g. after navigating to a
+    /// screen it didn't follow) is reported through <paramref name="log"/> for that one screen, prompting the
+    /// person to click an element in the Inspector and scan again -- the guide itself is never re-asked, since
+    /// doing so would re-show the permission explanation for something already granted.
+    /// </summary>
+    public Task<ScreenReaderCapture?> CaptureScreenReaderAsync(ScreenSnapshot snapshot, IProgress<string>? log = null, CancellationToken cancellationToken = default) =>
+        _captureScreenReader
+            ? CaptureScreenReaderCoreAsync(snapshot, log, cancellationToken)
+            : Task.FromResult<ScreenReaderCapture?>(null);
+
+    private async Task<ScreenReaderCapture?> CaptureScreenReaderCoreAsync(ScreenSnapshot snapshot, IProgress<string>? log, CancellationToken cancellationToken)
+    {
+        _cachedInspectorGuide ??= new CachedInspectorGuide(_inspectorGuide, answer => log?.Report(answer
+            ? "  Accessibility Inspector evidence will be captured for each screen you scan for the rest of this recording."
+            : "  Accessibility Inspector evidence won't be captured for this recording (declined, or the macOS " +
+              "Accessibility permission wasn't granted); the manual VoiceOver route still applies -- see the report."));
+
+        var capture = await IosCollector.RunInspectorCaptureAsync(snapshot, _cachedInspectorGuide.AskAsync, cancellationToken);
+        // Only for a walk actually attempted (the guide having been accepted), not for the "declined"/"no
+        // guide" skip above, which already logged its own one-time reason -- logging the same skip again for
+        // every later screen would be noise, not new information.
+        if (!capture.Complete && _cachedInspectorGuide.Answer == true)
+            log?.Report($"  Accessibility Inspector evidence for this screen is incomplete: {capture.NotCompleteReason}");
+        return capture;
     }
 
     public Task<LargeTextCapture> CaptureLargeTextAsync(string captureDir, string screenName, CancellationToken cancellationToken = default) =>
