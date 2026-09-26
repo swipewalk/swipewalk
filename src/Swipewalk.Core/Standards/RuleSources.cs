@@ -59,7 +59,9 @@ public static class RuleSources
     // plain-text link next to other text is instead reported as needs-review (not a WCAG issue, not
     // silently exempted) when the spacing exception doesn't already explain it. Platform advisories
     // (Apple 44 pt, Android 48 dp) are unchanged.
-    public const string RulesetVersion = "2026.09.29";
+    // Then to 2026.09.30 for the new auto-updating-content rule (scan --auto-update-content; WCAG 2.2.2
+    // Pause, Stop, Hide, moved from Manual to PartlyAutomated in CoverageCatalog).
+    public const string RulesetVersion = "2026.09.30";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);

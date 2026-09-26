@@ -42,7 +42,8 @@ public class RuleCoverageWiringTests
     private static ScreenResult Screen(
         Platform platform, string? screenshotPath, string? largeTextSetting, string? largeTextSkippedReason,
         bool atfRan, string? atfSkippedReason, IReadOnlyList<Finding>? findings = null,
-        string? otherOrientation = null, string? orientationSkippedReason = null) => new()
+        string? otherOrientation = null, string? orientationSkippedReason = null,
+        int? autoUpdateCaptureCount = null, string? autoUpdateSkippedReason = null) => new()
     {
         Platform = platform,
         ScreenName = "Home",
@@ -54,6 +55,8 @@ public class RuleCoverageWiringTests
         Findings = findings ?? [],
         OtherOrientation = otherOrientation,
         OrientationSkippedReason = orientationSkippedReason,
+        AutoUpdateCaptureCount = autoUpdateCaptureCount,
+        AutoUpdateSkippedReason = autoUpdateSkippedReason,
     };
 
     private static Finding OrientationFinding() => new()
@@ -62,6 +65,16 @@ public class RuleCoverageWiringTests
         Kind = FindingKind.NeedsReview,
         Message = "test finding",
         Criteria = [WcagCriteria.Orientation],
+        NodePath = "",
+        Role = "screen",
+    };
+
+    private static Finding AutoUpdateFinding() => new()
+    {
+        RuleId = "auto-updating-content",
+        Kind = FindingKind.NeedsReview,
+        Message = "test finding",
+        Criteria = [WcagCriteria.PauseStopHide],
         NodePath = "",
         Role = "screen",
     };
@@ -92,7 +105,13 @@ public class RuleCoverageWiringTests
                      (null, null), // never requested
                  })
         foreach (var (atfRan, atfSkippedReason) in new (bool, string?)[] { (true, null), (false, "no harness result") })
-            yield return Screen(platform, screenshotPath, largeTextSetting, largeTextSkippedReason, atfRan, atfSkippedReason);
+        foreach (var (autoUpdateCaptureCount, autoUpdateSkippedReason) in new (int?, string?)[]
+                 {
+                     (3, null), // attempted and completed
+                     (null, "not requested"), // never requested
+                 })
+            yield return Screen(platform, screenshotPath, largeTextSetting, largeTextSkippedReason, atfRan, atfSkippedReason,
+                autoUpdateCaptureCount: autoUpdateCaptureCount, autoUpdateSkippedReason: autoUpdateSkippedReason);
     }
 
     private static (HashSet<string> Ran, Dictionary<string, string> Skipped) UnionAcrossRepresentativeScreens()
@@ -204,6 +223,25 @@ public class RuleCoverageWiringTests
         var skippedWithReason = ScreenActivityBuilder.For(
             Screen(Platform.Android, "shot.png", null, null, true, null, orientationSkippedReason: OrientationLabels.PhysicalIphoneNotSupportedReason));
         Assert.Equal(OrientationLabels.PhysicalIphoneNotSupportedReason, skippedWithReason.SkippedRuleIds["orientation-restricted"]);
+    }
+
+    [Fact]
+    public void AutoUpdatingContent_IsWiredIntoCoverage()
+    {
+        // Regression coverage for the same bug this test file exists for (see class remarks), on the newest
+        // rule: auto-updating-content (AutoUpdatingContentRule).
+        var notRequested = ScreenActivityBuilder.For(Screen(Platform.Android, "shot.png", null, null, true, null));
+        Assert.Equal("auto-update check not requested (pass --auto-update-content)", notRequested.SkippedRuleIds["auto-updating-content"]);
+
+        // Completed, whether or not it found sustained change: AutoUpdateCaptureCount being set means the
+        // check was attempted and completed.
+        var checkedAndChanged = ScreenActivityBuilder.For(
+            Screen(Platform.Android, "shot.png", null, null, true, null, autoUpdateCaptureCount: 3));
+        Assert.Contains("auto-updating-content", checkedAndChanged.RanRuleIds);
+
+        var checkedAndFound = ScreenActivityBuilder.For(
+            Screen(Platform.Android, "shot.png", null, null, true, null, autoUpdateCaptureCount: 3, findings: [AutoUpdateFinding()]));
+        Assert.Contains("auto-updating-content", checkedAndFound.RanRuleIds);
     }
 
     [Fact]

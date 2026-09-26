@@ -263,6 +263,41 @@ public sealed record ScreenResult
     public bool? OrientationUnchanged { get; init; }
 
     /// <summary>
+    /// Total captures taken for the auto-updating-content check (<c>Swipewalk.Engine.ScanOptions.AutoUpdateCheck</c>,
+    /// scan only for now), including the primary one -- set once the check actually ran (whether or not it
+    /// found sustained change; see <see cref="Rules.AutoUpdatingContentRule"/>). Null when it wasn't requested
+    /// for this run, or was requested but not completed -- see <see cref="AutoUpdateSkippedReason"/>.
+    /// </summary>
+    public int? AutoUpdateCaptureCount { get; init; }
+
+    /// <summary>The requested wait between each extra capture in the auto-updating-content check
+    /// (<c>Swipewalk.Engine.ScanOptions.AutoUpdateIntervalSeconds</c>) -- NOT how far apart the captures
+    /// actually ended up, since a full capture itself takes time on top of the wait (see
+    /// <see cref="AutoUpdateElapsedSeconds"/> for that). Null unless <see cref="AutoUpdateCaptureCount"/> is set.</summary>
+    public double? AutoUpdateIntervalSeconds { get; init; }
+
+    /// <summary>
+    /// The REAL elapsed time, measured from each capture's own timestamp, between the primary capture and the
+    /// last of the extra captures -- what <see cref="Rules.AutoUpdatingContentRule"/>'s finding message and
+    /// the report's before/after caption state, instead of assuming <see cref="AutoUpdateIntervalSeconds"/> x
+    /// the capture count (a full capture costs time too: a few seconds on Android, sometimes tens of seconds
+    /// on iOS via the XCUITest harness). Null unless <see cref="AutoUpdateCaptureCount"/> is set.
+    /// </summary>
+    public double? AutoUpdateElapsedSeconds { get; init; }
+
+    /// <summary>Screenshot of the last of the extra captures, alongside the primary one above, so the report
+    /// can show a before/after close-up. Null when the check didn't run, or ran with no screenshot captured.</summary>
+    public string? AutoUpdateScreenshotPath { get; init; }
+
+    public double AutoUpdateScreenshotPixelScale { get; init; } = 1.0;
+
+    /// <summary>
+    /// Why the auto-updating-content check wasn't completed for this screen, when it was requested. Null
+    /// when it completed (see <see cref="AutoUpdateCaptureCount"/>), or wasn't requested for this run.
+    /// </summary>
+    public string? AutoUpdateSkippedReason { get; init; }
+
+    /// <summary>
     /// Tree-based suggestions (never a verdict) that some WCAG criteria might not apply to this screen, from
     /// <see cref="Coverage.ApplicabilityRules.Evaluate"/> at capture time -- see
     /// <see cref="Coverage.ProposedNotApplicable"/>. Shown to the tester in the guided-checks UI/CLI as a

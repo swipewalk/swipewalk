@@ -41,6 +41,12 @@ check on a phone someone relies on every day. What happens:
   there's no way to read the original orientation back, so it rotates back to whichever of
   portrait/landscape the first capture showed — the same interrupted-run recovery applies either
   way. Not supported yet on a physical iPhone.
+- **`scan --auto-update-content`** takes a few further captures of the same screen a few seconds
+  apart, with no input, and checks whether content (a carousel, ticker, timer or auto-advancing
+  banner) kept changing on its own across more than one interval — for review against WCAG 2.2.2
+  Pause, Stop, Hide. It never changes the device, so unlike `--appearance both`/`--orientation
+  both` it works on a physical phone too; use `--auto-update-interval <seconds>` to change how long
+  it waits before each extra capture (default 3s, on top of however long the capture itself takes).
 
 See [section 2](#2-set-up-a-device) and [section 5](#5-record-mode-and-the-large-text-check) for
 the full detail on each platform.
@@ -173,6 +179,24 @@ the report flags it for review, not as a confirmed failure: WCAG allows a single
 it's essential to a screen (its own examples: a piano keyboard, a bank cheque deposit, slides meant
 for a projector or TV, or VR content). Off by default; not supported yet on a physical iPhone,
 where the report says why it was skipped.
+
+Pass `--auto-update-content` to take a few further captures of the screen a few seconds apart, with
+no input, and check whether content kept changing on its own across more than one interval — WCAG
+2.2.2 Pause, Stop, Hide. It only reports something when content changed in two consecutive
+intervals (not necessarily the same element both times), so a one-off transition that settles (a
+loading spinner, a splash screen) usually isn't reported, but a carousel, ticker, timer or
+auto-advancing banner that keeps changing is — this is a heuristic, not a guarantee either way (see
+[docs/limitations.md](limitations.md) "auto-update-detection-heuristic" for what it can miss or
+over-flag). This is always for review, never a confirmed failure: automated checks can tell content
+changed, not whether anything else is shown alongside it (WCAG 2.2.2 only applies to content shown
+alongside other content — a preloader that's the only thing on the page is exempt), whether a
+pause/stop/hide control exists elsewhere on the screen, or whether the update is essential to an
+activity. Off by default — each extra capture costs the wait plus a full capture, fast on Android,
+much slower on iOS (a full XCUITest harness capture); the report states the real time elapsed, not
+an assumed one. Use `--auto-update-interval <seconds>` to change the wait (default 3s).
+Unlike `--appearance both`/`--orientation both`, it never changes the device, so it works on a
+physical phone too — but, like them, it's scan only for now; record and the desktop app don't offer
+it yet.
 
 When it finishes, open `report/report.html` in a browser.
 
@@ -350,6 +374,15 @@ Each screen also shows:
   the check is reported as not done rather than guessed. Large-text and captured-screen-reader
   findings are never
   labeled by orientation either, since the second capture doesn't repeat those checks.
+- **Content that changed on its own** (with `--auto-update-content`) — when a screen kept changing
+  across more than one interval between captures, the report adds one "Needs review" finding for
+  the screen, citing WCAG 2.2.2 Pause, Stop, Hide, naming what changed (a few examples, not
+  everything that did) and the real elapsed time between the first and last capture, alongside a
+  before/after screenshot. Check by hand whether anything else is shown alongside the changing
+  content (WCAG 2.2.2 only applies then), whether a pause/stop/hide control exists somewhere on the
+  screen, and whether the update is essential to an activity — though the W3C Understanding
+  document's own examples of essential content (an explanatory animation, a stock ticker) still
+  ship with pause/restart buttons, so essential alone doesn't rule out needing a control.
 - **Lost navigation place (Android)** — on Android, when the very first attempt at the larger text
   size showed a different screen (typically the app's first) instead of the one being checked, the
   report also adds a platform advisory on that screen (the one where Swipewalk actually saw it

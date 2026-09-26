@@ -78,12 +78,31 @@ public class RunConfigTests
         Assert.True(enabled.ToOptions(enabled.Targets[0], "out").ScreenReaderCapture);
     }
 
+    /// <summary>autoUpdateContent (scan only for now, off by default -- see ScanOptions.AutoUpdateCheck)
+    /// reaches ToOptions unchanged, along with its interval.</summary>
+    [Fact]
+    public void AutoUpdateContent_DefaultsOffAndReachesOptions()
+    {
+        var defaulted = Load("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ] }""");
+        var defaultedOptions = defaulted.ToOptions(defaulted.Targets[0], "out");
+        Assert.False(defaultedOptions.AutoUpdateCheck);
+        Assert.Equal(3.0, defaultedOptions.AutoUpdateIntervalSeconds);
+
+        var enabled = Load(
+            """{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "autoUpdateContent": true, "autoUpdateInterval": 5 }""");
+        var enabledOptions = enabled.ToOptions(enabled.Targets[0], "out");
+        Assert.True(enabledOptions.AutoUpdateCheck);
+        Assert.Equal(5.0, enabledOptions.AutoUpdateIntervalSeconds);
+    }
+
     [Theory]
     [InlineData("""{ "targets": [] }""", "at least one")]
     [InlineData("""{ "app": { "ios": {} }, "targets": [ { "platform": "ios" } ] }""", "app.ios")]
     [InlineData("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "mode": "auto" }""", "mode")]
     [InlineData("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "standard": "ada" }""", "Unknown standard")]
     [InlineData("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "typo": 1 }""", "typo")]
+    [InlineData("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "mode": "record", "autoUpdateContent": true }""", "autoUpdateContent")]
+    [InlineData("""{ "app": { "android": {} }, "targets": [ { "platform": "android" } ], "autoUpdateInterval": 0 }""", "autoUpdateInterval")]
     public void InvalidConfig_ExplainsTheProblem(string json, string expected)
     {
         var ex = Assert.Throws<InvalidOperationException>(() => Load(json));

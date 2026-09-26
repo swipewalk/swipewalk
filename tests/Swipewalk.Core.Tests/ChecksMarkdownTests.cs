@@ -7,7 +7,7 @@ public class ChecksMarkdownTests
     [Fact]
     public void EveryOwnRuleInDefaultRules_HasACatalogEntry()
     {
-        // DefaultRules.All has 12 rules: the 10 RuleCatalog.OwnRules describes, plus "engine" and "atf",
+        // DefaultRules.All has 19 rules: the 17 RuleCatalog.OwnRules describes, plus "engine" and "atf",
         // which get their own detail tables (EngineIssueRule.Catalog, AtfIssueRule.Catalog) instead of a
         // RuleCatalog row -- see ChecksMarkdown.
         var ruleIds = DefaultRules.All.Select(r => r.Id).ToHashSet();

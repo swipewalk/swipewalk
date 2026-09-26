@@ -369,7 +369,10 @@ public static class HtmlReport
                 : s.OtherOrientation is not null
                     ? $", also checked in {E(s.OtherOrientation)}"
                     : s.OrientationSkippedReason is { } orientationReason ? $", other orientation not checked: {E(orientationReason)}" : "";
-            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}{appearanceNote}{orientationNote}</span></li>""");
+            var autoUpdateNote = s.AutoUpdateCaptureCount is { } captureCount
+                ? $", checked for content changing on its own ({captureCount} captures)"
+                : s.AutoUpdateSkippedReason is { } autoUpdateReason ? $", auto-update check not done: {E(autoUpdateReason)}" : "";
+            html.Append($"""<li><a href="#s{i}">{E(s.ScreenName)}</a> <span class="meta">{issues} WCAG issue(s), {review} to review{largeTextNote}{atfNote}{appearanceNote}{orientationNote}{autoUpdateNote}</span></li>""");
         }
         html.Append("</ol>");
         if (report.MissingScreens.Count > 0)
@@ -498,6 +501,26 @@ public static class HtmlReport
             """;
     }
 
+    /// <summary>Before/after screenshots for the auto-updating-content check (see
+    /// <c>ScanOptions.AutoUpdateCheck</c>): the primary capture and the last of the extra captures. Uses
+    /// <see cref="ScreenResult.AutoUpdateElapsedSeconds"/> (the REAL elapsed time, measured from each
+    /// capture's own timestamp), not <see cref="ScreenResult.AutoUpdateIntervalSeconds"/> x the capture count:
+    /// a full capture itself takes time on top of the requested wait, especially on iOS. Unlike
+    /// <see cref="AppearanceFigure"/>/<see cref="OrientationFigure"/>, this draws no per-finding boxes:
+    /// <see cref="Rules.AutoUpdatingContentRule"/>'s finding is for the whole screen (no bounds), not one
+    /// element.</summary>
+    private static string AutoUpdateFigure(ScreenResult screen, Shot before, Shot after)
+    {
+        var elapsedSeconds = screen.AutoUpdateElapsedSeconds ?? 0;
+        return $"""
+            <figcaption class="large-caption">Before, and about {N(elapsedSeconds)}s later with no input</figcaption>
+            <div class="stage large auto-update-pair">
+              <svg viewBox="0 0 {before.Width} {before.Height}" role="img" aria-label="Screenshot of {E(screen.ScreenName)} before the auto-updating-content check"><use href="#{before.Id}"/></svg>
+              <svg viewBox="0 0 {after.Width} {after.Height}" role="img" aria-label="Screenshot of {E(screen.ScreenName)} about {N(elapsedSeconds)} seconds later, with no input"><use href="#{after.Id}"/></svg>
+            </div>
+            """;
+    }
+
     /// <summary>How the large-text capture was produced, e.g. " (via system setting)" or, on a physical
     /// iPhone that applies Dynamic Type only at launch, " (via system setting, applied after a restart)".
     /// When a force-stop + relaunch comparison was captured but text still didn't grow (so
@@ -534,6 +557,7 @@ public static class HtmlReport
         var largeShot = EmbedScreenshot(html, screen.LargeTextScreenshotPath, screen.LargeTextPixelScale, $"{id}-large");
         var appearanceShot = EmbedScreenshot(html, screen.OtherAppearanceScreenshotPath, screen.OtherAppearancePixelScale, $"{id}-appearance");
         var orientationShot = EmbedScreenshot(html, screen.OtherOrientationScreenshotPath, screen.OtherOrientationPixelScale, $"{id}-orientation");
+        var autoUpdateShot = EmbedScreenshot(html, screen.AutoUpdateScreenshotPath, screen.AutoUpdateScreenshotPixelScale, $"{id}-autoupdate");
 
         html.Append($"""
             <section class="screen" id="{id}" aria-labelledby="{id}-title">
@@ -574,6 +598,10 @@ public static class HtmlReport
         }
         else if (screen.OrientationSkippedReason is { } orientationSkippedReason)
             html.Append($"""<p class="hint">Orientation check not done: {E(orientationSkippedReason)}. Check this screen in the other orientation by hand.</p>""");
+        if (autoUpdateShot is not null && shot is not null)
+            html.Append(AutoUpdateFigure(screen, shot, autoUpdateShot));
+        else if (screen.AutoUpdateSkippedReason is { } autoUpdateSkippedReason)
+            html.Append($"""<p class="hint">Auto-update check not done: {E(autoUpdateSkippedReason)}. Watch this screen for at least 10-15 seconds with no input and check any moving, blinking, scrolling or auto-updating content by hand.</p>""");
         html.Append($"""
                 </figure>
                 <div class="panel">
@@ -1035,6 +1063,8 @@ public static class HtmlReport
         .stage svg { width: 100%; height: auto; display: block; }
         .large-caption { font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
         .stage.large { width: 60%; }
+        .stage.auto-update-pair { display: flex; gap: 8px; }
+        .stage.auto-update-pair svg { width: 50%; }
         .stage[data-mode="findings"] .order, .stage[data-mode="order"] .findings { display: none; }
         .box rect { fill: none; stroke-width: 6; } .box .tag { stroke: none; } .box text { fill: #fff; font: 700 30px system-ui, sans-serif; }
         .box.issue rect { stroke: var(--mark-issue); } .box.issue .tag { fill: var(--mark-issue); }

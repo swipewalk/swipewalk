@@ -193,11 +193,20 @@ public static class CoverageCatalog
             "For any time limit (session timeout, auto-advancing content), check the user can turn it off, " +
             "adjust it, or extend it.",
             "timing-adjustable"),
-        Manual(WcagCriteria.PauseStopHide,
-            "For moving, blinking or scrolling content that starts automatically, lasts more than 5 seconds " +
-            "and is shown alongside other content, and for any auto-updating content that starts " +
-            "automatically, check there is a way to pause, stop or hide it (or, for auto-updating content, " +
-            "control its frequency).",
+        PartlyAutomated(WcagCriteria.PauseStopHide,
+            "Swipewalk can optionally take a few captures of a screen a few seconds apart with no input " +
+            "(scan --auto-update-content) and flag content that keeps changing on its own across more than " +
+            "one interval, for review -- it can tell content changed, not whether anything else is shown " +
+            "alongside it, whether a pause/stop/hide control exists somewhere on the screen, or whether the " +
+            "update is essential to an activity (the W3C Understanding document's own examples of essential " +
+            "content, such as an explanatory animation or a stock ticker, still ship with their own " +
+            "pause/restart buttons), so check all of that by hand. It can also miss a cycle whose length " +
+            "happens to match the interval, or a screen not checked this way. For anything it doesn't catch: " +
+            "check every moving, blinking or scrolling element that starts automatically, lasts more than 5 " +
+            "seconds and is shown alongside other content, and every auto-updating element that starts " +
+            "automatically and is shown alongside other content, for a way to pause, stop or hide it (or, for " +
+            "auto-updating content, control its frequency) -- content that is the only thing on the screen, " +
+            "such as a preloader with nothing else on the page, is exempt either way.",
             "pause-stop-hide"),
         Manual(WcagCriteria.ThreeFlashesOrBelowThreshold,
             "Check nothing flashes more than three times in any one-second period, unless the flashes are " +

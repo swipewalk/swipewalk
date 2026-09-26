@@ -243,6 +243,9 @@ public class HtmlReportTests
             // OtherOrientation set so orientation-restricted (WCAG 1.3.4) counts as ran too, or it would be
             // the one remaining gap on an otherwise fully-covered screen.
             OtherOrientation = "landscape",
+            // AutoUpdateCaptureCount set so auto-updating-content (WCAG 2.2.2) counts as ran too, for the
+            // same reason.
+            AutoUpdateCaptureCount = 3,
         };
         var iosScreen = new ScreenResult
         {

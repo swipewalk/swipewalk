@@ -135,12 +135,13 @@ public class CoverageReportTests
 
         var summary = CoverageReport.Summary(CoverageReport.Build([screen]));
 
-        // Orientation moved from Manual to PartlyAutomated (scan --orientation both, WCAG 1.3.4), but this
-        // screen doesn't exercise it (no OtherOrientation, no orientation-restricted finding) -- so it's the
-        // second criterion that now shows NotTestedInThisRun instead of staying in either bucket, alongside
-        // 1.4.10 above.
+        // Orientation moved from Manual to PartlyAutomated (scan --orientation both, WCAG 1.3.4), and Pause,
+        // Stop, Hide likewise moved to PartlyAutomated (scan --auto-update-content, WCAG 2.2.2), but this
+        // screen doesn't exercise either (no OtherOrientation/orientation-restricted finding, no
+        // AutoUpdateCaptureCount/auto-updating-content finding) -- so both now show NotTestedInThisRun
+        // instead of staying in either bucket, alongside 1.4.10 above.
         Assert.Equal(
-            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 36 need a manual check, 4 usually out of scope, 2 not tested in this run.",
+            "WCAG 2.2 A/AA: 13 criteria partly checked by automation, 35 need a manual check, 4 usually out of scope, 3 not tested in this run.",
             summary);
     }
 

@@ -64,6 +64,33 @@ public sealed record ScanOptions
     /// </summary>
     public bool OrientationBoth { get; init; }
 
+    /// <summary>
+    /// scan only for now: take a few further captures of this screen a few seconds apart, with no input, and
+    /// check whether content kept changing on its own across more than one interval -- evidence for WCAG
+    /// 2.2.2 Pause, Stop, Hide (see <c>Swipewalk.Core.Rules.AutoUpdatingContentRule</c>). Unlike
+    /// <see cref="AppearanceBoth"/> and <see cref="OrientationBoth"/>, this never changes the device: no
+    /// restore step is needed, and it works on a physical device too. Off by default: it adds
+    /// <see cref="AutoUpdateExtraCaptures"/> extra captures to the screen, each costing the wait
+    /// (<see cref="AutoUpdateIntervalSeconds"/>) plus a full capture -- fast on Android (a few seconds each),
+    /// much slower on iOS (a full XCUITest harness capture, which can take tens of seconds), so the real added
+    /// time varies a lot by platform; the report states the real elapsed time measured, not an assumed one.
+    /// </summary>
+    public bool AutoUpdateCheck { get; init; }
+
+    /// <summary>Seconds to wait before each extra capture in the auto-updating-content check, on top of
+    /// however long the capture itself takes (see <see cref="AutoUpdateCheck"/>). Default 3.</summary>
+    public double AutoUpdateIntervalSeconds { get; init; } = 3.0;
+
+    /// <summary>
+    /// Extra captures taken beyond the primary one. Minimum 2 (enforced by the CLI and the desktop app, not
+    /// here): with only one, the check can't tell a settled one-off change (a spinner, a one-off load) from
+    /// content that is still changing after more than one interval has passed -- see
+    /// <c>Swipewalk.Core.Model.AutoUpdateChangeDetector</c>. Default 2 (3 captures total); the real time they
+    /// span is the interval plus however long each capture itself takes, not just the interval -- see
+    /// <c>Swipewalk.Core.Reports.ScreenResult.AutoUpdateElapsedSeconds</c>.
+    /// </summary>
+    public int AutoUpdateExtraCaptures { get; init; } = 2;
+
     public bool KeepStatusBar { get; init; }
     public bool SkipChecks { get; init; }
 

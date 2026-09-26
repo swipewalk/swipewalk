@@ -235,6 +235,26 @@ public sealed record ScreenSnapshot
     public string? OtherOrientationLabel { get; init; }
 
     /// <summary>
+    /// Further captures of this same screen, taken a few seconds apart with no input (see
+    /// <c>Swipewalk.Engine.ScanOptions.AutoUpdateCheck</c>), for <see cref="Rules.AutoUpdatingContentRule"/> --
+    /// evidence for WCAG 2.2.2 Pause, Stop, Hide: moving, blinking or scrolling content that starts on its own,
+    /// lasts more than 5 seconds and is shown alongside other content, or auto-updating content shown
+    /// alongside other content, needs a way to pause, stop or hide it. Ordered, each after the last, by
+    /// roughly <see cref="AutoUpdateIntervalSeconds"/> plus however long a capture itself takes on this
+    /// platform (fast on Android, sometimes tens of seconds on iOS) -- see
+    /// <see cref="Reports.ScreenResult.AutoUpdateElapsedSeconds"/> for the REAL measured span, which is what
+    /// gets reported, not this nominal figure -- the same nested-capture shape as <see cref="LargeText"/> and
+    /// <see cref="Orientation"/>, except a list (more than one extra capture is needed to tell "changed once
+    /// and settled" -- a spinner, a one-off load -- from "still changing after more than one interval has
+    /// passed", see <see cref="AutoUpdateChangeDetector"/>). Empty when not requested for this screen.
+    /// </summary>
+    public IReadOnlyList<ScreenSnapshot> AutoUpdateCaptures { get; init; } = [];
+
+    /// <summary>Seconds between this capture and the first entry of <see cref="AutoUpdateCaptures"/>, and
+    /// between each entry after that. Null unless <see cref="AutoUpdateCaptures"/> is non-empty.</summary>
+    public double? AutoUpdateIntervalSeconds { get; init; }
+
+    /// <summary>
     /// Real screen-reader evidence for this screen (TalkBack, Xcode's Accessibility Inspector, or a
     /// recorded VoiceOver session) -- see <see cref="Model.ScreenReaderCapture"/>. Null (the common case
     /// today) when no such capture was made for this screen; that is different from a capture that ran and

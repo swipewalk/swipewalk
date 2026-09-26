@@ -6,8 +6,8 @@ namespace Swipewalk.Core.Wcag;
 /// levels verified against the WCAG 2.2 W3C Recommendation (2024-12-12), https://www.w3.org/TR/WCAG22/, on
 /// 2026-09-22. Add entries only after checking the name, level and introducing version against the spec.
 ///
-/// A rule currently cites only 14 of these (see <see cref="Rules.DefaultRules.MappedCriteria"/>); the other
-/// 41 are here so <c>Coverage.CoverageCatalog</c> (every A/AA criterion, with what Swipewalk automates for
+/// A rule currently cites only 15 of these (see <see cref="Rules.DefaultRules.MappedCriteria"/>); the other
+/// 40 are here so <c>Coverage.CoverageCatalog</c> (every A/AA criterion, with what Swipewalk automates for
 /// it) has one catalog to draw from instead of two. 4.1.1 Parsing is not listed: it was removed in WCAG 2.2
 /// (obsolete).
 /// </summary>
@@ -28,8 +28,10 @@ public static class WcagCriteria
     public static readonly WcagCriterion TargetSizeMinimum = new("2.5.8", "Target Size (Minimum)", WcagLevel.AA, WcagVersion.V2_2);
     public static readonly WcagCriterion NameRoleValue = new("4.1.2", "Name, Role, Value", WcagLevel.A, WcagVersion.V2_0);
     public static readonly WcagCriterion StatusMessages = new("4.1.3", "Status Messages", WcagLevel.AA, WcagVersion.V2_1);
+    public static readonly WcagCriterion PauseStopHide =
+        new("2.2.2", "Pause, Stop, Hide", WcagLevel.A, WcagVersion.V2_0);
 
-    // --- The other 41, level A (25) ---
+    // --- The other 40, level A (24) ---
     public static readonly WcagCriterion AudioOnlyAndVideoOnlyPrerecorded =
         new("1.2.1", "Audio-only and Video-only (Prerecorded)", WcagLevel.A, WcagVersion.V2_0);
     public static readonly WcagCriterion CaptionsPrerecorded =
@@ -50,8 +52,6 @@ public static class WcagCriteria
         new("2.1.4", "Character Key Shortcuts", WcagLevel.A, WcagVersion.V2_1);
     public static readonly WcagCriterion TimingAdjustable =
         new("2.2.1", "Timing Adjustable", WcagLevel.A, WcagVersion.V2_0);
-    public static readonly WcagCriterion PauseStopHide =
-        new("2.2.2", "Pause, Stop, Hide", WcagLevel.A, WcagVersion.V2_0);
     public static readonly WcagCriterion ThreeFlashesOrBelowThreshold =
         new("2.3.1", "Three Flashes or Below Threshold", WcagLevel.A, WcagVersion.V2_0);
     public static readonly WcagCriterion BypassBlocks =
@@ -81,7 +81,7 @@ public static class WcagCriteria
     public static readonly WcagCriterion RedundantEntry =
         new("3.3.7", "Redundant Entry", WcagLevel.A, WcagVersion.V2_2);
 
-    // --- The other 41, level AA (16) ---
+    // --- The other 40, level AA (16) ---
     public static readonly WcagCriterion CaptionsLive =
         new("1.2.4", "Captions (Live)", WcagLevel.AA, WcagVersion.V2_0);
     public static readonly WcagCriterion AudioDescriptionPrerecorded =

@@ -128,6 +128,19 @@ const string Usage = """
                              capture showed, since there's no way to read the original back), including on an
                              error or Ctrl-C. Off by default. Not supported yet on a physical iPhone (the
                              report says why it was skipped); Simulator and emulator/Android device both work
+      --auto-update-content  scan: take a few further captures of this screen a few seconds apart, with no
+                             input, and check whether content kept changing on its own across more than one
+                             interval (a carousel, ticker, timer or auto-advancing banner) -- for review
+                             against WCAG 2.2.2 Pause, Stop, Hide, since a control to pause/stop/hide it may
+                             exist elsewhere on the screen, the content may not be shown alongside anything
+                             else (which 2.2.2 doesn't cover), or the update may be essential to an activity.
+                             Never touches the device, so it works on a physical phone too. Off by default:
+                             each extra capture costs the wait below plus a full capture, fast on Android,
+                             much slower on iOS (a full XCUITest harness capture); the report states the real
+                             time elapsed, not an assumed one
+      --auto-update-interval <seconds>
+                             Seconds to wait before each extra capture for --auto-update-content, on top of
+                             however long the capture itself takes (default 3)
       --standard <id>        Focus the report on one standard: ada-title-ii, section-508, en-301-549, en-301-549-v4,
                              uk-public-sector, or one of the opt-in US state / other-country ids from
                              `swipewalk standards` (docs/standards.md) -- those never appear on every finding by
@@ -383,6 +396,19 @@ if (options.GetValueOrDefault("orientation") is { } orientationValue)
         return 1;
     }
 }
+if (options.ContainsKey("auto-update-content") && command == "record")
+{
+    // Not wired into Recorder yet (see ScanOptions.AutoUpdateCheck); reject rather than silently do nothing,
+    // so nobody thinks a recording checked for auto-updating content when it didn't.
+    Console.Error.WriteLine("--auto-update-content is scan only for now; record does not support it yet.");
+    return 1;
+}
+if (options.GetValueOrDefault("auto-update-interval") is { } autoUpdateIntervalValue
+    && (!double.TryParse(autoUpdateIntervalValue, out var autoUpdateInterval) || autoUpdateInterval <= 0))
+{
+    Console.Error.WriteLine($"--auto-update-interval must be a number of seconds greater than 0, not \"{autoUpdateIntervalValue}\".");
+    return 1;
+}
 
 var scanOptions = ToScanOptions(platformName, options, command);
 if (command == "doctor")
@@ -502,6 +528,8 @@ static ScanOptions ToScanOptions(string platform, Dictionary<string, string> o, 
     LargeText = command == "record" ? o.GetValueOrDefault("large-text") != "false" : o.GetValueOrDefault("large-text") is { } lt && lt != "false",
     AppearanceBoth = o.GetValueOrDefault("appearance") == "both",
     OrientationBoth = o.GetValueOrDefault("orientation") == "both",
+    AutoUpdateCheck = o.ContainsKey("auto-update-content"),
+    AutoUpdateIntervalSeconds = o.GetValueOrDefault("auto-update-interval") is { } aui ? double.Parse(aui) : 3.0,
     KeepStatusBar = o.GetValueOrDefault("keep-status-bar") is { } k && k != "false",
     SkipChecks = o.ContainsKey("skip-checks"),
     FromCapture = o.GetValueOrDefault("from"),
