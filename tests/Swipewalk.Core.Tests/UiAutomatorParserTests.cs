@@ -1,4 +1,6 @@
 using Swipewalk.Collectors.Android;
+using Swipewalk.Core.Model;
+using Swipewalk.Core.Rules;
 
 namespace Swipewalk.Core.Tests;
 
@@ -386,11 +388,17 @@ public class UiAutomatorParserTests
     }
 
     [Fact]
-    public void Parse_ClickableNodeWithSeveralNamedDescendants_DoesNotMerge()
+    public void Parse_ClickableNodeWithOneContentDescDescendantAndOneTextDescendant_MergesBoth()
     {
-        // Conservative: an icon's content-desc ("Submit") alongside a separate visible-text child ("Pay")
-        // under one merged Button -- which of these a screen reader actually announces, and in what order,
-        // is not verified, so the outer node is left unlabeled rather than guessing.
+        // The N5 shape (samples/NativeAndroid: Modifier.semantics { contentDescription = "Submit" } set
+        // directly on the Button itself -- not on an icon, N5 has no icon -- alongside a separate
+        // Text("Pay") child; Compose's tree export still splits the two across separate descendants).
+        // Real TalkBack capture of exactly this button (docs/case-study.md "Real TalkBack capture, in five
+        // languages") announced "Submit || Pay || Button" -- both parts are spoken -- so this merges both
+        // onto the outer node: Label carries the full joined name (so label-in-name doesn't report a
+        // mismatch TalkBack's capture didn't show) and VisibleText carries just the visible part (so
+        // label-in-name can evaluate the node at all -- it couldn't while both stayed null; identifier-name
+        // could always evaluate the content-desc descendant directly, and still can, see the next test).
         const string xml = """
             <hierarchy rotation="0">
               <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][210,105]">
@@ -402,9 +410,133 @@ public class UiAutomatorParserTests
 
         var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
 
-        Assert.Null(button.Label);
+        Assert.Equal("Submit, Pay", button.Label);
+        Assert.Equal("Pay", button.VisibleText);
+        // Unlike the single-descendant case, the content-desc source is NOT cleared here (see the next
+        // test for why): both descendants keep their own fields untouched.
         Assert.Equal("Submit", button.Children[0].Label);
         Assert.Equal("Pay", button.Children[1].VisibleText);
+    }
+
+    [Fact]
+    public void Parse_ClickableNodeWithIdentifierLookingContentDescAndTextDescendant_KeepsTheChildLabelToAvoidSilencingIt()
+    {
+        // Same shape as the N5 test above, but the content-desc looks like a developer identifier
+        // ("img_btn_pay"). Clearing it (as the single-descendant merge does) would silence
+        // IdentifierNameRule entirely, since the merged name ("img_btn_pay, Pay") contains a space and
+        // IdentifierNameRule.LooksLikeIdentifier never matches a name with a space in it -- so nothing
+        // would be reported at all. Leaving the descendant's own Label in place means IdentifierNameRule
+        // still evaluates it directly (with the pre-existing wrong, non-clickable role -- not fixed for
+        // this shape, unlike the single-descendant case), which is a smaller problem than reporting
+        // nothing.
+        const string xml = """
+            <hierarchy rotation="0">
+              <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][210,105]">
+                <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="img_btn_pay" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][105,105]" />
+                <node index="1" text="Pay" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[105,0][210,105]" />
+              </node>
+            </hierarchy>
+            """;
+
+        var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
+
+        Assert.Equal("img_btn_pay, Pay", button.Label);
+        Assert.Equal("Pay", button.VisibleText);
+        Assert.Equal("img_btn_pay", button.Children[0].Label);
+
+        var findings = new IdentifierNameRule().Evaluate(new ScreenSnapshot
+        {
+            Platform = Platform.Android,
+            ScreenName = "Screen",
+            Root = new AccessibilityNode { Role = "window", Children = [button] },
+        }).ToList();
+
+        var finding = Assert.Single(findings);
+        Assert.Equal("img_btn_pay", finding.Label);
+    }
+
+    [Fact]
+    public void Parse_ClickableNodeWithOneDescendantCarryingBothLabelAndVisibleText_DoesNotMerge()
+    {
+        // A descendant that carries its OWN content-desc and its OWN visible text ("Submit" / "X"),
+        // alongside a separate visible-text-only descendant ("Pay"): this has two named descendants, but
+        // isn't the N5 shape (one content-desc-only candidate, one text-only candidate) -- merging it the
+        // same way would silently drop "X" (it isn't part of either the content-desc or the text-only
+        // group), so this declines rather than guessing which of the three names to keep.
+        const string xml = """
+            <hierarchy rotation="0">
+              <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][210,105]">
+                <node index="0" text="X" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="Submit" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][105,105]" />
+                <node index="1" text="Pay" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[105,0][210,105]" />
+              </node>
+            </hierarchy>
+            """;
+
+        var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
+
+        Assert.Null(button.Label);
+        Assert.Null(button.VisibleText);
+    }
+
+    [Fact]
+    public void Parse_ClickableNodeWithTwoContentDescDescendants_DoesNotMerge()
+    {
+        // Ambiguous: two different content-desc candidates -- which one (or both, in what order) a screen
+        // reader actually announces isn't established, so this doesn't guess.
+        const string xml = """
+            <hierarchy rotation="0">
+              <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][210,105]">
+                <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="Submit" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][105,105]" />
+                <node index="1" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="Confirm" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[105,0][210,105]" />
+              </node>
+            </hierarchy>
+            """;
+
+        var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
+
+        Assert.Null(button.Label);
+        Assert.Null(button.VisibleText);
+    }
+
+    [Fact]
+    public void Parse_ClickableNodeWithTwoDistinctTextDescendants_DoesNotMerge()
+    {
+        // Ambiguous: two different plain-text candidates, no content-desc anywhere -- not the N5 shape
+        // (which needs exactly one of each), so this stays unmerged too.
+        const string xml = """
+            <hierarchy rotation="0">
+              <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][210,105]">
+                <node index="0" text="Pay" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][105,105]" />
+                <node index="1" text="Now" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[105,0][210,105]" />
+              </node>
+            </hierarchy>
+            """;
+
+        var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
+
+        Assert.Null(button.Label);
+        Assert.Null(button.VisibleText);
+    }
+
+    [Fact]
+    public void Parse_ClickableNodeWithOneContentDescAndTwoTextDescendants_DoesNotMerge()
+    {
+        // Ambiguous: a content-desc candidate plus two distinct text candidates -- not the N5 shape either
+        // (needs exactly one of each), so nothing is merged.
+        const string xml = """
+            <hierarchy rotation="0">
+              <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][315,105]">
+                <node index="0" text="" resource-id="" class="android.view.View" package="com.example.app" content-desc="Submit" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][105,105]" />
+                <node index="1" text="Pay" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[105,0][210,105]" />
+                <node index="2" text="Now" resource-id="" class="android.widget.TextView" package="com.example.app" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[210,0][315,105]" />
+              </node>
+            </hierarchy>
+            """;
+
+        var button = UiAutomatorParser.Parse(xml, compressedXml: null, density: 160).Children[0];
+
+        Assert.Null(button.Label);
+        Assert.Null(button.VisibleText);
     }
 
     [Fact]

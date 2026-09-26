@@ -108,4 +108,18 @@ public class LabelInNameRuleTests
     {
         Assert.Empty(Evaluate(Node(visibleText: visible, label: label)));
     }
+
+    [Fact]
+    public void MergedComposeName_ContainsTheVisibleTextAsAWholeWord_NoFinding()
+    {
+        // The N5 shape after UiAutomatorParser.TryMergeDescendantName merges the Button's own semantics
+        // content-desc ("Submit") and a separate visible-text child ("Pay") onto one clickable node:
+        // Label becomes the full joined name ("Submit, Pay"), not just the content-desc part, precisely
+        // so this never fires here -- matching the real TalkBack capture of this exact button announcing
+        // both parts (see docs/case-study.md "Real TalkBack capture, in five languages": "Submit || Pay
+        // || Button").
+        var findings = Evaluate(Node(visibleText: "Pay", label: "Submit, Pay"));
+
+        Assert.Empty(findings);
+    }
 }

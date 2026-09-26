@@ -108,9 +108,10 @@ public class RuleRunnerTests
     public void ScreenReaderLabelInName_ReportsIndependently_WhenLabelInNameNeverFiresThere()
     {
         // LabelInNameRule requires node.VisibleText, which is null here (the node's own text is null; its
-        // visible text is only on a child, the shape samples/NativeAndroid's Compose bug N5 has -- see
-        // docs/case-study.md): LabelInNameRule never runs on this node either way, so there is no duplicate
-        // to defer to, and ScreenReaderLabelInNameRule's finding stands alone.
+        // visible text is only on a child -- the shape samples/NativeAndroid's Compose bug N5 had before
+        // UiAutomatorParser.TryMergeDescendantName started merging it, 2026-09-26; see docs/case-study.md):
+        // LabelInNameRule never runs on this node either way, so there is no duplicate to defer to, and
+        // ScreenReaderLabelInNameRule's finding stands alone.
         var button = new AccessibilityNode
         {
             Role = "button", IsInteractive = true, IsAccessible = true, VisibleText = null, Label = null,

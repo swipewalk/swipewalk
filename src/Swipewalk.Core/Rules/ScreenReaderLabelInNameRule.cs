@@ -12,10 +12,16 @@ namespace Swipewalk.Core.Rules;
 /// the node's own (<see cref="AccessibilityNode.VisibleText"/>), or, when that is null, its only descendant's
 /// visible text (see <see cref="VisibleText"/>). That second path is what lets this rule see a control
 /// <see cref="LabelInNameRule"/> structurally cannot: one whose own <see cref="AccessibilityNode.VisibleText"/>
-/// is null because the text is only on a child (for example samples/NativeAndroid's Compose bug N5, where a
-/// button's own uiautomator node carries no name or text at all, and "Submit"/"Pay" are on two separate
-/// children -- see docs/case-study.md and <c>android-compose-merged-name</c> in docs/limitations.md for what a
-/// real capture of that exact button did and didn't find).
+/// is null because the text is only on a child -- still true for a several-named-descendants shape
+/// <c>Swipewalk.Collectors.Android.UiAutomatorParser.TryMergeDescendantName</c> doesn't merge (more than one
+/// contentDescription candidate, more than one visible-text candidate, or a descendant carrying both
+/// its own content-desc and visible text). The ONE such shape confirmed against real TalkBack evidence
+/// (samples/NativeAndroid's Compose bug N5: <c>Modifier.semantics { contentDescription = "Submit" }</c> set
+/// directly on the Button itself, not on an icon, alongside a separate <c>Text("Pay")</c> child) is merged by
+/// that parser method as of 2026-09-26, so <see cref="LabelInNameRule"/> can now evaluate N5's own button
+/// directly from the tree; this rule still adds independent, capture-based coverage on top of that merge (see
+/// the remarks on "Doesn't duplicate" below) -- see docs/case-study.md and <c>android-compose-merged-name</c>
+/// in docs/limitations.md for what real captures of that button did and didn't find.
 ///
 /// Every finding is <see cref="FindingKind.NeedsReview"/>, never <see cref="FindingKind.WcagIssue"/>: 2.5.3
 /// is about the accessible name a speech-input user (Android Voice Access, iOS Voice Control) relies on, and
@@ -122,7 +128,7 @@ public sealed class ScreenReaderLabelInNameRule : IRule
 
     /// <summary>
     /// The visible text of this node's only descendant that has any, when that's unambiguous -- deliberately
-    /// mirroring the safety checks <c>Swipewalk.Collectors.Android.UiAutomatorParser.TryMergeSingleDescendantName</c>
+    /// mirroring the safety checks <c>Swipewalk.Collectors.Android.UiAutomatorParser.TryMergeDescendantName</c>
     /// uses for a related but different problem (merging a NAME onto a clickable node): (1) if anything else
     /// in the subtree is independently accessible and focusable or interactive, a screen reader may stop on
     /// it separately, so its text isn't necessarily read as part of THIS node -- too ambiguous to guess, so
