@@ -46,16 +46,32 @@ show the coverage line, so they're unaffected.
 
 Both reports also say what was **not** checked, and the two now differ because Google's Accessibility
 Test Framework only runs on Android: Android's coverage line reads "WCAG 2.2 A/AA: 13 criteria partly
-checked by automation, 38 need a manual check, 4 usually out of scope, 0 not tested in this run"; a
-current iOS report reads "9 criteria partly checked by automation, 38 need a manual check, 4 usually out of scope, 4
+checked by automation, 37 need a manual check, 4 usually out of scope, 1 not tested in this run"; a
+current iOS report reads "10 criteria partly checked by automation, 37 need a manual check, 4 usually out of scope, 4
 not tested in this run" -- for the four criteria where Google's Accessibility Test Framework or the new
 Android-only page-titled check is the only automated check on that criterion (1.3.2 Meaningful
 Sequence, 2.4.2 Page Titled, 2.4.3 Focus Order, 2.4.4 Link Purpose (In Context)), that check runs on
 Android only, so on iOS they're counted as not tested in this run rather than folded into "need a
 manual check". 1.4.11 Non-text Contrast moved out of that iOS gap list with this update: the new
 icon-contrast rule now also covers it on iOS directly (see section 3 below), even though it found
-nothing to flag on this screen. Not one of the 55 criteria is fully covered by automation on either
-platform.
+nothing to flag on this screen. 1.4.10 Reflow moved from "need a manual check" to "partly checked by
+automation" with the addition of the offscreen-unreachable rule, but that rule runs on iOS only (see
+[docs/limitations.md](limitations.md): Android's own accessibility dump clips a node's reported bounds
+to the visible screen, so it has nothing to measure off-screen content with) -- Reflow is the one
+PartlyAutomated criterion that is "not tested in this run" on the Android side of this table, and
+"partly checked by automation" (with nothing to flag on this screen, whose bottom-most controls fit
+inside the iOS Simulator capture's bounds) on the iOS side. Not one of the 55 criteria is fully covered by
+automation on either platform.
+
+offscreen-unreachable's target bug was first noticed by eye on a physical iPhone SE: BuggyApp's
+first screen doesn't fit at normal/100% text size on that small a device, and the page has no
+ScrollView. Confirmed automatically on an iPhone SE (3rd generation) Simulator (375×667 pt, 2026-09-25):
+"View payment history" (678-728 on the 667-pt screen) was flagged as off-screen; "Save for later"
+(ending at 666, one point inside the bottom edge) correctly was not. Confirmed again the same way on a
+physical iPhone SE (375×667 pt, iOS 27.0): the same finding, naming "View payment history" once, matching
+what was seen by eye. Neither of those two capture sizes is what the numbers above are from --
+those are still from the larger, 402×874 pt iPhone 17 Simulator capture, where this screen fits and
+offscreen-unreachable finds nothing.
 
 ![Android report for BuggyApp: 6 WCAG issues, 7 needing review, 4 platform advisories (from before the page-titled rule was added; see the text above for the current count of 8)](images/report-android.png)
 

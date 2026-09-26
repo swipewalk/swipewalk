@@ -127,6 +127,15 @@ public static class ScreenActivityBuilder
         else
             skipped["icon-contrast"] = "no usable screenshot";
 
+        // offscreen-unreachable (OffscreenUnreachableRule) only evaluates iOS captures: Android's
+        // uiautomator dump clips every node's reported bounds to the visible screen (see the rule's own
+        // remarks), so it has nothing to measure there and never runs at all, not merely "runs and finds
+        // nothing" -- the same distinction icon-contrast draws above.
+        if (screen.Platform != Platform.iOS)
+            skipped["offscreen-unreachable"] = CoverageDisplay.OffscreenUnreachableIosOnlyReason;
+        else
+            ran.Add("offscreen-unreachable");
+
         // screen-reader-capture (ScreenReaderCaptureRule) needs a real capture with at least one item:
         // AndroidCollector.Load builds a non-null ScreenReaderCapture (with empty Items and
         // NotCompleteReason set) both when the harness genuinely ran and captured nothing walkable, AND

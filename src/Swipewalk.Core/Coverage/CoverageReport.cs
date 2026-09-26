@@ -67,8 +67,10 @@ public static class CoverageReport
 
     /// <summary>
     /// One-line summary of <paramref name="entries"/>, shown near the top of the HTML report, e.g. "WCAG
-    /// 2.2 A/AA: 13 criteria partly checked by automation, 38 need a manual check, 4 usually out of scope, 0
-    /// not tested in this run." The four counts always add up to <paramref name="entries"/>.Count (55 for
+    /// 2.2 A/AA: 13 criteria partly checked by automation, 37 need a manual check, 4 usually out of scope, 1
+    /// not tested in this run" for a single-platform (e.g. Android) run -- one of the 14 PartlyAutomated
+    /// criteria, 1.4.10 Reflow, is checked on iOS only for now, so it falls back to NotTestedInThisRun on an
+    /// Android-only run instead. The four counts always add up to <paramref name="entries"/>.Count (55 for
     /// the full catalog): every criterion is in exactly one status.
     /// </summary>
     public static string Summary(IReadOnlyList<CoverageReportEntry> entries)

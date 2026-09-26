@@ -7,9 +7,10 @@ namespace Swipewalk.Core.Rules;
 /// <see cref="DefaultRules.Coverage"/> for what each rule checks and which WCAG criteria it maps to, adding
 /// only the two things that catalog doesn't already record: which finding kinds a rule can report (read from
 /// each rule's own Evaluate method; a rule that reports more than one kind lists when each applies) and which
-/// platforms it runs on (every rule here reads the shared AccessibilityNode tree, so all of them could run on
-/// either collector, except text-resize-navigation, which its own Evaluate method restricts to Android -- see
-/// its own remarks).
+/// platforms it runs on. Every rule here reads the shared AccessibilityNode tree, so all of them could run on
+/// either collector in principle; a few restrict themselves in their own Evaluate method instead, for reasons
+/// specific to that rule (text-resize-navigation to Android; icon-contrast and offscreen-unreachable to iOS --
+/// see each rule's own remarks for why).
 /// </summary>
 public static class RuleCatalog
 {
@@ -44,6 +45,9 @@ public static class RuleCatalog
         new("large-text-lost-content",
             "Needs review (missing at the larger size with no scrollable container anywhere on the screen to reach it); platform advisory (loss seen only beyond 200%, iOS AX3 only)",
             BothPlatforms),
+        new("offscreen-unreachable",
+            "Needs review (wholly or mostly off-screen at normal text size with no scrollable ancestor, on a screen at least as large as WCAG 1.4.10's own 320×256 reference size); platform advisory (same finding on a smaller screen)",
+            "iOS"),
         new("screen-reader-capture", "Needs review (every difference from the predicted transcript is reported for a person to check, never as a confirmed WCAG failure by itself)",
             "Android (needs --screen-reader and the instrumentation harness; TalkBack)"),
     ];

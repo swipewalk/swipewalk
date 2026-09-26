@@ -253,6 +253,20 @@ Each screen also shows:
   WCAG issue (1.4.4 doesn't require an app to keep its navigation state across a text-size change);
   worded "probably", since the detection compares screens by title and element names, which can
   occasionally read a truncated or crowded screen as "different" when it isn't.
+- **Content outside the screen at normal text size (iOS)** — every iOS scan checks whether
+  interactive controls or text sit wholly or mostly outside the visible screen at the app's normal
+  (not enlarged) text size, with none of the containers holding them reporting itself as scrollable.
+  This catches a layout that doesn't fit on a small enough device even before any text is enlarged —
+  first noticed by eye on a physical iPhone SE, on a screen whose content has no ScrollView. Xcode's
+  Accessibility Inspector usually still lists an element positioned past the
+  screen edge, and a screen reader may still reach it by swiping, so a screen-reader-only check can
+  miss that a sighted or touch user cannot reach it at all. Reported for review against WCAG 1.4.10
+  Reflow when the screen is at least as large as 1.4.10's own 320×256 reference size (every phone
+  screen is), or as a platform advisory on a smaller screen; either way, never as a confirmed
+  failure — it can't rule out the element being reachable another way. Not yet run on Android:
+  Android's own accessibility dump clips a node's reported position to the visible screen, so there
+  is nothing off-screen left to measure there (see the "Off-screen content is not detected on
+  Android" limitation).
 
 A report with no findings is not a statement of conformance — it means the checks that ran found
 nothing to flag. Most WCAG success criteria have no automated check at all yet; see the "Automated

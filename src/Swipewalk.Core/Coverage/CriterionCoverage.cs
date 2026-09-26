@@ -260,6 +260,11 @@ public static class CoverageDisplay
     /// person's navigation place) is Android-specific -- see <c>TextResizeNavigationRule</c>'s remarks.</summary>
     public const string TextResizeNavigationAndroidOnlyReason = "The text-resize-navigation check runs on Android only";
 
+    /// <summary>The exact reason <c>ScreenActivityBuilder</c> records for "offscreen-unreachable" on a
+    /// non-iOS screen: Android's uiautomator dump clips every node's reported bounds to the visible screen,
+    /// so this rule has nothing to measure there -- see <c>OffscreenUnreachableRule</c>'s own remarks.</summary>
+    public const string OffscreenUnreachableIosOnlyReason = "The offscreen-unreachable check runs on iOS only; Android's uiautomator dump clips element bounds to the visible screen, so it has nothing to measure there";
+
     /// <summary>Short, reader-facing names for rule ids. Reports never show a raw rule id in a label or the
     /// WCAG coverage table; results.json keeps the ids (e.g. <see cref="CriterionRunResult.RuleIdsThatDidNotRun"/>)
     /// for tooling, and this is the one place that maps them to text a person reads.</summary>
@@ -276,6 +281,7 @@ public static class CoverageDisplay
         ["page-titled"] = "page-titled check",
         ["input-purpose"] = "input-purpose check",
         ["icon-contrast"] = "icon-contrast check",
+        ["offscreen-unreachable"] = "off-screen-content check",
     };
 
     /// <summary>The reader-facing name for a rule id (falls back to the id itself for any rule not in the
@@ -311,6 +317,8 @@ public static class CoverageDisplay
         if (rule.RuleId == "page-titled" && rule.SkipReasons.Contains(PageTitledAndroidOnlyReason))
             return $"{name} (Android only).";
         if (rule.RuleId == "icon-contrast" && rule.SkipReasons.Contains(IconContrastIosOnlyReason))
+            return $"{name} (iOS only).";
+        if (rule.RuleId == "offscreen-unreachable" && rule.SkipReasons.Contains(OffscreenUnreachableIosOnlyReason))
             return $"{name} (iOS only).";
         var reason = rule.SkipReasons.Count > 0 ? string.Join("; ", rule.SkipReasons) : "did not run on any scanned screen";
         return $"Not run: {name} ({reason}).";
