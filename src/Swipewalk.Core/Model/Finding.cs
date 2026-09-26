@@ -208,9 +208,11 @@ public sealed record ScreenResult
     public double OtherAppearancePixelScale { get; init; } = 1.0;
 
     /// <summary>
-    /// Why the other-appearance capture wasn't made for this screen, when the rescan was requested: today,
-    /// always because appearance can't yet be changed on a physical iPhone (see docs/limitations.md). Null
-    /// when it was captured (see <see cref="OtherAppearance"/>), or wasn't requested for this run.
+    /// Why the other-appearance capture wasn't made for this screen, when the rescan was requested: no
+    /// Simulator or device was found, the iOS harness could not be signed or driven (a physical iPhone), or a
+    /// physical iPhone was left on Automatic (day/night) appearance with no fixed "current" theme to switch
+    /// from (see docs/limitations.md). Null when it was captured (see <see cref="OtherAppearance"/>), or
+    /// wasn't requested for this run.
     /// </summary>
     public string? AppearanceSkippedReason { get; init; }
 
@@ -242,9 +244,10 @@ public sealed record ScreenResult
     public double OtherOrientationPixelScale { get; init; } = 1.0;
 
     /// <summary>
-    /// Why the other-orientation capture wasn't made for this screen, when the rescan was requested: today,
-    /// always because a physical iPhone can't be rotated by Swipewalk yet (see docs/limitations.md). Null
-    /// when it was captured (see <see cref="OtherOrientation"/>), or wasn't requested for this run.
+    /// Why the other-orientation capture wasn't made for this screen, when the rescan was requested: no
+    /// Simulator or device was found, or the iOS harness could not be signed or driven (a physical iPhone;
+    /// see docs/limitations.md). Null when it was captured (see <see cref="OtherOrientation"/>), or wasn't
+    /// requested for this run.
     /// </summary>
     public string? OrientationSkippedReason { get; init; }
 

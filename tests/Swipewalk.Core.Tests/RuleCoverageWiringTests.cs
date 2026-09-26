@@ -218,11 +218,12 @@ public class RuleCoverageWiringTests
             Screen(Platform.Android, "shot.png", null, null, true, null, otherOrientation: OrientationLabels.Landscape, findings: [OrientationFinding()]));
         Assert.Contains("orientation-restricted", checkedAndNotRotated.RanRuleIds);
 
-        // Attempted but skipped for a reason (a physical iPhone, today): recorded as skipped with that reason,
-        // not silently dropped.
+        // Attempted but skipped for a reason (no device found, a signing failure, or automation that failed
+        // on a physical iPhone): recorded as skipped with that reason, not silently dropped.
+        const string reason = "no iOS Simulator or device found";
         var skippedWithReason = ScreenActivityBuilder.For(
-            Screen(Platform.Android, "shot.png", null, null, true, null, orientationSkippedReason: OrientationLabels.PhysicalIphoneNotSupportedReason));
-        Assert.Equal(OrientationLabels.PhysicalIphoneNotSupportedReason, skippedWithReason.SkippedRuleIds["orientation-restricted"]);
+            Screen(Platform.Android, "shot.png", null, null, true, null, orientationSkippedReason: reason));
+        Assert.Equal(reason, skippedWithReason.SkippedRuleIds["orientation-restricted"]);
     }
 
     [Fact]

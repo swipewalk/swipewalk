@@ -105,7 +105,9 @@ public static class CoverageCatalog
             "content did not visibly follow (see docs/limitations.md) -- it can tell whether the screen's " +
             "shape changed, not whether an essential orientation applies or whether the screen still works " +
             "correctly in the other one, so still check every flagged screen, and any screen the automated " +
-            "rescan did not cover (record mode, and a physical iPhone, which it does not support yet), by hand.",
+            "rescan did not cover (record mode), by hand -- and on a physical iPhone, check any flagged " +
+            "screen with rotation lock off too, since Swipewalk can't tell rotation lock apart from a real " +
+            "restriction (see docs/limitations.md).",
             "orientation"),
         PartlyAutomated(WcagCriteria.IdentifyInputPurpose,
             "Check common input fields (name, email, phone, address) use the platform's autofill/input-type " +

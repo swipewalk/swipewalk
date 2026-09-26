@@ -31,16 +31,20 @@ check on a phone someone relies on every day. What happens:
 - Emulators and the iOS Simulator have their text size changed the same way, but it's a virtual
   device setting, not something anyone's own phone depends on day to day.
 - **`scan --appearance both`** switches the device between dark and light appearance the same way
-  (Android `cmd uimode night`; iOS Simulator `simctl ui appearance`) to check both, then restores
-  the original appearance afterwards — the same interrupted-run recovery applies. Not supported yet
-  on a physical iPhone.
+  (Android `cmd uimode night`; iOS Simulator `simctl ui appearance`; a physical iPhone through
+  Settings > Appearance) to check both, then restores the original appearance afterwards
+  — the same interrupted-run recovery applies. On a physical iPhone left on Automatic (day/night
+  scheduling), there's no fixed "current" appearance to switch from, so the check is skipped there
+  with a reason.
 - **`scan --orientation both`** rotates the device between portrait and landscape the same way
-  (Android `settings put system accelerometer_rotation`/`user_rotation`; iOS Simulator through the
-  scanning harness) to check whether the screen's content follows. On Android it restores the
-  device's exact original orientation and rotation-lock state afterwards; on the iOS Simulator
-  there's no way to read the original orientation back, so it rotates back to whichever of
-  portrait/landscape the first capture showed — the same interrupted-run recovery applies either
-  way. Not supported yet on a physical iPhone.
+  (Android `settings put system accelerometer_rotation`/`user_rotation`; iOS through the scanning
+  harness, the same call for the Simulator and a physical iPhone) to check whether the screen's
+  content follows. On Android it restores the device's exact original orientation and
+  rotation-lock state afterwards; on iOS there's no way to read the original orientation back, so
+  it rotates back to whichever of portrait/landscape the first capture showed — the same
+  interrupted-run recovery applies either way. On a physical iPhone, this can't tell Control
+  Center's rotation lock from a genuinely restricted screen — turn rotation lock off first, or a
+  locked phone may be flagged for review as if it were restricted.
 - **`scan --auto-update-content`** takes a few further captures of the same screen a few seconds
   apart, with no input, and checks whether content (a carousel, ticker, timer or auto-advancing
   banner) kept changing on its own across more than one interval — for review against WCAG 2.2.2
@@ -169,16 +173,18 @@ report to say which screen it is.
 Pass `--appearance both` to also capture and check the screen in the device's other dark/light
 appearance — a contrast failure that only shows up in one theme is easy to miss otherwise (see
 [docs/case-study.md](case-study.md): the same app's first screen scanned clean on one device in
-dark mode but had 5 real contrast failures on another device in light mode). Off by default; not
-supported yet on a physical iPhone, where the report says why it was skipped.
+dark mode but had 5 real contrast failures on another device in light mode). Off by default; on a
+physical iPhone this drives Settings > Appearance, and is skipped with a reason if the
+iPhone is left on Automatic (day/night scheduling).
 
 Pass `--orientation both` to also rotate the device to the screen's other orientation (portrait ↔
 landscape) and check whether the content actually follows — WCAG 1.3.4 Orientation. When it does
 rotate, every check runs on that capture too, the same as `--appearance both`. When it doesn't,
 the report flags it for review, not as a confirmed failure: WCAG allows a single orientation when
 it's essential to a screen (its own examples: a piano keyboard, a bank cheque deposit, slides meant
-for a projector or TV, or VR content). Off by default; not supported yet on a physical iPhone,
-where the report says why it was skipped.
+for a projector or TV, or VR content) — and on a physical iPhone, Control Center's rotation lock
+can also produce "no visible change" with no way for Swipewalk to tell the difference, so turn
+rotation lock off before scanning one. Off by default.
 
 Pass `--auto-update-content` to take a few further captures of the screen a few seconds apart, with
 no input, and check whether content kept changing on its own across more than one interval — WCAG
