@@ -24,12 +24,16 @@ public sealed record Standard
     public required WcagVersion WcagVersion { get; init; }
     public required WcagLevel Level { get; init; }
 
+    /// <summary>How binding the standard's own instrument is (statute, regulation or official policy).</summary>
+    public required LegalTier LegalTier { get; init; }
+
     /// <summary>Requirements the standard has beyond WCAG, which Swipewalk does not check.</summary>
     public string? BeyondWcag { get; init; }
 
     public required string Source { get; init; }
 
-    /// <summary>When this entry was last checked against the source (yyyy-MM).</summary>
+    /// <summary>When this entry was last checked against the source: "yyyy-MM" (the original format) or the
+    /// exact "yyyy-MM-dd" the primary source was read on. See <see cref="RuleSource.IsStale"/>.</summary>
     public required string CheckedOn { get; init; }
 
     /// <summary>"WCAG 2.1 AA" style label.</summary>

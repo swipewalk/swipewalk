@@ -103,8 +103,16 @@ public sealed record ScanReport
     /// </summary>
     public IReadOnlyList<RecordingSession> Sessions { get; init; } = [];
 
-    /// <summary>The standards findings are mapped to, with the disclaimer on what "relevant" means.</summary>
-    public IReadOnlyList<Standard> Standards => KnownStandards.All;
+    /// <summary>
+    /// The standards findings are mapped to, with the disclaimer on what "relevant" means. Always the default
+    /// set (<see cref="KnownStandards.All"/>) so a report never lists every US state by default; when
+    /// <see cref="FocusStandard"/> names one of the opt-in jurisdiction standards (see
+    /// <see cref="KnownJurisdictions.Jurisdictions"/>), that one standard is added so its own row still shows.
+    /// </summary>
+    public IReadOnlyList<Standard> Standards =>
+        FocusStandard is { } id && KnownStandards.Find(id) is { } focused && !KnownStandards.All.Any(s => s.Id == focused.Id)
+            ? [.. KnownStandards.All, focused]
+            : KnownStandards.All;
 
     public string StandardsNotice => KnownStandards.Disclaimer;
 
@@ -119,8 +127,15 @@ public sealed record ScanReport
     /// <summary>Findings of a kind; with <see cref="FocusStandard"/>, WCAG findings count only if relevant to it.</summary>
     public int Count(FindingKind kind) => Screens.Sum(s => s.Findings.Count(f => f.Kind == kind && InFocus(f)));
 
+    /// <summary>
+    /// Relevance is computed directly from <see cref="Standard.Includes"/> (not the precomputed
+    /// <see cref="Finding.RelevantStandards"/>, which only ever covers the default set) so that
+    /// <see cref="FocusStandard"/> works the same way whether it names one of the always-computed default
+    /// standards or one of the opt-in jurisdiction standards in <see cref="KnownJurisdictions"/>.
+    /// </summary>
     public bool InFocus(Finding f) =>
-        FocusStandard is null || f.Kind == FindingKind.PlatformAdvisory || f.RelevantStandards.Contains(FocusStandard);
+        FocusStandard is null || f.Kind == FindingKind.PlatformAdvisory
+        || (KnownStandards.Find(FocusStandard) is { } s && f.Criteria.Any(s.Includes));
 
     /// <summary>
     /// Guided-check answers a tester recorded for this run (loaded from guided-answers.json -- see

@@ -5,9 +5,13 @@ namespace Swipewalk.Core.Standards;
 /// <summary>A rule source Swipewalk checks against, with the version used and when the mapping was reviewed.</summary>
 public sealed record RuleSource(string Name, string Version, string CheckedOn, string Source)
 {
+    /// <summary>Accepted <see cref="CheckedOn"/> formats: the original month-only "yyyy-MM", and the exact
+    /// "yyyy-MM-dd" used for entries whose primary source was read on a specific day.</summary>
+    private static readonly string[] CheckedOnFormats = ["yyyy-MM", "yyyy-MM-dd"];
+
     /// <summary>True when the review date is more than <paramref name="maxAge"/> before <paramref name="at"/>.</summary>
     public bool IsStale(DateTimeOffset at, TimeSpan maxAge) =>
-        DateTime.TryParseExact(CheckedOn, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var checkedOn)
+        DateTime.TryParseExact(CheckedOn, CheckedOnFormats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var checkedOn)
         && at.UtcDateTime - checkedOn.ToUniversalTime() > maxAge;
 }
 
@@ -29,8 +33,12 @@ public static class RuleSources
     // its per-run "Beyond WCAG" coverage section, rebased on top of both changes, then to 2026.09.25 for
     // the screen-reader-capture rule's iOS route (scan only for now): Xcode's Accessibility Inspector,
     // walked over the macOS Accessibility API, instead of Android's TalkBack -- see KnownLimitations
-    // "ios-inspector-walk-capture".
-    public const string RulesetVersion = "2026.09.25";
+    // "ios-inspector-walk-capture", then to 2026.09.26 for the US states, countries and store-guidance
+    // mapping (KnownJurisdictions, StoreGuidance): confirmed jurisdiction standards are opt-in via
+    // --standard (never listed on every finding by default), unconfirmed/no-law/differs-from-WCAG
+    // jurisdictions are recorded honestly rather than guessed, and CheckedOn now also accepts an exact
+    // "yyyy-MM-dd" for entries checked on a specific day.
+    public const string RulesetVersion = "2026.09.26";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);
@@ -56,6 +64,10 @@ public static class RuleSources
             "merged 2026-06-23; released in Microsoft.Maui.Controls 10.0.100 (.NET 10 SR10)", "2026-09",
             "https://github.com/dotnet/maui/pull/34445"),
         .. KnownStandards.All.Select(s => new RuleSource(s.Name, s.Basis, s.CheckedOn, s.Source)),
+        // US states, other countries and store guidance are opt-in (see KnownJurisdictions/StoreGuidance) and
+        // deliberately NOT added here: every report always shows this list ("Checked against"), and this
+        // project's own rule is that a report never lists every US state by default. Their own staleness is
+        // still checked directly -- see KnownJurisdictionsTests.
     ];
 
     public static IReadOnlyList<RuleSource> Stale(DateTimeOffset at) => [.. All.Where(s => s.IsStale(at, MaxAge))];

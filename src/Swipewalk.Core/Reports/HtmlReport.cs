@@ -276,14 +276,17 @@ public static class HtmlReport
         html.Append("""
             <section class="standards" aria-labelledby="standards-title">
               <h2 id="standards-title">Relevance to laws and standards</h2>
-              <table class="coverage"><thead><tr><th scope="col">Standard</th><th scope="col">Based on</th><th scope="col">WCAG issues</th><th scope="col">Needs review</th><th scope="col">Outside its WCAG basis</th></tr></thead><tbody>
+              <table class="coverage"><thead><tr><th scope="col">Standard</th><th scope="col">Legal tier</th><th scope="col">Based on</th><th scope="col">WCAG issues</th><th scope="col">Needs review</th><th scope="col">Outside its WCAG basis</th></tr></thead><tbody>
             """);
         foreach (var s in report.Standards)
         {
-            var relevant = findings.Where(f => f.RelevantStandards.Contains(s.Id)).ToList();
+            // Computed directly from the standard's own WCAG version/level (Standard.Includes), not the
+            // precomputed Finding.RelevantStandards -- that only ever covers the default set, but this table
+            // can also show one opt-in jurisdiction standard (see ScanReport.Standards/FocusStandard).
+            var relevant = findings.Where(f => f.Criteria.Any(s.Includes)).ToList();
             var focus = s.Id == report.FocusStandard ? " class=\"focus\"" : "";
             html.Append($"""
-                <tr{focus}><td><a href="{E(s.Source)}">{E(s.Name)}</a><br><span class="meta">{E(s.Jurisdiction)}</span></td><td>{E(s.Basis)}</td>
+                <tr{focus}><td><a href="{E(s.Source)}">{E(s.Name)}</a><br><span class="meta">{E(s.Jurisdiction)}</span></td><td>{E(s.LegalTier.Display())}</td><td>{E(s.Basis)}</td>
                 <td>{relevant.Count(f => f.Kind == FindingKind.WcagIssue)}</td><td>{relevant.Count(f => f.Kind == FindingKind.NeedsReview)}</td>
                 <td>{findings.Count - relevant.Count}</td></tr>
                 """);
@@ -801,6 +804,17 @@ public static class HtmlReport
             var beyond = KnownStandards.All.Where(st => !f.RelevantStandards.Contains(st.Id)).Select(st => st.ShortName).ToList();
             if (names.Count > 0 && beyond.Count > 0)
                 chips += $"""<span class="chip law beyond">Not in WCAG basis of: {E(string.Join(" · ", beyond))}</span>""";
+            // Apple/Google store guidance a finding is also relevant to (never a review requirement -- see
+            // StoreGuidance's own remarks); a store's own review policy isn't checked, so this is purely
+            // additional context, not counted anywhere else in the report. Filtered to the screen's own
+            // platform (Apple guidance never shows for an Android finding, or Google Play's for iOS), and the
+            // caveat is rendered as visible text (not only a hover-only title attribute).
+            foreach (var note in StoreGuidance.For(f, screen.Platform))
+            {
+                chips += $"""<span class="chip law store">{E(note.Wording)}</span><span class="meta store-detail">{E(note.Detail)}</span>""";
+                if (note.Store == "Google Play" && StoreGuidance.CameFromAtf(f))
+                    chips += $"""<span class="chip law store">This finding was itself reported by {E(StoreGuidance.AtfEngineName)}.</span>""";
+            }
         }
         foreach (var engine in f.Source == Finding.DefaultSource ? f.AlsoReportedBy : [f.Source, .. f.AlsoReportedBy])
             chips += $"""<span class="chip source">{(f.Source == engine ? "Reported by" : "Also reported by")} {E(engine)}</span>""";
