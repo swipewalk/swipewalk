@@ -388,9 +388,11 @@ public sealed class ScanService(IProgress<string> log)
     /// appearance and runs every rule on it, restoring the device's original appearance afterward no matter
     /// what happens (an error, a cancellation, or a clean finish) -- the same before-anything-changes,
     /// finally-restores shape as the large-text check's <see cref="AppearanceRestore"/> (mirroring
-    /// <c>Swipewalk.Collectors.TextSizeRestore</c>). Not supported yet on a physical iPhone -- returns a skip
-    /// reason instead of touching the device -- see <see cref="AppearanceLabels.PhysicalIphoneNotSupportedReason"/>.
-    /// The other capture is already run through <see cref="RuleRunner"/>, so <see cref="ScanAsync"/> only has
+    /// <c>Swipewalk.Collectors.TextSizeRestore</c>). On a physical iPhone this drives Settings > Appearance
+    /// through the harness (see <see cref="IosCollector.ReadPhysicalAppearanceAsync"/>); a harness
+    /// failure there (signing, Settings automation) is caught and returned as a skip reason instead of
+    /// failing the whole scan, mirroring <c>CapturePhysicalLargeTextAsync</c>'s degrade-to-skip shape. The
+    /// other capture is already run through <see cref="RuleRunner"/>, so <see cref="ScanAsync"/> only has
     /// to merge the two <see cref="ScreenResult"/>s (see <see cref="AppearanceMerge"/>).
     /// </summary>
     /// <returns>
@@ -406,9 +408,12 @@ public sealed class ScanService(IProgress<string> log)
         {
             var deviceId = options.Device ?? await IosCollector.BootedSimulatorAsync();
             var device = deviceId is null ? null : (await Devices.IosAsync()).FirstOrDefault(d => d.Id == deviceId);
-            if (device is null || device.IsPhysical)
-                return (null, null, null, AppearanceLabels.PhysicalIphoneNotSupportedReason, false);
+            if (device is null)
+                return (null, null, null, "no iOS Simulator or device found", false);
             var udid = device.Id;
+
+            if (device.IsPhysical)
+                return await RunPhysicalAppearanceRescanAsync(options, snapshot, otherCaptureDir, udid, cancellationToken);
 
             var original = await IosCollector.ReadAppearanceAsync(udid);
             if (original is not (AppearanceLabels.Dark or AppearanceLabels.Light))
@@ -462,6 +467,76 @@ public sealed class ScanService(IProgress<string> log)
     }
 
     /// <summary>
+    /// The physical-iPhone half of <see cref="RunAppearanceRescanAsync"/>: reads the current Settings &gt;
+    /// Appearance state first, without changing anything (so a read failure or an "automatic"
+    /// reading leaves nothing to restore), remembers the true original before applying anything, then
+    /// switches to the other explicit appearance, captures, and always restores in <c>finally</c> --
+    /// forgetting the marker only once the harness confirms the restore, the same as
+    /// <c>IosCollector.CapturePhysicalLargeTextAsync</c>. A device left on Automatic (day/night scheduling)
+    /// is skipped with a reason instead of guessing which appearance is "current": see
+    /// <see cref="IosCollector.ReadPhysicalAppearanceAsync"/>.
+    /// </summary>
+    private async Task<(ScreenResult? Other, string? Appearance, string? OtherAppearance, string? SkippedReason, bool Unchanged)> RunPhysicalAppearanceRescanAsync(
+        ScanOptions options, ScreenSnapshot snapshot, string otherCaptureDir, string udid, CancellationToken cancellationToken)
+    {
+        var (plan, problem) = SigningPlan.Create(options.Team, options.Profile, options.HarnessBundlePrefix, udid);
+        if (plan is null)
+            return (null, null, null, $"the iOS harness could not be signed for this iPhone to change its appearance: {problem}", false);
+        if (options.Team is not null)
+            SigningTeams.Remember(options.Team);
+
+        string? original;
+        try
+        {
+            original = await IosCollector.ReadPhysicalAppearanceAsync(options.HarnessProject, udid, plan, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (null, null, null, $"could not read this iPhone's current appearance: {ex.Message.Split('\n')[0]}", false);
+        }
+
+        if (original == "automatic")
+            return (null, null, null,
+                "this iPhone's appearance follows Automatic (day/night) scheduling; set Appearance to Light or Dark by hand to check both appearances, then scan again",
+                false);
+        if (original is not (AppearanceLabels.Dark or AppearanceLabels.Light))
+            return (null, null, null, $"could not read this iPhone's current appearance (\"{original}\")", false);
+
+        log.Report(PhysicalDeviceAppearanceNotice.Text);
+        // The marker is written now, before the other appearance is applied below -- not after -- so a
+        // failure anywhere after this leaves a marker pointing at the true original for the next
+        // preflight/doctor check to restore, instead of a phone changed with nothing recorded.
+        AppearanceRestore.Remember(udid, original);
+        try
+        {
+            var otherAppearance = original == AppearanceLabels.Dark ? AppearanceLabels.Light : AppearanceLabels.Dark;
+            log.Report($"Switching to {otherAppearance} appearance and capturing again...");
+            await IosCollector.SetPhysicalAppearanceAsync(options.HarnessProject, udid, plan, otherAppearance, cancellationToken);
+            await IosCollector.CaptureAsync(otherCaptureDir, options.BundleId!, udid, options.HarnessProject, options.Team,
+                options.ForceResultBundle, options.Profile, options.HarnessBundlePrefix, log: log);
+            var otherSnapshot = IosCollector.Load(otherCaptureDir, options.ScreenName);
+            var otherScreen = new RuleRunner(DefaultRules.All).Run(otherSnapshot);
+            return (otherScreen, original, otherAppearance, null, AppearanceChangeDetector.LooksUnchanged(snapshot, otherSnapshot));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (null, null, null, $"could not switch this iPhone's appearance (Settings automation failed): {ex.Message.Split('\n')[0]}", false);
+        }
+        finally
+        {
+            try
+            {
+                await IosCollector.SetPhysicalAppearanceAsync(options.HarnessProject, udid, plan, original, cancellationToken);
+                AppearanceRestore.Forget(udid);
+            }
+            catch (InvalidOperationException)
+            {
+                // Leave the marker: the next preflight/doctor check restores it (see Preflight.IosAsync).
+            }
+        }
+    }
+
+    /// <summary>
     /// <see cref="ScanOptions.OrientationBoth"/>: rotates the device to its other orientation and captures
     /// the screen again, restoring the device's orientation and rotation-lock state afterward no matter what
     /// happens (an error, a cancellation, or a clean finish) -- exactly, on Android (the original
@@ -470,8 +545,12 @@ public sealed class ScanService(IProgress<string> log)
     /// there is no API to read the Simulator's true original orientation back (see the iOS branch below) --
     /// the same before-anything-changes,
     /// finally-restores shape as <see cref="RunAppearanceRescanAsync"/> (mirroring <see cref="OrientationRestore"/>
-    /// on <see cref="AppearanceRestore"/>). Not supported yet on a physical iPhone -- returns a skip reason
-    /// instead of touching the device -- see <see cref="OrientationLabels.PhysicalIphoneNotSupportedReason"/>.
+    /// on <see cref="AppearanceRestore"/>). On a physical iPhone this signs the harness the same way the
+    /// large-text check does and rotates through <see cref="IosCollector.SetOrientationAsync"/>; a harness
+    /// failure there (signing, a non-zero xcodebuild exit) is caught and returned as a skip reason instead of
+    /// failing the whole scan -- but a rotation LOCK typically does not throw (see that method's remarks), so
+    /// this alone can't fully rule it out; <see cref="PhysicalDeviceOrientationNotice"/> prints a plain notice
+    /// naming the possibility, it does not check or rule out the lock itself.
     /// Unlike <see cref="RunAppearanceRescanAsync"/>, this returns the raw <see cref="ScreenSnapshot"/>, not
     /// an already-ruled <see cref="ScreenResult"/>: <see cref="ScanAsync"/> attaches it to
     /// <see cref="ScreenSnapshot.Orientation"/> before running the rules once, so
@@ -488,15 +567,27 @@ public sealed class ScanService(IProgress<string> log)
         {
             var deviceId = options.Device ?? await IosCollector.BootedSimulatorAsync();
             var device = deviceId is null ? null : (await Devices.IosAsync()).FirstOrDefault(d => d.Id == deviceId);
-            if (device is null || device.IsPhysical)
-                return (null, null, null, OrientationLabels.PhysicalIphoneNotSupportedReason);
+            if (device is null)
+                return (null, null, null, "no iOS Simulator or device found");
             var udid = device.Id;
 
-            // No simctl (or other) API reads the Simulator's current orientation back (see
-            // IosCollector.SetOrientationAsync's remarks); infer the original from the primary capture's own
-            // screenshot/bounds aspect ratio -- the same evidence OrientationChangeDetector compares captures
-            // with -- and always explicitly rotate back to that same inferred value afterward. Defaults to
-            // portrait (most apps' natural orientation) when the primary capture gives no usable evidence.
+            SigningPlan? plan = null;
+            if (device.IsPhysical)
+            {
+                var (createdPlan, problem) = SigningPlan.Create(options.Team, options.Profile, options.HarnessBundlePrefix, udid);
+                if (createdPlan is null)
+                    return (null, null, null, $"the iOS harness could not be signed for this iPhone to rotate it: {problem}");
+                plan = createdPlan;
+                if (options.Team is not null)
+                    SigningTeams.Remember(options.Team);
+                log.Report(PhysicalDeviceOrientationNotice.Text);
+            }
+
+            // Neither `simctl` (Simulator) nor a read primitive (physical device) tells us the current
+            // orientation back; infer the original from the primary capture's own screenshot/bounds aspect
+            // ratio -- the same evidence OrientationChangeDetector compares captures with -- and always
+            // explicitly rotate back to that same inferred value afterward. Defaults to portrait (most apps'
+            // natural orientation) when the primary capture gives no usable evidence.
             var primaryIsLandscape = IsLandscape(snapshot) ?? false;
             var originalTarget = primaryIsLandscape ? "landscapeLeft" : "portrait";
             var otherTarget = primaryIsLandscape ? "portrait" : "landscapeLeft";
@@ -506,17 +597,28 @@ public sealed class ScanService(IProgress<string> log)
             {
                 var otherLabel = primaryIsLandscape ? OrientationLabels.Portrait : OrientationLabels.Landscape;
                 log.Report($"Rotating to {otherLabel} and capturing again...");
-                await IosCollector.SetOrientationAsync(options.HarnessProject, udid, otherTarget, cancellationToken);
+                await IosCollector.SetOrientationAsync(options.HarnessProject, udid, otherTarget, plan, cancellationToken);
                 await IosCollector.CaptureAsync(otherCaptureDir, options.BundleId!, udid, options.HarnessProject, options.Team,
                     options.ForceResultBundle, options.Profile, options.HarnessBundlePrefix, log: log);
                 var otherSnapshot = IosCollector.Load(otherCaptureDir, options.ScreenName);
                 var primaryLabel = primaryIsLandscape ? OrientationLabels.Landscape : OrientationLabels.Portrait;
                 return (otherSnapshot, primaryLabel, otherLabel, null);
             }
+            catch (InvalidOperationException ex) when (device.IsPhysical)
+            {
+                return (null, null, null, $"could not rotate this iPhone (automation failed): {ex.Message.Split('\n')[0]}");
+            }
             finally
             {
-                await IosCollector.SetOrientationAsync(options.HarnessProject, udid, originalTarget, cancellationToken);
-                OrientationRestore.Forget(udid);
+                try
+                {
+                    await IosCollector.SetOrientationAsync(options.HarnessProject, udid, originalTarget, plan, cancellationToken);
+                    OrientationRestore.Forget(udid);
+                }
+                catch (InvalidOperationException) when (device.IsPhysical)
+                {
+                    // Leave the marker: the next preflight/doctor check restores it (see Preflight.IosAsync).
+                }
             }
         }
         else

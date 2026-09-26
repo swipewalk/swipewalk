@@ -483,8 +483,10 @@ public static class IosCollector
 
     /// <summary>
     /// The Simulator's current dark/light appearance ("dark" or "light"), via `xcrun simctl ui &lt;udid&gt;
-    /// appearance`. Simulator only -- there is no equivalent for a physical iPhone yet (see
-    /// <see cref="AppearanceLabels.PhysicalIphoneNotSupportedReason"/> and docs/limitations.md).
+    /// appearance`. Simulator only -- a physical iPhone has no `simctl`, so its appearance rescan instead
+    /// drives Settings > Appearance through the harness (see
+    /// <see cref="ReadPhysicalAppearanceAsync"/>/<see cref="SetPhysicalAppearanceAsync"/> and
+    /// SettingsAppearance.swift).
     /// </summary>
     public static async Task<string> ReadAppearanceAsync(string udid) => (await Simctl("ui", udid, "appearance")).Trim();
 
@@ -492,29 +494,33 @@ public static class IosCollector
     public static Task SetAppearanceAsync(string udid, string appearance) => Simctl("ui", udid, "appearance", appearance);
 
     /// <summary>
-    /// Rotates the Simulator to <paramref name="orientation"/> ("portrait" or "landscapeLeft") for the
-    /// orientation rescan (<c>scan --orientation both</c>). There is no <c>simctl</c> equivalent of
-    /// <see cref="SetAppearanceAsync"/> for orientation (checked: `simctl ui &lt;udid&gt; --help` lists
-    /// appearance/increase_contrast/content_size only, no orientation option, on Xcode 27), so this runs the
-    /// harness's one-shot <c>ScanTests/testSetOrientation</c>, which sets <c>XCUIDevice.shared.orientation</c>
-    /// -- the same one-small-command shape as the text-size steps below, but with no signing (Simulator only:
-    /// a physical iPhone is never passed here -- see
-    /// <see cref="Reports.OrientationLabels.PhysicalIphoneNotSupportedReason"/>) and no output file (success
-    /// is exit code 0).
+    /// Rotates the Simulator or a physical iPhone to <paramref name="orientation"/> ("portrait" or
+    /// "landscapeLeft") for the orientation rescan (<c>scan --orientation both</c>). There is no
+    /// <c>simctl</c> equivalent of <see cref="SetAppearanceAsync"/> for orientation (checked: `simctl ui
+    /// &lt;udid&gt; --help` lists appearance/increase_contrast/content_size only, no orientation option, on
+    /// Xcode 27), so this runs the harness's one-shot <c>ScanTests/testSetOrientation</c>, which sets
+    /// <c>XCUIDevice.shared.orientation</c> -- the same one-small-command shape as the text-size steps below.
+    /// No output file: success is exit code 0. <paramref name="signing"/> is null for a Simulator (no
+    /// signing); a physical iPhone passes its <see cref="SigningPlan"/>, the same as the text-size and
+    /// appearance harness steps. On a physical device, <c>XCUIDevice.shared.orientation</c> is a simulated
+    /// sensor event: if Control Center's rotation lock is on, this can report success (exit code 0) while the
+    /// interface never actually rotates -- there is no public API here to read the lock's own state, so
+    /// callers treat "no visible change" as a review case, never a confirmed failure (see
+    /// <see cref="Rules.OrientationRestrictedRule"/>).
     /// </summary>
-    public static async Task SetOrientationAsync(string? harnessProject, string udid, string orientation, CancellationToken cancellationToken = default)
+    public static async Task SetOrientationAsync(string? harnessProject, string udid, string orientation, SigningPlan? signing = null, CancellationToken cancellationToken = default)
     {
         var workDir = Path.Combine(Path.GetTempPath(), $"swipewalk-orientation-{Guid.NewGuid():N}");
         Directory.CreateDirectory(workDir);
         try
         {
-            var info = HarnessProcess(harnessProject, udid, "-", workDir, "ScanTests/testSetOrientation", serve: false);
+            var info = HarnessProcess(harnessProject, udid, "-", workDir, "ScanTests/testSetOrientation", serve: false, resultBundle: null, signing);
             info.Environment["TEST_RUNNER_CF_ORIENTATION"] = orientation;
             var (exitCode, output) = await RunAsync(info);
             if (exitCode != 0)
             {
                 var errors = string.Join('\n', output.Split('\n').Where(l => l.Contains("error", StringComparison.OrdinalIgnoreCase)).Take(5));
-                throw new InvalidOperationException($"Could not rotate the Simulator to {orientation} (xcodebuild exit {exitCode}). {errors}");
+                throw new InvalidOperationException($"Could not rotate the device to {orientation} (xcodebuild exit {exitCode}). {errors}");
             }
         }
         finally
@@ -522,6 +528,72 @@ public static class IosCollector
             TryDelete(workDir);
         }
     }
+
+    /// <summary>
+    /// Reads (without changing) a physical iPhone's current Settings &gt; Appearance appearance
+    /// through the harness: "light", "dark", or "automatic" (day/night scheduling) -- the physical-device
+    /// counterpart of <see cref="ReadAppearanceAsync"/>'s `simctl` read, used by the appearance rescan
+    /// (<c>scan --appearance both</c>). "automatic" is never acted on further up the call chain: a device
+    /// found on Automatic has its appearance rescan skipped with a reason instead (see
+    /// <c>Swipewalk.Engine.ScanService.RunAppearanceRescanAsync</c>), since there is no fixed "other appearance"
+    /// to compare against while iOS is switching it on a schedule.
+    /// </summary>
+    public static async Task<string?> ReadPhysicalAppearanceAsync(string? harnessProject, string udid, SigningPlan signing, CancellationToken cancellationToken = default)
+    {
+        var result = await RunAppearanceStepAsync(harnessProject, udid, "testAppearanceRead", signing, target: null, cancellationToken);
+        return result.GetValueOrDefault("state");
+    }
+
+    /// <summary>
+    /// Moves a physical iPhone's Settings &gt; Appearance to exactly <paramref name="target"/>
+    /// ("light" or "dark", never "automatic" -- see <see cref="ReadPhysicalAppearanceAsync"/>) through the
+    /// harness: used both to switch to the other appearance for the rescan and to put the original explicit
+    /// choice back afterward.
+    /// </summary>
+    public static Task SetPhysicalAppearanceAsync(string? harnessProject, string udid, SigningPlan signing, string target, CancellationToken cancellationToken = default) =>
+        RunAppearanceStepAsync(harnessProject, udid, "testAppearanceApply", signing, target, cancellationToken);
+
+    /// <summary>
+    /// Runs a Settings appearance one-shot test method (ScanTests/testAppearanceRead|Apply) and returns its
+    /// appearance.json as a dictionary, or throws with the harness's machine-readable error -- the same shape
+    /// as <see cref="RunTextSizeStepAsync"/>, just a separate output file and environment variable so the two
+    /// checks never collide when both are requested for the same screen.
+    /// </summary>
+    private static async Task<Dictionary<string, string>> RunAppearanceStepAsync(
+        string? harnessProject, string udid, string testMethod, SigningPlan signing, string? target, CancellationToken cancellationToken)
+    {
+        var workDir = Path.Combine(Path.GetTempPath(), $"swipewalk-appearance-{Guid.NewGuid():N}");
+        var resultBundle = Path.Combine(Path.GetTempPath(), $"swipewalk-{Guid.NewGuid():N}.xcresult");
+        Directory.CreateDirectory(workDir);
+        try
+        {
+            var info = HarnessProcess(harnessProject, udid, "-", workDir, "ScanTests/" + testMethod, serve: false, resultBundle, signing);
+            if (target is not null)
+                info.Environment["TEST_RUNNER_CF_APPEARANCE_TARGET"] = target;
+            var (exitCode, output) = await RunAsync(info);
+            if (Directory.Exists(resultBundle))
+                await ExportAttachmentsAsync(resultBundle, workDir, [AppearanceFile]);
+            var jsonPath = Path.Combine(workDir, AppearanceFile);
+            if (exitCode != 0 || !File.Exists(jsonPath))
+            {
+                var errors = string.Join('\n', output.Split('\n').Where(l => l.Contains("error", StringComparison.OrdinalIgnoreCase)).Take(5));
+                throw new InvalidOperationException($"iOS appearance step {testMethod} failed (xcodebuild exit {exitCode}). {errors}");
+            }
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(jsonPath));
+            var result = doc.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
+            if (result.GetValueOrDefault("ok") == "false")
+                throw new InvalidOperationException($"iOS appearance step {testMethod} failed: {result.GetValueOrDefault("error", "unknown error")}");
+            return result;
+        }
+        finally
+        {
+            TryDelete(workDir);
+            if (Directory.Exists(resultBundle))
+                TryDelete(resultBundle);
+        }
+    }
+
+    private const string AppearanceFile = "appearance.json";
 
     /// <summary>
     /// Asks whether to use the Accessibility Inspector route for a screen-reader capture (<c>--screen-reader</c>

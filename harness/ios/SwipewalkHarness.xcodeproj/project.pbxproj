@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		67E7D3A4D8F7BCB52B4B6916 /* SettingsTextSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEA0D52C0DCC4896A57281E /* SettingsTextSize.swift */; };
+		6D715D55374F3C44553F12C4 /* SettingsAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4DAD000E1EA45C26B04CBA /* SettingsAppearance.swift */; };
 		6EB71D5E8509382E5B0E6457 /* RunnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA44D73BD24E466D148736B1 /* RunnerApp.swift */; };
 		B00C7309127C2B8EC81FD57F /* ScanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF5096C73D60643093783EC /* ScanTests.swift */; };
 /* End PBXBuildFile section */
@@ -27,6 +28,7 @@
 		0DEA0D52C0DCC4896A57281E /* SettingsTextSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTextSize.swift; sourceTree = "<group>"; };
 		3DF5096C73D60643093783EC /* ScanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanTests.swift; sourceTree = "<group>"; };
 		521B127C39C711DBDD8DB035 /* HarnessUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HarnessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BD4DAD000E1EA45C26B04CBA /* SettingsAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAppearance.swift; sourceTree = "<group>"; };
 		CA44D73BD24E466D148736B1 /* RunnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -43,6 +45,7 @@
 			isa = PBXGroup;
 			children = (
 				3DF5096C73D60643093783EC /* ScanTests.swift */,
+				BD4DAD000E1EA45C26B04CBA /* SettingsAppearance.swift */,
 				0DEA0D52C0DCC4896A57281E /* SettingsTextSize.swift */,
 			);
 			path = HarnessUITests;
@@ -156,6 +159,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B00C7309127C2B8EC81FD57F /* ScanTests.swift in Sources */,
+				6D715D55374F3C44553F12C4 /* SettingsAppearance.swift in Sources */,
 				67E7D3A4D8F7BCB52B4B6916 /* SettingsTextSize.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

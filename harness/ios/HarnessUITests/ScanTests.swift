@@ -12,12 +12,16 @@ import UIKit
 ///                       SettingsTextSize.swift's TextSizeState.description ("on:5/7") -- used both to move
 ///                       to AX3 and to put an earlier state back; there is no separate "set" step
 ///   CF_ORIENTATION  testSetOrientation only: "portrait" or "landscapeLeft" -- see that test's own comment
+///   CF_APPEARANCE_TARGET  testAppearanceApply only: "light" or "dark" -- see SettingsAppearance.swift
 /// Settings text-size driving (see SettingsTextSize.swift) is exposed both as one-shot test methods below
 /// (testTextSizeRead/Restore, for `scan`) and as serve-mode commands (textsize-read/restore, relaunch, for
 /// `record`) in testServe. Callers always read first and remember the original before applying anything (see
 /// Swipewalk.Collectors.Ios.IosCollector/IosScreenSource's CapturePhysicalLargeTextAsync): an earlier combined
 /// read+apply step (testTextSizeSetAX3/textsize-set) was removed because a failure partway through it could
-/// leave the phone changed with no record of the original size to restore.
+/// leave the phone changed with no record of the original size to restore. Settings appearance driving (see
+/// SettingsAppearance.swift) follows the same read-first shape as one-shot test methods (testAppearanceRead/
+/// Apply) for a physical iPhone's dark/light rescan (`scan --appearance both`); the iOS Simulator instead uses
+/// `simctl ui <udid> appearance` directly (see Swipewalk.Collectors.Ios.IosCollector.SetAppearanceAsync).
 final class ScanTests: XCTestCase {
     private var env: [String: String] { ProcessInfo.processInfo.environment }
 
@@ -268,13 +272,15 @@ final class ScanTests: XCTestCase {
         }
     }
 
-    /// One-shot: rotates the Simulator (or device) to CF_ORIENTATION ("portrait" or "landscapeLeft") for the
-    /// orientation rescan (`scan --orientation both`; see Swipewalk.Collectors.Ios.IosCollector
+    /// One-shot: rotates the Simulator or a physical device to CF_ORIENTATION ("portrait" or "landscapeLeft")
+    /// for the orientation rescan (`scan --orientation both`; see Swipewalk.Collectors.Ios.IosCollector
     /// .SetOrientationAsync, whose remarks explain why this exists -- there is no `simctl` equivalent).
-    /// XCUIDevice.shared.orientation is the same API UI-testing teams commonly use to rotate a Simulator; it
-    /// has only been verified here against a Simulator (Swipewalk does not attempt this on a physical
-    /// iPhone). No output file: success is exit code 0, a crash or a non-zero exit is the failure signal, the
-    /// same shape as the relaunch action in testServe below.
+    /// XCUIDevice.shared.orientation is the same API UI-testing teams commonly use to rotate a device under
+    /// test; on a physical iPhone this is a simulated sensor event, so it can silently do nothing if
+    /// Control Center's rotation lock is on -- there is no public API here to read that lock's state, so a
+    /// screen that looks the same after this runs is reported for review (never a confirmed failure), the
+    /// same way a screen genuinely restricted to one orientation is. No output file: success is exit code 0, a
+    /// crash or a non-zero exit is the failure signal, the same shape as the relaunch action in testServe below.
     func testSetOrientation() throws {
         guard let target = env["CF_ORIENTATION"] else {
             XCTFail("CF_ORIENTATION must be set to \"portrait\" or \"landscapeLeft\"")
@@ -308,6 +314,61 @@ final class ScanTests: XCTestCase {
         if attach {
             let attachment = XCTAttachment(contentsOfFile: output.appendingPathComponent("textsize.json"))
             attachment.name = "textsize.json"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
+    /// One-shot: reads which appearance (light/dark/automatic) is currently active on a physical iPhone's
+    /// Settings > Appearance, without changing anything -- the read side of the appearance rescan
+    /// (`scan --appearance both`) on a physical device (see Swipewalk.Collectors.Ios.IosCollector
+    /// .ReadPhysicalAppearanceAsync; the Simulator instead reads `simctl ui <udid> appearance` directly).
+    func testAppearanceRead() throws {
+        try runAppearanceStep { settings in
+            try SettingsAppearance.openAppearance(settings)
+            return ["state": try SettingsAppearance.readState(settings)]
+        }
+    }
+
+    /// One-shot: switches Settings > Appearance to CF_APPEARANCE_TARGET exactly ("light" or "dark")
+    /// -- used both to move to the other appearance for the rescan and to put the original explicit choice
+    /// back afterward (see Swipewalk.Collectors.Ios.IosCollector.SetPhysicalAppearanceAsync). Never called
+    /// with "automatic": a device found on Automatic is left untouched and the rescan is skipped instead (see
+    /// SettingsAppearance.swift's header comment).
+    func testAppearanceApply() throws {
+        guard let target = env["CF_APPEARANCE_TARGET"], target == "light" || target == "dark" else {
+            XCTFail("CF_APPEARANCE_TARGET must be set to \"light\" or \"dark\"")
+            return
+        }
+        try runAppearanceStep { settings in
+            try SettingsAppearance.openAppearance(settings)
+            try SettingsAppearance.applyAppearance(settings, target)
+            return ["after": try SettingsAppearance.readState(settings)]
+        }
+    }
+
+    /// Runs a Settings appearance step and writes its result (or a machine-readable error, never a crash) as
+    /// JSON to CF_OUTPUT/appearance.json -- the same shape as runTextSizeStep above, just a separate output
+    /// file so the two never collide when both run in the same capture directory.
+    private func runAppearanceStep(_ step: (XCUIApplication) throws -> [String: String]) throws {
+        let attach = env["CF_ATTACH"] == "1"
+        let output = attach
+            ? URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("swipewalk-appearance", isDirectory: true)
+            : URL(fileURLWithPath: env["CF_OUTPUT"] ?? NSTemporaryDirectory(), isDirectory: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let settings = XCUIApplication(bundleIdentifier: SettingsAppearance.bundleId)
+        var result: [String: String]
+        do {
+            result = try step(settings)
+            result["ok"] = "true"
+        } catch {
+            result = ["ok": "false", "error": "\(error)"]
+        }
+        let data = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+        try data.write(to: output.appendingPathComponent("appearance.json"))
+        if attach {
+            let attachment = XCTAttachment(contentsOfFile: output.appendingPathComponent("appearance.json"))
+            attachment.name = "appearance.json"
             attachment.lifetime = .keepAlways
             add(attachment)
         }

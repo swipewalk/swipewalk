@@ -11,11 +11,6 @@ public static class OrientationLabels
 
     /// <summary>The same rule reported the same element in both captures.</summary>
     public const string Both = "both";
-
-    /// <summary>Reported by <c>Swipewalk.Engine.ScanService</c> when the orientation rescan was requested but
-    /// the device is a physical iPhone: rotating it through Swipewalk isn't supported yet (see
-    /// docs/limitations.md).</summary>
-    public const string PhysicalIphoneNotSupportedReason = "rotating a physical iPhone isn't supported yet";
 }
 
 /// <summary>

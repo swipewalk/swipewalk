@@ -446,12 +446,19 @@ colors) didn't change at all; samples/NativeiOS (a fixed background, but at leas
 color) changed partly. The deciding factor was each app's own color handling, not the platform or
 framework.
 
-Not supported yet on a physical iPhone -- Swipewalk doesn't switch a physical iPhone's appearance
-yet. A scan attempted on a physical iPhone with `--appearance both` in this verification failed
-before it reached that step, for an unrelated reason (the phone needed a Face ID/passcode approval
-for UI automation that a person has to give); it never touched the device's appearance setting and
-left no appearance-restore marker behind, but the skip message itself was not observed on hardware
-in this pass.
+**Physical iPhone (iOS 27.0), verified 2026-09-26**: `--appearance both` now drives Settings >
+Appearance on a physical iPhone (reading the current Light/Dark/Automatic choice, switching to the
+other explicit appearance, then restoring it) instead of being skipped. First attempt failed
+cleanly with a reason ("element not found: Light button"): the Light/Dark picker had moved to its
+own top-level "Appearance" row in this iOS release, separate from Display & Brightness -- found by
+dumping the Settings root's accessibility tree rather than guessing, and fixed
+(`harness/ios/HarnessUITests/SettingsAppearance.swift`). After the fix, two full end-to-end
+`swipewalk scan --appearance both` runs succeeded, restoring the device's original appearance
+("dark" both times) each time with no leftover marker: BuggyApp (MAUI) showed the same screen after
+switching to light (correctly reported as "looked the same" -- BuggyApp forces its own theme, as
+noted above); samples/NativeiOS showed a real, different capture in light appearance. A device left
+on Automatic is skipped with a reason instead of guessed (unverified on hardware in this pass -- the
+test iPhone was on an explicit choice, not Automatic, both times).
 
 ### Automating the orientation check: `scan --orientation both`
 
@@ -499,13 +506,18 @@ no API to read its true original orientation):
   `swipewalk doctor` restored it exactly (`accelerometer_rotation=1`, `user_rotation=0`) and
   removed the marker.
 
-Not supported yet on a physical iPhone -- Swipewalk doesn't rotate a physical iPhone yet, so
-`--orientation both` is skipped there with a reason before touching the device. A run was attempted
-against a connected iPhone in this pass to check the harness fix on real hardware too, but it
-stopped before reaching the orientation step: the phone needed a fresh Face ID/passcode approval for
-UI automation, which needs a person present, so it was left there rather than retried automatically.
-The orientation-specific skip logic itself only runs after that first capture succeeds, so it was
-not exercised on hardware in this pass.
+**Physical iPhone (iOS 27.0), verified 2026-09-26**: `--orientation both` now rotates a physical
+iPhone through the same harness call as the Simulator (`XCUIDevice.shared.orientation`, signed for
+the device), instead of being skipped. Two full end-to-end `swipewalk scan --orientation both` runs
+against a physical iPhone both rotated cleanly: BuggyApp (MAUI, screenshot 750x1334 to 1334x750) and
+samples/NativeiOS (same dimensions swapped), both with findings tagged by orientation and no
+`orientation-restricted` finding, and both restored to portrait with no leftover marker afterward
+(confirmed via `swipewalk doctor`, which reported nothing pending). Not verified on hardware in this
+pass: what happens with Control Center's rotation lock on -- the phone used here had it off both
+times, so the "can't tell rotation lock from a genuinely restricted screen" wording (see
+docs/limitations.md) is reasoned from how `XCUIDevice.shared.orientation` is understood to work (a
+simulated sensor event, not a guaranteed physical rotation), not from an observed locked run; no
+Apple documentation of its exact behavior with rotation lock on was found.
 
 ### What Google's Accessibility Test Framework added
 

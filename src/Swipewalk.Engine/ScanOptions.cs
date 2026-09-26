@@ -60,28 +60,32 @@ public sealed record ScanOptions
 
     /// <summary>
     /// scan only for now: also capture the screen in the device's other dark/light appearance (Android
-    /// `cmd uimode night`; iOS Simulator `simctl ui appearance`) and run every rule on that capture too, so a
-    /// contrast failure that only shows up in one theme is still found regardless of which theme the device
-    /// happened to be in (see docs/case-study.md: the same screen scanned clean in dark mode and found 5
-    /// contrast failures in light mode). The device's original appearance is restored afterward, including on
-    /// an error or cancellation. Off by default: it doubles the capture and rule-running work for a screen.
-    /// Not supported yet on a physical iPhone -- see <c>Swipewalk.Core.Reports.AppearanceLabels
-    /// .PhysicalIphoneNotSupportedReason</c> -- where it is skipped with a reason rather than attempted.
+    /// `cmd uimode night`; iOS Simulator `simctl ui appearance`; a physical iPhone through the harness driving
+    /// Settings &gt; Appearance) and run every rule on that capture too, so a contrast failure
+    /// that only shows up in one theme is still found regardless of which theme the device happened to be in
+    /// (see docs/case-study.md: the same screen scanned clean in dark mode and found 5 contrast failures in
+    /// light mode). The device's original appearance is restored afterward, including on an error or
+    /// cancellation. Off by default: it doubles the capture and rule-running work for a screen. A physical
+    /// iPhone left on Automatic (day/night scheduling) has no fixed "current" appearance to switch from, so
+    /// the check is skipped there with a reason instead.
     /// </summary>
     public bool AppearanceBoth { get; init; }
 
     /// <summary>
     /// scan only for now: also capture the screen rotated to the device's other orientation (portrait &lt;-&gt;
-    /// landscape; Android `settings put system accelerometer_rotation/user_rotation`; iOS Simulator via the
-    /// harness's <c>XCUIDevice.shared.orientation</c> -- there is no `simctl` equivalent) and check whether
-    /// the screen's content actually followed, for WCAG 1.3.4 Orientation (see
+    /// landscape; Android `settings put system accelerometer_rotation/user_rotation`; iOS via the harness's
+    /// <c>XCUIDevice.shared.orientation</c> -- there is no `simctl` equivalent, and it is the same call for
+    /// the Simulator and a physical iPhone, signed for the latter) and check whether the screen's content
+    /// actually followed, for WCAG 1.3.4 Orientation (see
     /// <c>Swipewalk.Core.Rules.OrientationRestrictedRule</c>). When it did rotate, every rule runs on that
     /// capture too and findings are tagged by orientation (see <c>Swipewalk.Core.Reports.OrientationMerge</c>),
-    /// the same shape as <see cref="AppearanceBoth"/>. The device's original orientation and rotation-lock
-    /// state are restored afterward, including on an error or cancellation. Off by default: it doubles the
-    /// capture and rule-running work for a screen. Not supported yet on a physical iPhone -- see
-    /// <c>Swipewalk.Core.Reports.OrientationLabels.PhysicalIphoneNotSupportedReason</c> -- where it is
-    /// skipped with a reason rather than attempted.
+    /// the same shape as <see cref="AppearanceBoth"/>. The device's original orientation is restored
+    /// afterward (and, on Android only, its rotation-lock state too), including on an error or cancellation.
+    /// Off by default: it doubles the capture and rule-running work for a screen. On a physical iPhone with
+    /// Control Center's rotation lock on, the rotation call can report success without the interface actually
+    /// turning -- there is no public API here to read the lock's own state, so
+    /// <c>Swipewalk.Collectors.PhysicalDeviceOrientationNotice</c> prints a plain notice naming the
+    /// possibility; it does not check or rule out the lock itself.
     /// </summary>
     public bool OrientationBoth { get; init; }
 

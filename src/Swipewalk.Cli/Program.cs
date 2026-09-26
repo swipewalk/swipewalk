@@ -128,22 +128,25 @@ const string Usage = """
                              changes the phone's text size and restores it; use a test device. record does
                              this by default
       --appearance <both>    scan: also capture the screen in the device's other dark/light appearance (Android
-                             `cmd uimode night`; iOS Simulator `simctl ui appearance`) and run every check on
-                             it too, so a contrast failure that only shows up in one theme isn't missed just
-                             because the device happened to be in the other one. Restores the device's original
-                             appearance afterward, including on an error or Ctrl-C. Off by default. Not
-                             supported yet on a physical iPhone (the report says why it was skipped); Simulator
-                             and emulator/Android device both work
+                             `cmd uimode night`; iOS Simulator `simctl ui appearance`; a physical iPhone through
+                             Settings > Appearance) and run every check on it too, so a contrast
+                             failure that only shows up in one theme isn't missed just because the device
+                             happened to be in the other one. Restores the device's original appearance
+                             afterward, including on an error or Ctrl-C. Off by default. On a physical iPhone
+                             left on Automatic, there's no fixed "current" appearance to switch from, so the
+                             check is skipped there with a reason
       --orientation <both>   scan: also rotate the device to its other orientation (portrait <-> landscape;
-                             Android `settings put system accelerometer_rotation/user_rotation`; iOS Simulator
-                             via the harness) and check whether the screen's content actually followed --
+                             Android `settings put system accelerometer_rotation/user_rotation`; iOS via the
+                             harness's XCUIDevice.shared.orientation, the same call for the Simulator and a
+                             physical iPhone) and check whether the screen's content actually followed --
                              for review against WCAG 1.3.4 Orientation, since a single orientation can be
                              essential to a screen. When it does rotate, every check runs on that capture too.
-                             Restores the device's orientation and rotation-lock state afterward (exactly, on
-                             Android; on the iOS Simulator, back to whichever of portrait/landscape the first
+                             Restores the device's orientation afterward (exactly, on Android, along with its
+                             rotation-lock state; on iOS, back to whichever of portrait/landscape the first
                              capture showed, since there's no way to read the original back), including on an
-                             error or Ctrl-C. Off by default. Not supported yet on a physical iPhone (the
-                             report says why it was skipped); Simulator and emulator/Android device both work
+                             error or Ctrl-C. Off by default. On a physical iPhone, this can't tell rotation
+                             lock (Control Center) from a genuinely restricted screen -- turn rotation lock
+                             off first, or a locked phone may be flagged for review as if it were restricted
       --auto-update-content  scan: take a few further captures of this screen a few seconds apart, with no
                              input, and check whether content kept changing on its own across more than one
                              interval (a carousel, ticker, timer or auto-advancing banner) -- for review

@@ -251,8 +251,9 @@ public static class Preflight
                 results.Add(new("Text size", CheckStatus.Warn, BaselineTextSize.Warning(currentContentSize)));
         }
 
-        // Appearance rescan (scan --appearance both), Simulator only for now -- see Reports.AppearanceLabels
-        // .PhysicalIphoneNotSupportedReason; a physical iPhone never gets an AppearanceRestore marker.
+        // Appearance rescan (scan --appearance both), Simulator recovery here -- via `simctl`, so it needs no
+        // signing; a physical iPhone's own recovery (via the harness) is below, alongside its other
+        // signing-dependent checks.
         if (!device.IsPhysical && AppearanceRestore.Pending(udid) is { } appearance)
         {
             await IosCollector.SetAppearanceAsync(udid, appearance);
@@ -260,8 +261,8 @@ public static class Preflight
             results.Add(new("Appearance", CheckStatus.Pass, $"restored to {appearance}; an interrupted appearance check had left it switched"));
         }
 
-        // Orientation rescan (scan --orientation both), Simulator only -- see Reports.OrientationLabels
-        // .PhysicalIphoneNotSupportedReason; a physical iPhone never gets an OrientationRestore marker.
+        // Orientation rescan (scan --orientation both), Simulator recovery here -- a physical iPhone's own
+        // recovery (via the harness, which needs signing) is below.
         if (!device.IsPhysical && OrientationRestore.Pending(udid) is { } orientation)
         {
             await IosCollector.SetOrientationAsync(harnessProject, udid, orientation);
@@ -295,6 +296,43 @@ public static class Preflight
                 {
                     results.Add(new("Text size", CheckStatus.Fail, $"could not restore ({state}): {ex.Message.Split('\n')[0]}",
                         "On the device: Settings > Accessibility > Display & Text Size > Larger Text; turn \"Larger Accessibility Sizes\" and the slider back to how you use the phone normally, then run `swipewalk doctor` again."));
+                }
+            }
+
+            // Same shape as the text-size recovery above, for an orientation rescan (scan --orientation both)
+            // interrupted on a physical iPhone: SetOrientationAsync makes no distinction between "set" and
+            // "restore", so re-issuing the recorded target is enough regardless of where the rotation was left.
+            if (plan is not null && OrientationRestore.Pending(udid) is { } physicalOrientation)
+            {
+                try
+                {
+                    await IosCollector.SetOrientationAsync(harnessProject, udid, physicalOrientation, plan);
+                    OrientationRestore.Forget(udid);
+                    results.Add(new("Orientation", CheckStatus.Pass, $"restored to {physicalOrientation}; an interrupted orientation check had left it rotated"));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    results.Add(new("Orientation", CheckStatus.Fail, $"could not restore ({physicalOrientation}): {ex.Message.Split('\n')[0]}",
+                        "Rotate the device back by hand (and turn Control Center's rotation lock back on if you use it), then run `swipewalk doctor` again."));
+                }
+            }
+
+            // Same shape again, for an appearance rescan (scan --appearance both) interrupted on a physical
+            // iPhone: the recorded value is always an explicit "light" or "dark" (see
+            // IosCollector.ReadPhysicalAppearanceAsync), never "automatic", since the rescan itself never
+            // changes a device found on Automatic.
+            if (plan is not null && AppearanceRestore.Pending(udid) is { } physicalAppearance)
+            {
+                try
+                {
+                    await IosCollector.SetPhysicalAppearanceAsync(harnessProject, udid, plan, physicalAppearance);
+                    AppearanceRestore.Forget(udid);
+                    results.Add(new("Appearance", CheckStatus.Pass, $"restored to {physicalAppearance}; an interrupted appearance check had left it switched"));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    results.Add(new("Appearance", CheckStatus.Fail, $"could not restore ({physicalAppearance}): {ex.Message.Split('\n')[0]}",
+                        "On the device: Settings > Appearance; set it back to how you use the phone normally, then run `swipewalk doctor` again."));
                 }
             }
 
