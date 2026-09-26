@@ -282,6 +282,21 @@ public static class FixGuidance
                     "A UIViewController overrides supportedInterfaceOrientations to return only one",
                     "SwiftUI: the app's Info.plist orientation list, since SwiftUI has no per-view orientation override")),
 
+            "auto-updating-content" => new(
+                "Add a visible button that pauses, stops or hides the moving/auto-updating content -- give the " +
+                "button an accessible name (e.g. \"Pause\") so it's usable with a screen reader too -- or, for " +
+                "auto-updating content, a way to control how often it updates. This is needed unless the content " +
+                "is the only thing on the screen (not shown alongside anything else), or WCAG's essential-activity " +
+                "exception applies -- but the W3C Understanding document's own examples of essential content " +
+                "(an explanatory animation, a stock ticker) still ship with pause/restart buttons, so essential " +
+                "content usually needs the control too.",
+                Maui: new("private IDispatcherTimer? _timer;\nprivate bool _paused;\n\nvoid TogglePause()\n{\n    _paused = !_paused;\n    if (_paused) _timer?.Stop(); else _timer?.Start();\n    PauseButton.Text = _paused ? \"Resume\" : \"Pause\";\n}",
+                    "An IDispatcherTimer (or Task.Delay loop) advances the content on a fixed interval with no button or gesture that stops it"),
+                Android: new("// A ViewPager2/RecyclerView auto-scroll driven by a Handler.postDelayed loop, or a\n// TextSwitcher/ValueAnimator cycle, needs a pause/stop control wired to the same handler:\nfindViewById<Button>(R.id.pause).setOnClickListener { handler.removeCallbacks(advance) }",
+                    "A Handler/CountDownTimer/ValueAnimator repeatedly updates a view with no way to stop it"),
+                Ios: new("// A Timer.scheduledTimer (UIKit) or a SwiftUI TimelineView/onReceive(Timer.publish(...))\n// needs a pause control that invalidates the timer or cancels the subscription:\ntimer?.invalidate()",
+                    "A Timer/DispatchSourceTimer (UIKit) or TimelineView/Timer.publish (SwiftUI) repeatedly updates content with no way to stop it")),
+
             "engine:dynamicType" => new(
                 "Check the screen with the largest text size (Settings > Accessibility > Display & Text Size). Text should grow and must not be cut off.",
                 Maui: new("<!-- FontAutoScalingEnabled is True by default; avoid fixed HeightRequest on text containers -->\n<Label FontAutoScalingEnabled=\"True\" />",

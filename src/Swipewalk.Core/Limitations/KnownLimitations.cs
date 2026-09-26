@@ -358,6 +358,16 @@ public static class KnownLimitations
         },
         new()
         {
+            Id = "auto-update-detection-heuristic",
+            Area = LimitationArea.Coverage,
+            Title = "The auto-updating-content check is a heuristic (it can miss or over-flag content), and only runs in scan",
+            Description = "scan --auto-update-content takes a few further captures of a screen a few seconds apart, with no input, and reports content that changed across two consecutive intervals (not just one) for review against WCAG 2.2.2 Pause, Stop, Hide. It compares accessibility trees, not screenshot pixels, so it never mistakes a blinking text-input caret for a change, and a loading spinner or other one-off transition that settles within the first interval is never reported. Requiring two consecutive intervals is a heuristic, not a guarantee: it does not distinguish sustained change from two unrelated, near-instantaneous transitions that happen to land just before and just after the middle capture (for example a screen that loads in two visible steps), and it compares any element that changed in each window, not necessarily the same element both times -- either case can be reported the same as genuine sustained content. Going the other way, it can also miss real auto-updating content: a carousel or ticker whose cycle length happens to closely match --auto-update-interval can look unchanged at every capture, and a single slow change spanning more than one interval (rather than a settled one-off change) looks the same as a settled one here. It also can't tell whether the changing content is shown alongside other content (WCAG 2.2.2 only applies when it is -- content that is the only thing on the screen, like a preloader, is exempt) or whether a pause/stop/hide control already exists elsewhere on the screen, so every finding needs both checked by hand. It never touches the device, unlike the appearance and orientation rescans, so it works on a physical device too -- but it is scan only for now; record and the desktop app don't offer it yet. Verified on a live scan against a planted auto-advancing bug (Android emulator and a physical Pixel: detected 2 of 3 runs, correctly not reported on the 1 run where the content's own 2-second cycle happened to alias with the 3-second capture interval; iOS Simulator: the check itself runs and completes with no false positive on static content, not yet verified detecting a planted auto-updating bug there).",
+            Impact = "A screen with no auto-updating-content finding has not been shown to have no moving, blinking, scrolling or auto-updating content; a finding is not proof the content is sustained, shown alongside other content, or missing a control; and the check isn't available at all outside scan.",
+            ManualCheck = "Watch each screen for at least 10-15 seconds with no input and check any moving, blinking, scrolling or auto-updating content for a way to pause, stop or hide it.",
+            Planned = "Wiring the check into record and the desktop app",
+        },
+        new()
+        {
             Id = "ios-overlays-during-recording",
             Area = LimitationArea.Detection,
             Platforms = [Platform.iOS],

@@ -98,6 +98,18 @@ public static class ScreenActivityBuilder
         else
             skipped["orientation-restricted"] = screen.OrientationSkippedReason ?? "orientation check not requested (pass --orientation both)";
 
+        // auto-updating-content (AutoUpdatingContentRule) needs the extra captures taken a few seconds apart
+        // (ScreenSnapshot.AutoUpdateCaptures, attached only when scan --auto-update-content ran);
+        // AutoUpdateCaptureCount is only set once that check actually completed (see Swipewalk.Engine.ScanService),
+        // whether or not it found sustained change -- the same "attempted, not just found something" shape as
+        // orientation-restricted's OtherOrientation gate above. A finding on the screen counts as ran too, the
+        // same belt-and-suspenders as orientation-restricted, in case a future caller sets the finding without
+        // also setting AutoUpdateCaptureCount.
+        if (screen.AutoUpdateCaptureCount is not null || screen.Findings.Any(f => f.RuleId == "auto-updating-content"))
+            ran.Add("auto-updating-content");
+        else
+            skipped["auto-updating-content"] = screen.AutoUpdateSkippedReason ?? "auto-update check not requested (pass --auto-update-content)";
+
         // The platform's own accessibility audit (EngineIssueRule) only ever runs as part of the iOS
         // collector (see XcuiTreeParser); Android and Windows collectors never populate EngineIssues, so a
         // screen with zero engine findings there means the audit doesn't exist, not that it ran and found

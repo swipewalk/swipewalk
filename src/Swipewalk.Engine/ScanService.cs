@@ -148,6 +148,26 @@ public sealed class ScanService(IProgress<string> log)
         if (options.FrameworkVersion is { } frameworkVersion)
             snapshot = snapshot with { FrameworkVersion = frameworkVersion };
 
+        // Captured right after the primary snapshot, before anything else that could itself change what's on
+        // screen (the large-text check, the orientation rescan, or an iOS Inspector walk) -- AutoUpdatingContentRule's
+        // finding says "with no input in between", and the elapsed time it reports has to be genuinely just
+        // this screen sitting idle, not time spent driving Settings, rotating the device, or walking the
+        // Inspector. Unlike orientation/appearance, this never touches the device, so there's no restore step
+        // and no separate rule run to merge afterward -- the rule reads the nested captures directly (attached
+        // to snapshot.AutoUpdateCaptures) and reports at most one finding for the whole screen.
+        string? autoUpdateSkippedReason = null;
+        if (options.AutoUpdateCheck && options.FromCapture is null)
+        {
+            var (extra, reason) = await CaptureAutoUpdateAsync(ios, options, captureDir, cancellationToken);
+            if (extra.Count > 0)
+                snapshot = snapshot with { AutoUpdateCaptures = extra, AutoUpdateIntervalSeconds = options.AutoUpdateIntervalSeconds };
+            else
+            {
+                autoUpdateSkippedReason = reason;
+                log.Report($"Auto-update check not done: {reason}.");
+            }
+        }
+
         // iOS's screen-reader capture (--screen-reader) is the Accessibility Inspector route, run here rather
         // than inside IosCollector.CaptureAsync above: unlike Android's TalkBack capture, it never touches the
         // device at all -- it's a Mac-side walk of a separate app (Xcode's Accessibility Inspector) -- and it
@@ -262,6 +282,21 @@ public sealed class ScanService(IProgress<string> log)
             screen = screen with { BaselineTextSizeNote = baselineTextSizeNote };
         if (appLaunchedNote is not null)
             screen = screen with { AppLaunchedNote = appLaunchedNote };
+
+        if (snapshot.AutoUpdateCaptures.Count > 0)
+            screen = screen with
+            {
+                AutoUpdateCaptureCount = snapshot.AutoUpdateCaptures.Count + 1,
+                AutoUpdateIntervalSeconds = snapshot.AutoUpdateIntervalSeconds,
+                // Real elapsed time from each capture's own timestamp, not AutoUpdateIntervalSeconds x the
+                // capture count: a full capture itself takes time on top of the wait (see
+                // ScreenResult.AutoUpdateElapsedSeconds's remarks).
+                AutoUpdateElapsedSeconds = Math.Max((snapshot.AutoUpdateCaptures[^1].CapturedAt - snapshot.CapturedAt).TotalSeconds, 0),
+                AutoUpdateScreenshotPath = snapshot.AutoUpdateCaptures[^1].ScreenshotPath,
+                AutoUpdateScreenshotPixelScale = snapshot.AutoUpdateCaptures[^1].PixelScale,
+            };
+        else if (autoUpdateSkippedReason is not null)
+            screen = screen with { AutoUpdateSkippedReason = autoUpdateSkippedReason };
 
         // With the primary rule run above already reflecting whether this screen rotated (via
         // OrientationRestrictedRule reading snapshot.Orientation), only the "it did rotate" case needs more
@@ -527,6 +562,45 @@ public sealed class ScanService(IProgress<string> log)
             return shot.Width > shot.Height;
         var bounds = snapshot.Root.Bounds;
         return bounds.Width > 0 && bounds.Height > 0 ? bounds.Width > bounds.Height : null;
+    }
+
+    /// <summary>
+    /// <see cref="ScanOptions.AutoUpdateCheck"/>: waits <see cref="ScanOptions.AutoUpdateIntervalSeconds"/> and
+    /// captures the same screen again, <see cref="ScanOptions.AutoUpdateExtraCaptures"/> times, with no input
+    /// in between and no change to the device -- unlike <see cref="CaptureOtherOrientationAsync"/> and
+    /// <see cref="RunAppearanceRescanAsync"/>, there is nothing to restore afterward. Each capture is saved
+    /// under its own "auto-update-N" subfolder of <paramref name="captureDir"/>, the same
+    /// nested-folder convention <see cref="CaptureOtherOrientationAsync"/> uses for "orientation".
+    /// </summary>
+    /// <returns>The extra captures in order (empty when fewer than 2 were configured -- see
+    /// <see cref="ScanOptions.AutoUpdateExtraCaptures"/>), and a skip reason when nothing was captured.</returns>
+    private async Task<(IReadOnlyList<ScreenSnapshot> Extra, string? SkippedReason)> CaptureAutoUpdateAsync(
+        bool ios, ScanOptions options, string captureDir, CancellationToken cancellationToken)
+    {
+        if (options.AutoUpdateExtraCaptures < 2)
+            return ([], "at least 2 extra captures are needed to tell a settled one-off change from content " +
+                        $"that keeps changing (AutoUpdateExtraCaptures was {options.AutoUpdateExtraCaptures})");
+
+        var extra = new List<ScreenSnapshot>(options.AutoUpdateExtraCaptures);
+        for (var i = 1; i <= options.AutoUpdateExtraCaptures; i++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(options.AutoUpdateIntervalSeconds), cancellationToken);
+            log.Report($"Capturing again ({i} of {options.AutoUpdateExtraCaptures}, no input) for the auto-updating-content check...");
+            var stepDir = Path.Combine(captureDir, $"auto-update-{i}");
+            if (ios)
+            {
+                await IosCollector.CaptureAsync(stepDir, options.BundleId!, options.Device, options.HarnessProject, options.Team,
+                    options.ForceResultBundle, options.Profile, options.HarnessBundlePrefix, log: log);
+                extra.Add(IosCollector.Load(stepDir, options.ScreenName));
+            }
+            else
+            {
+                await AndroidCollector.CaptureAsync(stepDir, options.Device, maskStatusBar: !options.KeepStatusBar,
+                    expectedPackage: options.Package, androidHarnessDir: options.AndroidHarnessDir, captureScreenReader: false);
+                extra.Add(AndroidCollector.Load(stepDir, options.ScreenName, options.Package));
+            }
+        }
+        return (extra, null);
     }
 
     /// <summary>

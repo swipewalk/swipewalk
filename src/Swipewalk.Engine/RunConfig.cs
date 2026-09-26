@@ -36,6 +36,15 @@ public sealed record RunConfig
     /// orientation -- see Swipewalk.Engine.ScanOptions.OrientationBoth. Off by default.</summary>
     public bool Orientation { get; init; }
 
+    /// <summary>scan only for now: also take a few further captures a few seconds apart, with no input, and
+    /// check for content that kept changing on its own -- see Swipewalk.Engine.ScanOptions.AutoUpdateCheck.
+    /// Off by default; never touches the device, unlike <see cref="Appearance"/>/<see cref="Orientation"/>.</summary>
+    public bool AutoUpdateContent { get; init; }
+
+    /// <summary>Seconds between each extra capture for <see cref="AutoUpdateContent"/> -- see
+    /// Swipewalk.Engine.ScanOptions.AutoUpdateIntervalSeconds. Default 3.</summary>
+    public double AutoUpdateInterval { get; init; } = 3.0;
+
     /// <summary>record: scan automatically when the screen changes; off by default, matching the CLI/desktop
     /// default -- see Swipewalk.Engine.ScanOptions.AutoScanOnScreenChange.</summary>
     public bool AutoScanOnScreenChange { get; init; }
@@ -114,6 +123,12 @@ public sealed record RunConfig
             // Not wired into Recorder yet (see ScanOptions.OrientationBoth); reject rather than silently do
             // nothing, so nobody thinks a recording checked both orientations when it didn't.
             throw new InvalidOperationException("\"orientation\" is scan only for now; record does not support it yet.");
+        if (AutoUpdateContent && Mode == "record")
+            // Not wired into Recorder yet (see ScanOptions.AutoUpdateCheck); reject rather than silently do
+            // nothing, so nobody thinks a recording checked for auto-updating content when it didn't.
+            throw new InvalidOperationException("\"autoUpdateContent\" is scan only for now; record does not support it yet.");
+        if (AutoUpdateInterval <= 0)
+            throw new InvalidOperationException($"\"autoUpdateInterval\" must be greater than 0, not {AutoUpdateInterval}.");
         foreach (var target in Targets)
         {
             if (target.Platform is not ("android" or "ios"))
@@ -152,6 +167,8 @@ public sealed record RunConfig
             LargeText = LargeText,
             AppearanceBoth = Appearance,
             OrientationBoth = Orientation,
+            AutoUpdateCheck = AutoUpdateContent,
+            AutoUpdateIntervalSeconds = AutoUpdateInterval,
             AutoScanOnScreenChange = AutoScanOnScreenChange,
             LargeTextRestartPolicy = LargeTextRestart is null
                 ? LargeTextRestartPolicies.Default(interactive: false, recordMode: Mode == "record")
