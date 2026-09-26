@@ -132,6 +132,53 @@ public class ScreenReaderCoverageEvidenceTests
     }
 
     [Fact]
+    public void NameRoleValue_TalkBack_OwnExpectedNotCompleteReason_NeverShowsTheStoppedEarlyCaveat()
+    {
+        // Regression: EVERY return path in TalkBackCollector.kt passes complete = false, always -- this
+        // exact reason means the walk covered every focusable/interactive element on the screen, not that
+        // it was cut short. A generic "!capture.Complete -> append the caveat" check would show "the
+        // capture stopped before the end of this screen" on literally every real TalkBack capture ever
+        // made, including this fully-successful one -- found from a live capture on a physical Pixel and
+        // the Android emulator (BuggyApp's "Payment history" screen, which has only one focusable element).
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
+            [TalkBackItem(1, "Navigate up, Button")], Complete: false,
+            NotCompleteReason: ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason);
+
+        var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture), WcagCriteria.NameRoleValue);
+
+        Assert.DoesNotContain("stopped before the end of this screen", summary);
+        Assert.Contains("Swipewalk moved TalkBack's focus to 1 element", summary);
+    }
+
+    [Fact]
+    public void NameRoleValue_TalkBack_ARealFailureReason_StillShowsTheStoppedEarlyCaveat()
+    {
+        // A genuine problem (here: TalkBack refusing to speak through Swipewalk's engine) must still be
+        // surfaced -- only the one specific, always-present, by-design reason is excluded.
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
+            [TalkBackItem(1, "Submit, Button")], Complete: false,
+            NotCompleteReason: "TalkBack did not say anything through Swipewalk's engine for the first 3 elements " +
+                                "(a managed device or a phone maker's own TalkBack build may not honor the text-to-speech engine setting)");
+
+        var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture), WcagCriteria.NameRoleValue);
+
+        Assert.Contains("stopped before the end of this screen (TalkBack did not say anything", summary);
+    }
+
+    [Fact]
+    public void NonTextContent_TalkBack_OwnExpectedNotCompleteReason_NeverShowsTheStoppedEarlyCaveat()
+    {
+        var predicted = new[] { new Announcement(1, "0", "Logo, Image", default, HasName: true) };
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
+            [TalkBackItem(1, "Logo, Image", matchedPath: "0")], Complete: false,
+            NotCompleteReason: ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason);
+
+        var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture, [], predicted), WcagCriteria.NonTextContent);
+
+        Assert.DoesNotContain("stopped before the end of this screen", summary);
+    }
+
+    [Fact]
     public void NameRoleValue_OverlapWithADifferentRulesFinding_IsFlagged()
     {
         var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
