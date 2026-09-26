@@ -1,4 +1,6 @@
 using System.IO.Compression;
+using System.Reflection;
+using System.Reflection.Emit;
 using Swipewalk.Collectors;
 using Swipewalk.Collectors.Ios;
 using Swipewalk.Core.Model;
@@ -9,16 +11,20 @@ namespace Swipewalk.Core.Tests;
 /// Detecting .NET MAUI from an installed app bundle: Microsoft.Maui.Controls.dll sits flat in the bundle root
 /// on both the Simulator and a device .ipa/.app (confirmed 2026-09-22 against the TipCalc/DeveloperBalance/
 /// Calculator MAUI samples and BuggyApp on a booted Simulator, all .NET MAUI 10.0.60), so a real .NET assembly
-/// is used as the fixture: this test project's own compiled .dll, which the SDK stamps with a genuine
-/// AssemblyInformationalVersionAttribute including a "+commit" suffix (deterministic build), the same shape
-/// .NET MAUI's own build ships ("10.0.60+bf6156897c887d33dcd40592db3bcb6471916e03" was read from the real
-/// TipCalc sample).
+/// is used as the fixture for "is this file detected as .NET MAUI at all" tests: this test project's own
+/// compiled .dll. The one test that specifically checks the "+commit" suffix is stripped
+/// (<see cref="ReadInformationalVersion_StripsCommitSuffix"/>) instead builds its own fixture with a known
+/// informational version (<see cref="CreateAssemblyWithInformationalVersion"/>), since whether this test
+/// assembly's own build stamped one on isn't something a test run can rely on (e.g. it doesn't in a git
+/// worktree checkout) -- "10.0.60+bf6156897c887d33dcd40592db3bcb6471916e03" is the shape .NET MAUI's own build
+/// ships (read from the real TipCalc sample).
 /// </summary>
 public class IosFrameworkDetectionTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), $"swipewalk-frameworktest-{Guid.NewGuid():N}");
 
-    /// <summary>A real, readable .NET assembly with a genuine "+commit" suffix on its informational version.</summary>
+    /// <summary>A real, readable .NET assembly for tests that only need "this file is a genuine .NET
+    /// assembly named Microsoft.Maui.Controls.dll" -- not for anything about its informational version.</summary>
     private static readonly string RealAssemblyPath = typeof(IosFrameworkDetectionTests).Assembly.Location;
 
     public IosFrameworkDetectionTests() => Directory.CreateDirectory(_dir);
@@ -62,20 +68,31 @@ public class IosFrameworkDetectionTests : IDisposable
         Assert.Null(detected.Version);
     }
 
+    /// <summary>
+    /// This used to copy this test project's own compiled dll and rely on the SDK having stamped it with a
+    /// genuine "+commit" suffix (a deterministic build reading real git info) -- which a git worktree checkout
+    /// doesn't produce (its ".git" is a gitdir pointer, not a full checkout the SDK's source-revision-id step
+    /// recognizes), so the test failed here while still passing in CI. Building the fixture assembly directly,
+    /// with a known "+commit" informational version we control, tests the exact same code path
+    /// (<see cref="IosCollector.ReadInformationalVersion"/> reading a real AssemblyInformationalVersionAttribute
+    /// via PE metadata and stripping everything from "+") without depending on how -- or whether -- the
+    /// ambient build environment adds one.
+    /// </summary>
     [Fact]
     public void ReadInformationalVersion_StripsCommitSuffix()
     {
         var dll = Path.Combine(_dir, "Microsoft.Maui.Controls.dll");
-        File.Copy(RealAssemblyPath, dll);
+        const string raw = "10.0.60+bf6156897c887d33dcd40592db3bcb6471916e03";
+        CreateAssemblyWithInformationalVersion(dll, raw);
 
         var version = IosCollector.ReadInformationalVersion(dll);
 
         Assert.NotNull(version);
         Assert.DoesNotContain('+', version);
-        // The raw AssemblyInformationalVersion (read independently here) really does have a "+commit" suffix,
-        // so this is a genuine strip, not a version string that happened not to have one.
-        Assert.Contains('+', ReadRawInformationalVersion(dll));
-        Assert.StartsWith(version, ReadRawInformationalVersion(dll), StringComparison.Ordinal);
+        // The raw AssemblyInformationalVersion this fixture was built with really does have a "+commit"
+        // suffix, so this proves a genuine strip, not a version string that happened not to have one.
+        Assert.Contains('+', raw);
+        Assert.StartsWith(version, raw, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -142,12 +159,19 @@ public class IosFrameworkDetectionTests : IDisposable
         Assert.Null(version);
     }
 
-    /// <summary>Reads AssemblyInformationalVersion independently of <see cref="IosCollector"/>, from the
-    /// assembly's own metadata, so the "genuinely has a +commit suffix" assertion doesn't rely on the method
-    /// under test.</summary>
-    private static string ReadRawInformationalVersion(string path)
+    /// <summary>Builds a minimal, real .NET assembly on disk carrying exactly
+    /// <see cref="System.Reflection.AssemblyInformationalVersionAttribute"/> = <paramref name="informationalVersion"/>
+    /// and nothing else -- a fixture <see cref="IosCollector.ReadInformationalVersion"/> can read as a genuine PE
+    /// file, with a version string this test controls rather than whatever the ambient build happened to stamp
+    /// on this test assembly (see <see cref="ReadInformationalVersion_StripsCommitSuffix"/>'s remarks).</summary>
+    private static void CreateAssemblyWithInformationalVersion(string path, string informationalVersion)
     {
-        var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(path);
-        return info.ProductVersion ?? "";
+        var builder = new PersistedAssemblyBuilder(new AssemblyName("SwipewalkTestFixture"), typeof(object).Assembly);
+        var ctor = typeof(AssemblyInformationalVersionAttribute).GetConstructor([typeof(string)])!;
+        builder.SetCustomAttribute(new CustomAttributeBuilder(ctor, [informationalVersion]));
+        var module = builder.DefineDynamicModule("SwipewalkTestFixture.dll");
+        module.DefineType("Fixture", TypeAttributes.Public | TypeAttributes.Class).CreateType();
+        using var stream = new FileStream(path, FileMode.Create);
+        builder.Save(stream);
     }
 }
