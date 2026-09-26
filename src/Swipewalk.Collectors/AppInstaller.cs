@@ -242,11 +242,19 @@ public static class AppInstaller
                 "its own. Build Release, or Debug with -p:EmbedAssembliesIntoApk=true.");
     }
 
-    /// <summary>Writes a password as the sole line of a private temp file, for bundletool's --ks-pass=file:/
+    /// <summary>
+    /// Writes a password as the sole line of a private temp file, for bundletool's --ks-pass=file:/
     /// --key-pass=file: (see InstallAndroidBundleAsync's remarks on why not --ks-pass=pass:&lt;value&gt;). Best-
     /// effort 0600 permissions on Unix, set at creation time (not after writing) so the password is never
     /// briefly readable at default permissions; Windows has no equivalent single call, so the file relies on
-    /// being under the per-user temp folder and deleted right after bundletool exits.</summary>
+    /// being under the per-user temp folder and deleted right after bundletool exits.
+    ///
+    /// Deliberate, not a leak (see the CodeQL suppression on the write below): bundletool's own --ks-pass/
+    /// --key-pass only accept 'pass:&lt;value&gt;' (exposed in this process's argument list, readable by
+    /// anything else on the machine for as long as bundletool runs -- confirmed, not just assumed) or
+    /// 'file:&lt;path&gt;' (checked via `bundletool help build-apks`; no environment-variable form exists). This
+    /// is the safer of the two options bundletool itself offers, not an alternative to a real secrets store.
+    /// </summary>
     private static string WriteTempPasswordFile(string password)
     {
         var path = Path.Combine(Path.GetTempPath(), $"swipewalk-{Guid.NewGuid():N}.pass");
@@ -257,12 +265,16 @@ public static class AppInstaller
         {
             using (var stream = new FileStream(path, options))
             using (var writer = new StreamWriter(stream))
+                // codeql[cs/clear-text-storage-of-sensitive-information] see this method's doc comment: a
+                // private, 0600, per-user temp file deleted immediately after use is bundletool's own safer
+                // alternative to passing the password as a command-line argument.
                 writer.Write(password);
         }
         catch (PlatformNotSupportedException)
         {
             // UnixCreateMode isn't honored on this platform; fall back to a normal create (still deleted
             // right after use either way).
+            // codeql[cs/clear-text-storage-of-sensitive-information] same justification as the write above.
             File.WriteAllText(path, password);
         }
         return path;
