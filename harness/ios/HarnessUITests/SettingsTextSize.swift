@@ -15,8 +15,9 @@ import XCTest
 /// - The "Larger Accessibility Sizes" switch's accessible frame spans the whole row, so a center tap lands on
 ///   the label text and never flips it; the tap targets the row's right edge instead.
 /// - The slider has no identifier and no increment()/decrement() (that is a stepper-only API); its value is a
-///   rounded percentage that can land on a neighboring step, so setting it reads back and nudges with small
-///   coordinate drags until the exact step is reached.
+///   rounded percentage that can land on a neighboring step, so setting it binary-searches the normalized
+///   position passed to `adjust(toNormalizedSliderPosition:)`, reading the step back after each try (see
+///   `setSliderStep`).
 enum SettingsTextSize {
     static let bundleId = "com.apple.Preferences"
 
@@ -52,16 +53,22 @@ enum SettingsTextSize {
 
     /// Sets the switch + slider to an exact state on the currently shown Larger Text screen, verifying by
     /// read-back (retrying once on mismatch) and throwing a machine-readable error rather than crashing if
-    /// the final state still doesn't match.
+    /// the final state still doesn't match. Kept at two attempts (considered raising to three on 2026-09-26,
+    /// alongside the `setSliderStep` rewrite below, but backed out: `setSliderStep`'s own binary search
+    /// already retries internally, so a third full pass here wasn't measured to help, and it would push the
+    /// worst case for `textsize-restore` close to `IosHarnessSession.CommandTimeout` (90s) once combined with
+    /// `locateAndTap`'s own five attempts).
     static func applyState(_ settings: XCUIApplication, _ target: TextSizeState) throws {
-        try applyOnce(settings, target)
-        if try readState(settings) == target {
-            return
-        }
-        try applyOnce(settings, target)
-        let after = try readState(settings)
-        guard after == target else {
-            throw SettingsTextSizeError.verificationFailed("wanted \(target) but Settings reports \(after) after two attempts")
+        let attempts = 2
+        for attempt in 1...attempts {
+            try applyOnce(settings, target)
+            let after = try readState(settings)
+            if after == target {
+                return
+            }
+            if attempt == attempts {
+                throw SettingsTextSizeError.verificationFailed("wanted \(target) but Settings reports \(after) after \(attempts) attempts")
+            }
         }
     }
 
@@ -145,11 +152,22 @@ enum SettingsTextSize {
         let backButtonCountBefore = app.navigationBars.buttons.count
         var tapAttempt = 0
         var navigated = false
-        while !navigated && tapAttempt < 3 {
+        // Five attempts (was three until 2026-09-26) with a longer settle wait (1.2s, was 0.8s -- up to
+        // about 6s of extra waiting per row in the worst case): found 2026-09-26, on the Simulator only, that
+        // this navigation becomes markedly less reliable once Settings itself is rendering at the enlarged
+        // accessibility text size -- which this is in whenever it restores from an accessibility size, since
+        // applying AX3 makes every app, Settings included, launch at that size from then on. Reproduced with a
+        // screenshot showing genuinely enlarged Settings rows (2-line wrapped labels, only ~5 rows fitting on
+        // screen) while the tap was repeatedly failing to navigate. One possible cause, not confirmed: a stale
+        // accessibility frame from a self-sizing table view cell not yet settled. NOT reproduced on a physical
+        // iPhone (also 2026-09-26): several `scan --large-text` and `record` runs there, including the
+        // restore-from-AX3 step this comment describes, all navigated normally -- so this extra patience is a
+        // low-risk, Simulator-motivated safety margin, not a confirmed fix for a hardware problem.
+        while !navigated && tapAttempt < 5 {
             let fresh = locate()
             if fresh.exists { fresh.tap() }
             tapAttempt += 1
-            Thread.sleep(forTimeInterval: 0.8)
+            Thread.sleep(forTimeInterval: 1.2)
             // A Settings row's destination screen is usually titled the same as the row itself (tapping
             // "Display & Text Size" opens a screen titled "Display & Text Size"), which turned out to be a
             // more reliable navigation signal on a physical iPhone (iOS 27.0) than the nav-bar button count
@@ -184,28 +202,44 @@ enum SettingsTextSize {
         }
     }
 
-    /// Moves the slider to an exact discrete index out of `totalSteps` (0-based). `adjust(toNormalizedSliderPosition:)`
-    /// rounds to a neighboring step, so this reads the resulting percentage back and corrects with small
-    /// coordinate drags of one step's pixel width until the readback matches the requested index.
+    /// Moves the slider to an exact discrete index out of `totalSteps` (0-based) by binary-searching the
+    /// normalized position `adjust(toNormalizedSliderPosition:)` takes, reading the resulting labeled step back
+    /// after each try and narrowing the search range until it lands exactly on the one requested, or giving up
+    /// (leaving `applyState`'s own read-back verification to fail loudly) once the attempt budget runs out.
+    /// This assumes the reported percentage moves the same direction as the position fed to `adjust` (true for
+    /// any slider) -- it does not need the percentage to be evenly spaced by step, since it only narrows toward
+    /// whatever position makes the read-back match; confirmed by running it to AX3 repeatedly and seeing the
+    /// read-back state come back exactly "on:9/12" each time, matching the target.
+    ///
+    /// Replaces an earlier version (used until 2026-09-26) that jumped by one precomputed "step width" --
+    /// `frame.width / (totalSteps - 1)` -- assuming the 12 labeled sizes sit at even intervals along the
+    /// track. Found 2026-09-26 by running the harness against the iOS Simulator's Settings app: a fixed step
+    /// width badly overshoots once the five accessibility sizes (AX1...AX5) are involved, since they don't
+    /// occupy the same share of the track as the seven standard Dynamic Type sizes -- observed swinging
+    /// between two far-apart reported positions, never converging. Binary search over `adjust`'s own
+    /// normalized-position input needs no assumption about how steps are spaced along the track, and never
+    /// depends on the slider's on-screen frame or touch coordinates at all. Verified on a physical iPhone too,
+    /// separately from the Simulator finding above: several `scan --large-text` and `record` runs (including
+    /// the `record` "check anyway" + restart flow) all reached AX3 exactly and restored cleanly with this
+    /// version, on both BuggyApp (MAUI) and a native SwiftUI sample.
     private static func setSliderStep(_ slider: XCUIElement, toIndex index: Int, totalSteps: Int) {
-        let targetFraction = totalSteps > 1 ? CGFloat(index) / CGFloat(totalSteps - 1) : 0
-        slider.adjust(toNormalizedSliderPosition: targetFraction)
-        Thread.sleep(forTimeInterval: 0.4)
-
-        let frame = slider.frame
-        guard frame.width > 0 else { return }
-        let stepWidth = frame.width / CGFloat(max(totalSteps - 1, 1))
+        var low: CGFloat = 0
+        var high: CGFloat = 1
+        var fraction = totalSteps > 1 ? CGFloat(index) / CGFloat(totalSteps - 1) : 0
         var attempts = 0
-        while attempts < 6 {
-            guard let currentFraction = parseSliderPercent((slider.value as? String) ?? "") else { break }
+        while attempts < 8 {
+            slider.adjust(toNormalizedSliderPosition: fraction)
+            Thread.sleep(forTimeInterval: 0.4)
+            guard let currentFraction = parseSliderPercent((slider.value as? String) ?? "") else { return }
             let currentIndex = Int((currentFraction * CGFloat(totalSteps - 1)).rounded())
-            if currentIndex == index { break }
-            let direction: CGFloat = currentIndex < index ? 1 : -1
-            let start = slider.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let end = start.withOffset(CGVector(dx: direction * stepWidth, dy: 0))
-            start.press(forDuration: 0.05, thenDragTo: end)
+            if currentIndex == index { return }
+            if currentIndex < index {
+                low = fraction
+            } else {
+                high = fraction
+            }
+            fraction = (low + high) / 2
             attempts += 1
-            Thread.sleep(forTimeInterval: 0.3)
         }
     }
 
