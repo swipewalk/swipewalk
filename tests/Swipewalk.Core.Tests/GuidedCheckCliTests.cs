@@ -24,11 +24,23 @@ public class GuidedCheckCliTests
         throw new InvalidOperationException("Could not find Swipewalk.slnx above AppContext.BaseDirectory.");
     }
 
+    /// <summary>
+    /// Finds the built swipewalk.dll next to this test assembly's own build -- CI builds/tests the whole
+    /// solution in Release (`dotnet build -c Release`, `dotnet test -c Release --no-build`), while a local
+    /// `dotnet test` defaults to Debug, so this must match whichever configuration actually built this test
+    /// assembly (found here from AppContext.BaseDirectory) rather than assuming Debug. Falls back to checking
+    /// both if that can't be determined, so it still works if the layout ever changes.
+    /// </summary>
     private static string CliDll()
     {
-        var path = Path.Combine(RepoRoot(), "src", "Swipewalk.Cli", "bin", "Debug", "net10.0", "swipewalk.dll");
-        if (!File.Exists(path))
-            throw new InvalidOperationException($"swipewalk.dll not found at {path}; build the solution first.");
+        var repoRoot = RepoRoot();
+        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name; // ".../bin/<Debug|Release>/net10.0/"
+        var candidates = (configuration is "Debug" or "Release" ? [configuration] : new[] { "Debug", "Release" })
+            .Select(c => Path.Combine(repoRoot, "src", "Swipewalk.Cli", "bin", c, "net10.0", "swipewalk.dll"));
+        var path = candidates.FirstOrDefault(File.Exists);
+        if (path is null)
+            throw new InvalidOperationException(
+                $"swipewalk.dll not found under src/Swipewalk.Cli/bin/{{Debug,Release}}/net10.0; build the solution first (configuration in use: {configuration ?? "unknown"}).");
         return path;
     }
 
