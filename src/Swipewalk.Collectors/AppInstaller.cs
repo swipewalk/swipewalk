@@ -265,14 +265,14 @@ public static class AppInstaller
         {
             using (var stream = new FileStream(path, options))
             using (var writer = new StreamWriter(stream))
-                // codeql[cs/clear-text-storage-of-sensitive-information] see this method's doc comment.
+                // codeql[cs/cleartext-storage-of-sensitive-information] see this method's doc comment.
                 writer.Write(password);
         }
         catch (PlatformNotSupportedException)
         {
             // UnixCreateMode isn't honored on this platform; fall back to a normal create (still deleted
             // right after use either way).
-            // codeql[cs/clear-text-storage-of-sensitive-information] same justification as the write above.
+            // codeql[cs/cleartext-storage-of-sensitive-information] same justification as the write above.
             File.WriteAllText(path, password);
         }
         return path;
