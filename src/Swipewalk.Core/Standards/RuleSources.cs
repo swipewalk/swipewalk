@@ -37,8 +37,13 @@ public static class RuleSources
     // mapping (KnownJurisdictions, StoreGuidance): confirmed jurisdiction standards are opt-in via
     // --standard (never listed on every finding by default), unconfirmed/no-law/differs-from-WCAG
     // jurisdictions are recorded honestly rather than guessed, and CheckedOn now also accepts an exact
-    // "yyyy-MM-dd" for entries checked on a specific day.
-    public const string RulesetVersion = "2026.09.26";
+    // "yyyy-MM-dd" for entries checked on a specific day, then to 2026.09.27 for real screen-reader evidence
+    // reflected in per-screen WCAG coverage (4.1.2, 1.1.1, 2.5.3 get a "captured evidence" sentence naming
+    // the tool and real counts; 1.3.1 gets an informational Header-trait list from the Accessibility
+    // Inspector route, never a finding or a status change) and the screen-reader-label-in-name coverage-gate
+    // fix (it was wrongly reported as "ran" on an iOS Accessibility Inspector capture, which the underlying
+    // rule never evaluates -- TalkBack only).
+    public const string RulesetVersion = "2026.09.27";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);

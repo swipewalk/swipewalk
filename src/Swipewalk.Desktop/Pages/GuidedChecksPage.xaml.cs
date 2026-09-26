@@ -139,6 +139,12 @@ public partial class GuidedChecksPage : ContentPage
 			container.Children.Add(new Label { Text = row.SourceUrls[0], FontSize = Fonts.Size("FontCaption") });
 		if (row.AutomatedSummary is not null)
 			container.Children.Add(new Label { Text = row.AutomatedSummary, FontSize = Fonts.Size("FontBody") });
+		if (row.CapturedEvidenceSummary is not null && row.CapturedEvidenceSource is { } evidenceSource)
+			container.Children.Add(new Label
+			{
+				Text = $"Captured evidence ({Swipewalk.Core.ScreenReader.ScreenReaderCaptureComparer.ToolLabel(evidenceSource)}): {row.CapturedEvidenceSummary}",
+				FontSize = Fonts.Size("FontBody"),
+			});
 		foreach (var proposal in row.ProposedButNotConfirmed)
 			container.Children.Add(new Label
 			{

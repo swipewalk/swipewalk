@@ -156,6 +156,34 @@ public class ScreenActivityBuilderTests
     }
 
     [Fact]
+    public void CompleteTalkBackCapture_ScreenReaderLabelInNameCountsAsRan()
+    {
+        var item = new ScreenReaderCaptureItem(1, "Submit, Button", null, null, null, null, null, null, null, "0", MatchConfidence.Exact);
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow, [item], Complete: true, NotCompleteReason: null);
+        var activity = ScreenActivityBuilder.For(Screen(screenReaderCapture: capture));
+
+        Assert.Contains("screen-reader-label-in-name", activity.RanRuleIds);
+        Assert.False(activity.SkippedRuleIds.ContainsKey("screen-reader-label-in-name"));
+    }
+
+    [Fact]
+    public void CompleteAccessibilityInspectorCapture_ScreenReaderLabelInNameIsSkipped_NotCountedAsRan()
+    {
+        // Regression: ScreenReaderLabelInNameRule bails out on anything but TalkBack (its whole-word,
+        // cross-language name matching is only established for TalkBack -- see its own remarks), so a
+        // complete Accessibility Inspector capture must never be reported as "ran" here, or the coverage
+        // table would claim this check ran on iOS when it never evaluated anything.
+        var item = new ScreenReaderCaptureItem(1, null, "Submit", null, ["Button"], null, null, "UIButton", null, "0", MatchConfidence.Exact);
+        var capture = new ScreenReaderCapture(ScreenReaderSource.AccessibilityInspector, "27.0", DateTimeOffset.UtcNow, [item], Complete: true, NotCompleteReason: null);
+        var activity = ScreenActivityBuilder.For(Screen(platform: Platform.iOS, screenReaderCapture: capture));
+
+        Assert.DoesNotContain("screen-reader-label-in-name", activity.RanRuleIds);
+        Assert.Equal(
+            "compared against TalkBack's speech only; Xcode's Accessibility Inspector evidence isn't used for this check yet",
+            activity.SkippedRuleIds["screen-reader-label-in-name"]);
+    }
+
+    [Fact]
     public void NoOrientationCheck_SkippedWithNotRequestedReason()
     {
         var activity = ScreenActivityBuilder.For(Screen(otherOrientation: null, orientationSkippedReason: null));

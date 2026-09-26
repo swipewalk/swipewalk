@@ -170,8 +170,15 @@ public static class ScreenActivityBuilder
         // that rule's own remarks), so an incomplete-but-non-empty capture is its own skip reason here
         // rather than "ran": otherwise the coverage table would say this rule ran and confirmed nothing,
         // when it actually never evaluated anything for this screen.
-        if (screen.ScreenReaderCapture is { Items.Count: > 0, Complete: true })
+        if (screen.ScreenReaderCapture is { Items.Count: > 0, Complete: true, Source: ScreenReaderSource.TalkBack })
             ran.Add("screen-reader-label-in-name");
+        else if (screen.ScreenReaderCapture is { Items.Count: > 0, Complete: true })
+            // ScreenReaderLabelInNameRule bails out on anything but TalkBack (see its own remarks: the
+            // whole-word, cross-language name matching it needs is only established for TalkBack) -- a
+            // complete Accessibility Inspector capture must not be reported as "ran" here, or the coverage
+            // table would claim this check ran on iOS when it never evaluated anything.
+            skipped["screen-reader-label-in-name"] =
+                "compared against TalkBack's speech only; Xcode's Accessibility Inspector evidence isn't used for this check yet";
         else if (screen.ScreenReaderCapture is { Items.Count: > 0 } incompleteCapture)
             skipped["screen-reader-label-in-name"] = incompleteCapture.NotCompleteReason ?? "the screen-reader capture did not cover the whole screen";
         else if (screen.ScreenReaderCapture is { } emptyCapture2)

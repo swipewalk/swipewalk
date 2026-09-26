@@ -583,7 +583,8 @@ public static class HtmlReport
             """);
         if (screen.ScreenReaderCapture is { Items.Count: > 0 })
             html.Append($"""<button type="button" role="tab" class="tab" id="{id}-tab-captured" aria-controls="{id}-panel-captured" aria-selected="false" tabindex="-1" data-tab="captured">Screen reader (captured)</button>""");
-        var guidedRows = screenCoverage.Where(r => r.ScreenId == screen.ScreenId && (r.Answer is not null || r.Status == ScreenCriterionStatus.NotApplicableHere)).ToList();
+        var guidedRows = screenCoverage.Where(r => r.ScreenId == screen.ScreenId &&
+            (r.Answer is not null || r.Status == ScreenCriterionStatus.NotApplicableHere || r.CapturedEvidenceSummary is not null)).ToList();
         if (guidedRows.Count > 0)
             html.Append($"""<button type="button" role="tab" class="tab" id="{id}-tab-guided" aria-controls="{id}-panel-guided" aria-selected="false" tabindex="-1" data-tab="guided">Guided checks</button>""");
         html.Append($"""
@@ -631,7 +632,7 @@ public static class HtmlReport
         {
             html.Append($"""
                       <div class="tabpanel" role="tabpanel" id="{id}-panel-guided" aria-labelledby="{id}-tab-guided" data-tab="guided" hidden>
-                        <p class="hint">Answers a tester recorded for this screen with <code>swipewalk guide</code> or the desktop app's Guided checks page.</p>
+                        <p class="hint">Answers a tester recorded for this screen with <code>swipewalk guide</code> or the desktop app's Guided checks page, and, on a screen captured with <code>--screen-reader</code>, real evidence a device captured for the criteria it exercises (see "Captured evidence" below) -- shown here even with no tester answer yet.</p>
                         <ul class="limit-list guided-list">
                 """);
             foreach (var r in guidedRows)
@@ -640,6 +641,8 @@ public static class HtmlReport
                 html.Append($"""<li><p class="limit-title">{E($"{r.Number} {r.Name} ({r.Level})")} <span class="chip">{E(GuidedChecksDisplay.StatusLabel(r.Status))}</span>{flagged}</p>""");
                 if (r.AutomatedSummary is not null)
                     html.Append($"""<p>{E(r.AutomatedSummary)}</p>""");
+                if (r.CapturedEvidenceSummary is not null && r.CapturedEvidenceSource is { } evidenceSource)
+                    html.Append($"""<p><span class="chip">Captured evidence ({E(ScreenReaderCaptureComparer.ToolLabel(evidenceSource))})</span> {E(r.CapturedEvidenceSummary)}</p>""");
                 if (r.Status == ScreenCriterionStatus.NotApplicableHere && r.Answer is { } notApplicable)
                     html.Append($"""<p><strong>Reason it doesn't apply here:</strong> {E(notApplicable.NotApplicableReason ?? "")} (confirmed on {notApplicable.AnsweredAt:yyyy-MM-dd} by {E(notApplicable.Tester)}).</p>""");
                 else if (r.Answer is { } answer)

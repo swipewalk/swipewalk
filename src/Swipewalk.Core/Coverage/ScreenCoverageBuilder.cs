@@ -51,6 +51,19 @@ public enum ScreenCriterionStatus
 /// <param name="OlderAnswers">Every earlier answer for the same pair, oldest first -- kept, always rendered in
 /// the report's detail view (collapsed by default, never dropped), even when it disagrees with the current one.</param>
 /// <param name="Contradicted">True iff this row is also in <see cref="ContradictionChecker.Find"/>'s result.</param>
+/// <param name="CapturedEvidenceSummary">A sentence naming real, real-device screen-reader evidence for THIS
+/// criterion on THIS screen -- from <see cref="ScreenReader.ScreenReaderCoverageEvidence.Summarize"/>. Null
+/// when this screen has no capture, or this criterion isn't one of the ones real capture evidence can speak
+/// to (see that type's remarks for exactly which and why). Shown alongside <see cref="AutomatedSummary"/>,
+/// never replacing it: <see cref="AutomatedSummary"/> already counts every rule's findings for this
+/// criterion; this is specifically what a real device showed, naming the tool. Never implies a status
+/// change on its own -- for 1.3.1 in particular this can be set while <see cref="Status"/> stays
+/// <see cref="ScreenCriterionStatus.NotTested"/>, since that criterion's evidence is informational only (see
+/// <see cref="ScreenReader.ScreenReaderCoverageEvidence"/>'s remarks).</param>
+/// <param name="CapturedEvidenceSource">Which tool <see cref="CapturedEvidenceSummary"/> came from, for a UI
+/// badge that distinguishes TalkBack's real speech from the Accessibility Inspector's walk (which is not
+/// VoiceOver speech -- VoiceOver never runs for that route). Null exactly when
+/// <see cref="CapturedEvidenceSummary"/> is null.</param>
 public sealed record ScreenCriterionReport(
     string ScreenId,
     string ScreenName,
@@ -64,7 +77,9 @@ public sealed record ScreenCriterionReport(
     GuidedAnswer? Answer,
     IReadOnlyList<GuidedAnswer> OlderAnswers,
     bool Contradicted,
-    IReadOnlyList<string> SourceUrls);
+    IReadOnlyList<string> SourceUrls,
+    string? CapturedEvidenceSummary = null,
+    ScreenReaderSource? CapturedEvidenceSource = null);
 
 /// <summary>
 /// Builds the per-screen WCAG criterion status list from a run's scanned screens and recorded guided answers.
@@ -144,9 +159,13 @@ public static class ScreenCoverageBuilder
             ? []
             : screen.ProposedNotApplicable.Where(p => p.CriterionNumber == number).ToList();
 
+        var (capturedEvidenceSummary, capturedEvidenceSource) =
+            ScreenReader.ScreenReaderCoverageEvidence.Summarize(screen, coverage.Criterion);
+
         return new ScreenCriterionReport(
             screen.ScreenId, screen.ScreenName, number, coverage.Criterion.Name, coverage.Criterion.Level,
             status, proposedButNotConfirmed, notApplicableReason, automatedSummary,
-            mostRecent, olderAnswers, contradictedKeys.Contains((screen.ScreenId, number)), coverage.SourceUrls);
+            mostRecent, olderAnswers, contradictedKeys.Contains((screen.ScreenId, number)), coverage.SourceUrls,
+            capturedEvidenceSummary, capturedEvidenceSource);
     }
 }

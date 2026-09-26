@@ -15,13 +15,18 @@ public sealed record ScanReport
     /// 0.3: adds <see cref="GuidedAnswers"/> (loaded from guided-answers.json, the only new field actually
     /// stored on this record -- everything else guided checks add is computed, like <see cref="Coverage"/>
     /// already was) and <see cref="ScreenResult.ScreenId"/>/<see cref="ScreenResult.ProposedNotApplicable"/> on
-    /// each screen.</summary>
-    public const string CurrentSchemaVersion = "0.3";
+    /// each screen.
+    /// 0.4: <see cref="Coverage.ScreenCriterionReport"/> (part of <see cref="ScreenCoverage"/>, still
+    /// computed, not stored) adds CapturedEvidenceSummary/CapturedEvidenceSource for real screen-reader
+    /// evidence that exercises a criterion on a screen.</summary>
+    public const string CurrentSchemaVersion = "0.4";
 
     public const string Disclaimer =
         "Automated checks find only some accessibility issues. Results are not a statement of conformance " +
         "with WCAG or any law; manual testing with assistive technology is still required. Screen-reader " +
-        "output in this report is predicted from the accessibility tree, not recorded. A screen with no findings " +
+        "output labeled as predicted is built from the accessibility tree, not recorded; output labeled as " +
+        "captured is TalkBack's recorded speech, or the properties Xcode's Accessibility Inspector reported " +
+        "(VoiceOver itself is not turned on for that route). A screen with no findings " +
         "has not been shown to conform: these checks test only parts of the WCAG criteria listed under coverage, " +
         "and all other WCAG 2.2 success criteria were not tested. See the known limitations for this scan.";
 

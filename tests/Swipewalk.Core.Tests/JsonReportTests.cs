@@ -73,11 +73,12 @@ public class JsonReportTests
     }
 
     [Fact]
-    public void SchemaVersion_Is0_3()
+    public void SchemaVersion_Is0_4()
     {
-        // 0.3 adds guided checks (GuidedAnswers, ScreenId, ProposedNotApplicable) -- this test is updated
-        // deliberately, not a surprise CI failure, whenever the schema version changes.
-        Assert.Equal("0.3", ScanReport.CurrentSchemaVersion);
+        // 0.4 adds CapturedEvidenceSummary/CapturedEvidenceSource to ScreenCriterionReport (real screen-reader
+        // evidence in per-screen coverage) -- this test is updated deliberately, not a surprise CI failure,
+        // whenever the schema version changes.
+        Assert.Equal("0.4", ScanReport.CurrentSchemaVersion);
     }
 
     [Fact]

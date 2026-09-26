@@ -103,6 +103,49 @@ public class ScreenCoverageBuilderTests
     }
 
     [Fact]
+    public void CapturedEvidence_IsAttachedToTheRowItExercises_AlongsideAutomatedSummary()
+    {
+        var item = new ScreenReaderCaptureItem(1, "Submit, Button", null, null, null, null, null, null, null, "0", MatchConfidence.Exact);
+        var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow, [item], Complete: true, NotCompleteReason: null);
+        var screen = Screen("s1") with { ScreenReaderCapture = capture };
+
+        var rows = ScreenCoverageBuilder.Build([screen], []);
+
+        var row = Row(rows, "4.1.2");
+        Assert.NotNull(row.CapturedEvidenceSummary);
+        Assert.Equal(ScreenReaderSource.TalkBack, row.CapturedEvidenceSource);
+        Assert.Contains("TalkBack", row.CapturedEvidenceSummary);
+    }
+
+    [Fact]
+    public void CapturedHeadingEvidence_NeverChangesTheStatus_InformationalOnly()
+    {
+        // 1.3.1 stays Manual/NotTested even when an Accessibility Inspector capture exists on this screen --
+        // decided by wcag-reviewer: the evidence can only show elements the Inspector called headings, not
+        // text that looks like a heading but isn't exposed as one, so it is never a finding or a status change.
+        var item = new ScreenReaderCaptureItem(1, null, "Section", null, ["Header"], null, null, null, null, "0", MatchConfidence.Exact);
+        var capture = new ScreenReaderCapture(ScreenReaderSource.AccessibilityInspector, "27.0", DateTimeOffset.UtcNow, [item], Complete: true, NotCompleteReason: null);
+        var screen = Screen("s1") with { Platform = Platform.iOS, ScreenReaderCapture = capture };
+
+        var rows = ScreenCoverageBuilder.Build([screen], []);
+
+        var row = Row(rows, "1.3.1");
+        Assert.Equal(ScreenCriterionStatus.NotTested, row.Status);
+        Assert.NotNull(row.CapturedEvidenceSummary);
+        Assert.Contains("Header trait", row.CapturedEvidenceSummary);
+    }
+
+    [Fact]
+    public void NoScreenReaderCapture_CapturedEvidenceFieldsStayNull()
+    {
+        var rows = ScreenCoverageBuilder.Build([Screen("s1")], []);
+
+        var row = Row(rows, "4.1.2");
+        Assert.Null(row.CapturedEvidenceSummary);
+        Assert.Null(row.CapturedEvidenceSource);
+    }
+
+    [Fact]
     public void OlderAnswers_AreKept_OldestFirst()
     {
         var older = Answer("s1", "1.3.1", GuidedAnswerResult.Fail, answeredAt: DateTimeOffset.Now.AddDays(-1));
