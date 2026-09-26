@@ -457,6 +457,19 @@ public partial class NewScanPage : ContentPage
 			log.Report($"Failed: {ex.Message}");
 			SemanticScreenReader.Announce("Scan failed");
 		}
+		catch (Exception ex)
+		{
+			// Last resort, not a substitute for the specific catch above: this is an async void event
+			// handler, so anything that escapes it becomes an unhandled exception on Mac Catalyst -- with no
+			// global handler registered for this app, that crashes the whole process, mid-scan or
+			// mid-recording, instead of leaving a working app with a plain error message. A crash here is
+			// also more likely to land during Shell/page teardown, the same moment a known MAUI issue
+			// (ShellSectionRootRenderer disposing mid-trait-change) can turn an ordinary crash into a hang-
+			// like stall -- so an unexpected error is reported the same way a recognized one is, rather than
+			// left to reach that path at all.
+			log.Report($"Failed: {ex.Message}");
+			SemanticScreenReader.Announce("Scan failed");
+		}
 		finally
 		{
 			_recording = null;

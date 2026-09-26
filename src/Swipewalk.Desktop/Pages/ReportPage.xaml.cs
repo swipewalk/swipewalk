@@ -10,11 +10,35 @@ public partial class ReportPage : ContentPage
 {
 	private string _folder = "";
 
+	// Kept in a field (not an inline lambda) so OnAppearing/OnDisappearing below can (un)subscribe the exact same
+	// delegate: this page is created fresh on every "report?folder=..." navigation (Routing.RegisterRoute, not a
+	// Shell tab page reused for the app's life -- see AppShell.xaml), so subscribing once in the constructor and
+	// only ever unsubscribing in OnDisappearing would leak every earlier instance -- including its native WebView
+	// -- forever (kept alive by Fonts' static event, each one reloading its HTML on every later text-size change
+	// even though it's no longer shown). It would also leave THIS instance permanently unresponsive to text-size
+	// changes once merely covered rather than popped: OnGuidedChecks below pushes GuidedChecksPage on top of this
+	// same instance, and coming back from it re-runs OnAppearing without the constructor running again.
+	// Subscribing/unsubscribing symmetrically in OnAppearing/OnDisappearing keeps exactly one live subscription
+	// while shown, none while not, however many times this instance is covered and revealed again.
+	private readonly Action _onFontsChanged;
+
 	public ReportPage()
 	{
 		InitializeComponent();
 		AppMenus.Attach(this);
-		Fonts.Changed += () => { if (_folder.Length > 0) Render(); };
+		_onFontsChanged = () => { if (_folder.Length > 0) Render(); };
+	}
+
+	protected override void OnAppearing()
+	{
+		base.OnAppearing();
+		Fonts.Changed += _onFontsChanged;
+	}
+
+	protected override void OnDisappearing()
+	{
+		Fonts.Changed -= _onFontsChanged;
+		base.OnDisappearing();
 	}
 
 	public string Folder

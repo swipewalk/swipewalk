@@ -87,8 +87,13 @@ public partial class AppPickerPage : ContentPage
 			installed = [];
 			status = $"Could not list installed apps: {ex.Message} You can still type the app's id above and press Enter.";
 		}
-		// Discard a result overtaken by a newer request (e.g. "Show system apps" toggled again before this returned).
-		if (generation != _loadGeneration)
+		// Discard a result overtaken by a newer request (e.g. "Show system apps" toggled again before this returned),
+		// or one that arrives after the page itself was already dismissed (Choose/Cancel already called
+		// PopModalAsync -- see _closed): touching Busy/StatusLabel/Apps.ItemsSource on a popped modal page here
+		// would mutate its CollectionView while its native views are being torn down, which is exactly the kind
+		// of race that produced a real hang elsewhere in this app (a main-thread UICollectionView update racing
+		// background object teardown).
+		if (generation != _loadGeneration || _closed)
 			return;
 		_installed = installed;
 		StatusLabel.Text = status;
