@@ -42,7 +42,7 @@ public static class RuleSources
     // the tool and real counts; 1.3.1 gets an informational Header-trait list from the Accessibility
     // Inspector route, never a finding or a status change) and the screen-reader-label-in-name coverage-gate
     // fix (it was wrongly reported as "ran" on an iOS Accessibility Inspector capture, which the underlying
-    // rule never evaluates -- TalkBack only), then to 2026.09.30 for the real bug that made
+    // rule never evaluates -- TalkBack only), then to 2026.09.28 for the real bug that made
     // screen-reader-label-in-name (WCAG 2.5.3) unable to ever fire on a genuine TalkBack capture:
     // TalkBackCollector.kt passed complete = false on every single return path, always, because its walk
     // only ever covers focusable/interactive elements -- a fixed SCOPE of that route, now its own field
@@ -52,7 +52,7 @@ public static class RuleSources
     // coverage) can finally run on real data; ScreenReaderCaptureComparer's Missing-diff check is never
     // reported for FocusableElementsOnly captures at all, complete or not, since the harness can't yet say
     // which exact elements it walked.
-    public const string RulesetVersion = "2026.09.30";
+    public const string RulesetVersion = "2026.09.28";
 
     /// <summary>Reports warn when a source was last reviewed longer ago than this.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(365);
