@@ -1,5 +1,6 @@
 using Swipewalk.Collectors.Android;
 using Swipewalk.Core.Model;
+using Swipewalk.Core.Rules;
 
 namespace Swipewalk.Core.Tests;
 
@@ -176,10 +177,59 @@ public class AndroidCollectorTests
 
             Assert.NotNull(capture);
             Assert.True(capture.Complete);
+            // Scope is a constant fact about the TalkBack route (see ScreenReaderCaptureScope's own
+            // remarks), always set here regardless of what the harness JSON says -- it never carries this
+            // through its own contract.
+            Assert.Equal(ScreenReaderCaptureScope.FocusableElementsOnly, capture.Scope);
             var item = Assert.Single(capture.Items);
             Assert.Equal("Submit. Button", item.SpokenText);
             Assert.Equal("0/0", item.MatchedNodePath);
             Assert.Equal(MatchConfidence.Exact, item.MatchConfidence);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void Load_CompleteTalkBackCapture_LetsScreenReaderLabelInNameRuleFire()
+    {
+        // Regression for the real bug this fix addresses: TalkBackCollector.kt used to pass complete = false
+        // on EVERY return path, so ScreenReaderLabelInNameRule's own gate (Items.Count > 0, Complete: true)
+        // could never be satisfied by a capture built through the real collector path -- only by a hand-built
+        // ScreenReaderCapture in a unit test (see ScreenReaderLabelInNameRuleTests.cs, which never exercised
+        // AndroidCollector.Load and so never caught this). This test goes through that real path end to end:
+        // a button with no tree-level content-desc (so LabelInNameRule, the tree-only check, never runs on
+        // it and can't have already reported this), visible text "Pay", and a real TalkBack utterance that
+        // doesn't contain it ("Submit. Button") -- the exact shape of samples/BuggyApp's planted bug B6,
+        // though B6 itself also has a tree-level Label and so is skipped here by design (see this rule's own
+        // remarks on not duplicating LabelInNameRule) -- this fixture omits that Label specifically so the
+        // real-capture check is the only thing that can catch the mismatch.
+        var dir = Path.Combine(Path.GetTempPath(), $"cf-android-load-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, AndroidCollector.DensityFile), "160");
+            File.WriteAllText(Path.Combine(dir, AndroidCollector.FullDumpFile), """
+                <hierarchy rotation="0">
+                  <node index="0" text="" resource-id="" class="android.widget.FrameLayout" package="com.example.app" content-desc="" bounds="[0,0][100,300]">
+                    <node index="0" text="Pay" resource-id="" class="android.widget.Button" package="com.example.app" content-desc="" clickable="true" focusable="true" bounds="[0,0][100,100]" />
+                  </node>
+                </hierarchy>
+                """);
+            File.WriteAllText(Path.Combine(dir, AndroidCollector.ScreenReaderResultFile), """
+                {"ToolVersion":"17.0.1","Complete":true,"NotCompleteReason":null,"Items":[
+                    {"Order":1,"SpokenText":"Submit. Button","Key":"android.widget.Button|[0,0][100,100]||Pay|"}
+                ]}
+                """);
+
+            var snapshot = AndroidCollector.Load(dir, "Screen 1", "com.example.app");
+            Assert.Equal(ScreenReaderCaptureScope.FocusableElementsOnly, snapshot.ScreenReaderCapture!.Scope);
+
+            var findings = new ScreenReaderLabelInNameRule().Evaluate(snapshot).ToList();
+
+            var finding = Assert.Single(findings);
+            Assert.Equal("screen-reader-label-in-name", finding.RuleId);
+            Assert.Contains("Pay", finding.Message);
+            Assert.Contains("Submit. Button", finding.Message);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -216,6 +266,7 @@ public class AndroidCollectorTests
 
             Assert.NotNull(capture);
             Assert.False(capture.Complete);
+            Assert.Equal(ScreenReaderCaptureScope.FocusableElementsOnly, capture.Scope);
             Assert.Equal("TalkBack (Android Accessibility Suite) is not installed on this device", capture.NotCompleteReason);
             Assert.Empty(capture.Items);
         }

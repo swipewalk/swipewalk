@@ -87,7 +87,7 @@ public class ScreenReaderCoverageEvidenceTests
 
         Assert.Equal(ScreenReaderSource.TalkBack, source);
         Assert.Contains("TalkBack", summary);
-        Assert.Contains("3 elements", summary);
+        Assert.Contains("3 focusable or interactive elements", summary);
         Assert.Contains("2 could be matched", summary); // the Weak item is excluded from "compared"
         Assert.Contains("1 difference was flagged for review", summary);
         Assert.Contains("Values and states were not compared", summary);
@@ -128,33 +128,33 @@ public class ScreenReaderCoverageEvidenceTests
 
         var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture), WcagCriteria.NameRoleValue);
 
-        Assert.Contains("stopped before the end of this screen (device disconnected)", summary);
+        Assert.Contains("did not cover everything on this screen (device disconnected)", summary);
     }
 
     [Fact]
-    public void NameRoleValue_TalkBack_OwnExpectedNotCompleteReason_NeverShowsTheStoppedEarlyCaveat()
+    public void NameRoleValue_TalkBack_Complete_NeverShowsTheStoppedEarlyCaveat()
     {
-        // Regression: EVERY return path in TalkBackCollector.kt passes complete = false, always -- this
-        // exact reason means the walk covered every focusable/interactive element on the screen, not that
-        // it was cut short. A generic "!capture.Complete -> append the caveat" check would show "the
-        // capture stopped before the end of this screen" on literally every real TalkBack capture ever
-        // made, including this fully-successful one -- found from a live capture on a physical Pixel and
-        // the Android emulator (BuggyApp's "Payment history" screen, which has only one focusable element).
+        // Regression for the real bug this fix addresses: TalkBackCollector.kt used to pass complete =
+        // false on EVERY return path, so a generic "!capture.Complete -> append the caveat" check showed
+        // "the capture did not cover everything on this screen" on literally every real TalkBack capture
+        // ever made, including a fully successful one -- found from a live capture on a physical Pixel and
+        // the Android emulator (BuggyApp's "Payment history" screen, which has only one focusable element,
+        // and TalkBack reached it). Now that the harness sets complete = true on genuine success, Complete
+        // alone is enough to gate this caveat correctly for TalkBack too, with no source-specific exception.
         var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
-            [TalkBackItem(1, "Navigate up, Button")], Complete: false,
-            NotCompleteReason: ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason);
+            [TalkBackItem(1, "Navigate up, Button")], Complete: true, NotCompleteReason: null);
 
         var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture), WcagCriteria.NameRoleValue);
 
-        Assert.DoesNotContain("stopped before the end of this screen", summary);
-        Assert.Contains("Swipewalk moved TalkBack's focus to 1 element", summary);
+        Assert.DoesNotContain("did not cover everything on this screen", summary);
+        Assert.Contains("Swipewalk moved TalkBack's focus to 1 focusable or interactive element", summary);
     }
 
     [Fact]
     public void NameRoleValue_TalkBack_ARealFailureReason_StillShowsTheStoppedEarlyCaveat()
     {
         // A genuine problem (here: TalkBack refusing to speak through Swipewalk's engine) must still be
-        // surfaced -- only the one specific, always-present, by-design reason is excluded.
+        // surfaced.
         var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
             [TalkBackItem(1, "Submit, Button")], Complete: false,
             NotCompleteReason: "TalkBack did not say anything through Swipewalk's engine for the first 3 elements " +
@@ -162,20 +162,19 @@ public class ScreenReaderCoverageEvidenceTests
 
         var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture), WcagCriteria.NameRoleValue);
 
-        Assert.Contains("stopped before the end of this screen (TalkBack did not say anything", summary);
+        Assert.Contains("did not cover everything on this screen (TalkBack did not say anything", summary);
     }
 
     [Fact]
-    public void NonTextContent_TalkBack_OwnExpectedNotCompleteReason_NeverShowsTheStoppedEarlyCaveat()
+    public void NonTextContent_TalkBack_Complete_NeverShowsTheStoppedEarlyCaveat()
     {
         var predicted = new[] { new Announcement(1, "0", "Logo, Image", default, HasName: true) };
         var capture = new ScreenReaderCapture(ScreenReaderSource.TalkBack, "17.0.1", DateTimeOffset.UtcNow,
-            [TalkBackItem(1, "Logo, Image", matchedPath: "0")], Complete: false,
-            NotCompleteReason: ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason);
+            [TalkBackItem(1, "Logo, Image", matchedPath: "0")], Complete: true, NotCompleteReason: null);
 
         var (summary, _) = ScreenReaderCoverageEvidence.Summarize(Screen(capture, [], predicted), WcagCriteria.NonTextContent);
 
-        Assert.DoesNotContain("stopped before the end of this screen", summary);
+        Assert.DoesNotContain("did not cover everything on this screen", summary);
     }
 
     [Fact]
@@ -337,35 +336,6 @@ public class ScreenReaderCoverageEvidenceTests
 
         Assert.Contains("The walk stopped before the end of this screen (the walk order repeated an already-seen element)", summary);
         Assert.Contains("not included", summary);
-    }
-
-    [Fact]
-    public void TalkBackFocusableElementsOnlyReason_MatchesTheHarnessKotlinString()
-    {
-        // ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason is a duplicate of the literal
-        // TalkBackCollector.kt uses on every ordinary, fully-successful capture (Swipewalk.Core cannot
-        // reference the Kotlin harness, and the harness isn't reachable from dotnet test at all) -- matching
-        // it by string equality is brittle by nature, so this test is the guard that keeps the duplicate
-        // honest: if the harness's wording ever changes without updating the constant here, the caveat this
-        // constant is meant to suppress would silently come back on every real TalkBack capture (see
-        // ScreenReaderCoverageEvidenceTests.NameRoleValue_TalkBack_OwnExpectedNotCompleteReason_...).
-        var path = FindRepoFile("harness/android/harness/src/androidTest/java/org/swipewalk/harness/TalkBackCollector.kt");
-        Assert.True(path is not null, "Could not find TalkBackCollector.kt from the test's working directory.");
-
-        var kotlinSource = File.ReadAllText(path!);
-
-        Assert.Contains($"\"{ScreenReaderCoverageEvidence.TalkBackFocusableElementsOnlyReason}\"", kotlinSource);
-    }
-
-    private static string? FindRepoFile(string relative)
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var candidate = Path.Combine(dir.FullName, relative);
-            if (File.Exists(candidate))
-                return candidate;
-        }
-        return null;
     }
 
     private static void AssertNoVerdictWords(string text)

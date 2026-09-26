@@ -73,12 +73,109 @@ public class JsonReportTests
     }
 
     [Fact]
-    public void SchemaVersion_Is0_4()
+    public void SchemaVersion_Is0_5()
     {
-        // 0.4 adds CapturedEvidenceSummary/CapturedEvidenceSource to ScreenCriterionReport (real screen-reader
-        // evidence in per-screen coverage) -- this test is updated deliberately, not a surprise CI failure,
-        // whenever the schema version changes.
-        Assert.Equal("0.4", ScanReport.CurrentSchemaVersion);
+        // 0.5 adds ScreenReaderCapture.Scope (ScreenReaderCaptureScope) -- this test is updated
+        // deliberately, not a surprise CI failure, whenever the schema version changes.
+        Assert.Equal("0.5", ScanReport.CurrentSchemaVersion);
+    }
+
+    [Fact]
+    public void Deserialize_OldTalkBackCaptureWithNoScopeProperty_InfersFocusableElementsOnly()
+    {
+        // Regression: a results.json saved before ScreenReaderCapture.Scope existed has no "scope" property
+        // at all, which would otherwise silently deserialize to the field's own default (AllElements) --
+        // wrong for TalkBack, whose capture is always FocusableElementsOnly. Deserialize must force this.
+        var json = """
+            {
+              "toolVersion": "test",
+              "screens": [
+                {
+                  "platform": "android",
+                  "screenName": "Home",
+                  "findings": [],
+                  "screenReaderCapture": {
+                    "source": "talkBack",
+                    "toolVersion": "17.0.1",
+                    "capturedAt": "2026-09-26T00:00:00Z",
+                    "items": [],
+                    "complete": false,
+                    "notCompleteReason": "device disconnected"
+                  }
+                }
+              ]
+            }
+            """;
+
+        var report = JsonReport.Deserialize(json)!;
+
+        Assert.Equal(ScreenReaderCaptureScope.FocusableElementsOnly, report.Screens[0].ScreenReaderCapture!.Scope);
+    }
+
+    [Fact]
+    public void Deserialize_OldTalkBackCaptureWithTheRetiredAlwaysIncompleteReason_ClearsIt()
+    {
+        // Regression: before RulesetVersion 2026.09.30, TalkBackCollector.kt wrote this exact reason on
+        // every ordinary, fully-successful capture (Complete was always false for TalkBack). Reading an old
+        // file back today, unchanged, would show a self-contradictory report caveat ("did not cover every
+        // focusable/interactive element ... only focusable/interactive elements were captured"). Deserialize
+        // must clear the stale reason -- without upgrading the capture to Complete, since the old harness
+        // tolerated up to half its elements staying silent and still used this same reason either way.
+        var json = """
+            {
+              "toolVersion": "test",
+              "screens": [
+                {
+                  "platform": "android",
+                  "screenName": "Home",
+                  "findings": [],
+                  "screenReaderCapture": {
+                    "source": "talkBack",
+                    "toolVersion": "17.0.1",
+                    "capturedAt": "2026-09-26T00:00:00Z",
+                    "items": [],
+                    "complete": false,
+                    "notCompleteReason": "only focusable/interactive elements were captured, not plain informational text (to keep the capture fast)"
+                  }
+                }
+              ]
+            }
+            """;
+
+        var report = JsonReport.Deserialize(json)!;
+
+        var capture = report.Screens[0].ScreenReaderCapture!;
+        Assert.False(capture.Complete);
+        Assert.Null(capture.NotCompleteReason);
+    }
+
+    [Fact]
+    public void Deserialize_OldTalkBackCaptureWithARealFailureReason_LeavesItAlone()
+    {
+        var json = """
+            {
+              "toolVersion": "test",
+              "screens": [
+                {
+                  "platform": "android",
+                  "screenName": "Home",
+                  "findings": [],
+                  "screenReaderCapture": {
+                    "source": "talkBack",
+                    "toolVersion": "17.0.1",
+                    "capturedAt": "2026-09-26T00:00:00Z",
+                    "items": [],
+                    "complete": false,
+                    "notCompleteReason": "device disconnected mid-capture"
+                  }
+                }
+              ]
+            }
+            """;
+
+        var report = JsonReport.Deserialize(json)!;
+
+        Assert.Equal("device disconnected mid-capture", report.Screens[0].ScreenReaderCapture!.NotCompleteReason);
     }
 
     [Fact]

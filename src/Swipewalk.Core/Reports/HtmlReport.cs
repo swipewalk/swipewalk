@@ -696,9 +696,13 @@ public static class HtmlReport
 
         html.Append($"""<p class="hint">{E(CaptureIntro(capture.Source))}</p>""");
         html.Append($"""<p class="meta">{E(ScreenReaderCaptureComparer.ToolLabel(capture.Source))} {E(capture.ToolVersion)}, captured {capture.CapturedAt.ToLocalTime():yyyy-MM-dd HH:mm}. """);
-        html.Append(capture.Complete
-            ? "Covered the whole screen."
-            : $"""Did not cover the whole screen{(capture.NotCompleteReason is { } reason ? $": {E(reason)}" : "")}.""");
+        html.Append(capture.Scope == ScreenReaderCaptureScope.FocusableElementsOnly
+            ? capture.Complete
+                ? "Covered every focusable or interactive element on this screen; plain informational text is not captured by this route."
+                : $"""Did not cover every focusable or interactive element on this screen{(capture.NotCompleteReason is { } focusableReason ? $": {E(focusableReason)}" : "")}."""
+            : capture.Complete
+                ? "Covered the whole screen."
+                : $"""Did not cover the whole screen{(capture.NotCompleteReason is { } reason ? $": {E(reason)}" : "")}.""");
         html.Append("</p>");
 
         var predicted = screen.PredictedTranscript;

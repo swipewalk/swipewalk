@@ -107,6 +107,37 @@ public sealed record ScreenReaderCaptureItem(
     MatchConfidence MatchConfidence);
 
 /// <summary>
+/// What a <see cref="ScreenReaderCapture"/> ever ATTEMPTS to cover, independent of whether this particular
+/// run succeeded (<see cref="ScreenReaderCapture.Complete"/>). A fixed property of the route/source, not of
+/// one capture: every TalkBack capture is <see cref="FocusableElementsOnly"/>, every Accessibility Inspector
+/// capture is <see cref="AllElements"/> -- see <see cref="ScreenReaderCapture.Complete"/>'s remarks for why
+/// this had to be split out as its own field (0.3.0: <see cref="Rules.ScreenReaderLabelInNameRule"/> could never
+/// fire on a real TalkBack capture until <see cref="ScreenReaderCapture.Complete"/>'s meaning was fixed to
+/// depend on this).
+/// </summary>
+public enum ScreenReaderCaptureScope
+{
+    /// <summary>The capture covers every element the tool could reach on the screen, informational text
+    /// included -- matches the historical, single-flag meaning of <see cref="ScreenReaderCapture.Complete"/>
+    /// alone. Used by the Accessibility Inspector route. Default value, for backward compatibility with
+    /// every existing caller/fixture that doesn't set this field.</summary>
+    AllElements,
+
+    /// <summary>The capture only ever attempts focusable/interactive elements (approximately the same
+    /// accessibility flags <see cref="Model.AccessibilityNode.IsInteractive"/>/<see cref="Model.AccessibilityNode.IsFocusable"/>
+    /// read from -- see <c>TalkBackCollector.kt</c>'s <c>collectStops</c>): plain informational text was
+    /// never a candidate the walk was trying to reach at all, by design, to keep the per-element cost down.
+    /// Used by TalkBack's harness. For this scope, <see cref="ScreenReaderCapture.Complete"/> means "every
+    /// focusable/interactive element was walked", never "every element on the screen" -- and
+    /// <see cref="ScreenReader.ScreenReaderCaptureComparer"/>'s Missing-diff check is never reported for this
+    /// scope at all (not even when <see cref="ScreenReaderCapture.Complete"/> is true): the harness has no
+    /// way today to say which exact elements it walked, only how many items it captured, so treating a
+    /// predicted-but-uncaptured focusable stop as a real absence would risk a false 4.1.2 citation from a
+    /// node-identity mismatch or a single slow element, not a genuine gap.</summary>
+    FocusableElementsOnly,
+}
+
+/// <summary>
 /// Real screen-reader evidence for one <see cref="ScreenSnapshot"/> -- what a real tool actually reported,
 /// as opposed to <see cref="ScreenReader.ScreenReaderPredictor"/>'s prediction from the tree. Attached to
 /// <see cref="ScreenSnapshot.ScreenReaderCapture"/>; null there (the common case today, since no collector
@@ -117,9 +148,13 @@ public sealed record ScreenReaderCaptureItem(
 /// change between versions.</param>
 /// <param name="CapturedAt">When this capture was taken.</param>
 /// <param name="Items">The captured stops, in this capture's own order (<see cref="ScreenReaderCaptureItem.Order"/>).</param>
-/// <param name="Complete">True when the capture covered the whole screen (every element the tool would
-/// reach was walked/heard). False for a capture that stopped early -- a device disconnected, the walk timed
-/// out, an order wrapped back to an already-seen element -- so readers and
+/// <param name="Complete">True when the capture covered everything within its own <see cref="Scope"/> (every
+/// element within that scope the tool would reach was walked/heard) -- NEVER "the whole screen" on its own
+/// for a <see cref="ScreenReaderCaptureScope.FocusableElementsOnly"/> capture; see <see cref="Scope"/>. False
+/// for a capture that hit a real problem: for the Accessibility Inspector, a device disconnected, the walk
+/// timed out, or an order wrapped back to an already-seen element; for TalkBack, the app never came back to
+/// the front, TalkBack refused to speak through Swipewalk's engine, the per-capture element cap was reached,
+/// or it said nothing for one or more elements it focused. So readers and
 /// <see cref="ScreenReader.ScreenReaderCaptureComparer"/> know an item predicted but not seen may simply be
 /// past where the capture stopped, not a real difference. See <see cref="NotCompleteReason"/>.</param>
 /// <param name="NotCompleteReason">Why the capture is not <see cref="Complete"/>, for example "stopped after
@@ -131,6 +166,15 @@ public sealed record ScreenReaderCaptureItem(
 /// accessible names -- see <see cref="ScreenReader.ScreenReaderCaptureComparer"/>'s remarks for how it uses
 /// this: its own role/hint word vocabulary is English only, so on any other language a role or hint word
 /// TalkBack says can go unrecognized and must not be mistaken for a wrong or missing accessible name.</param>
+/// <param name="Scope">What this capture ever attempts to cover; see <see cref="ScreenReaderCaptureScope"/>.
+/// Defaults to <see cref="ScreenReaderCaptureScope.AllElements"/> so every pre-existing caller/fixture that
+/// doesn't set this keeps behaving exactly as before -- a collector for a scoped source (currently only
+/// Android's <c>AndroidCollector</c>, for TalkBack) sets this explicitly rather than relying on the default.
+/// <see cref="Reports.JsonReport.Deserialize"/> also forces this to
+/// <see cref="ScreenReaderCaptureScope.FocusableElementsOnly"/> for any <see cref="ScreenReaderSource.TalkBack"/>
+/// capture, so a results.json saved before this field existed (which has no "scope" property at all, and
+/// would otherwise silently default to <see cref="ScreenReaderCaptureScope.AllElements"/>) still gets the
+/// right scope back.</param>
 public sealed record ScreenReaderCapture(
     ScreenReaderSource Source,
     string ToolVersion,
@@ -138,4 +182,5 @@ public sealed record ScreenReaderCapture(
     IReadOnlyList<ScreenReaderCaptureItem> Items,
     bool Complete,
     string? NotCompleteReason,
-    string? Language = null);
+    string? Language = null,
+    ScreenReaderCaptureScope Scope = ScreenReaderCaptureScope.AllElements);

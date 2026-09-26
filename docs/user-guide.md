@@ -261,11 +261,13 @@ Each screen also shows:
   WCAG 2.5.3 Label in Name against it: for a control with visible text (its own, or its only
   descendant's), it checks whether the name TalkBack actually said contains that text, and reports
   it for review — never as a confirmed failure by itself, since this shows what TalkBack said, not
-  whether speech-input software such as Voice Access would match on it — when it doesn't. This could
+  whether speech-input software such as Voice Access would match on it — when it doesn't. This can
   catch a control whose visible text sits only on a child node (a shape the tree-only Label in Name
-  check can't see at all), when TalkBack's announcement leaves that text out — on the one such
-  control checked so far (a Jetpack Compose button in samples/NativeAndroid), TalkBack's
-  announcement included the visible text alongside its overriding name, so nothing was reported.
+  check can't see at all) when TalkBack's announcement leaves that text out. Controls that Label in
+  Name already reports from the tree (their own text and a different name) aren't reported a second
+  time. A real capture of a Jetpack Compose button in samples/NativeAndroid (visible text and an
+  overriding name split across two children) found TalkBack's announcement included the visible text
+  alongside the overriding name, so nothing was reported there.
 - **Real evidence in the WCAG coverage** — on a screen with `--screen-reader` evidence, the "Guided
   checks" tab also carries a "Captured evidence (TalkBack)" or "Captured evidence (Xcode's
   Accessibility Inspector)" line for 4.1.2 Name, Role, Value, 1.1.1 Non-text Content and (TalkBack

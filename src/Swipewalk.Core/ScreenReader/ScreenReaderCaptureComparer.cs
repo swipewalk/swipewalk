@@ -134,8 +134,14 @@ public static class ScreenReaderCaptureComparer
 
         // Predicted stops with a name that no captured item matched -- only meaningful when the capture
         // covered the whole screen (see ScreenReaderCapture.Complete): on an incomplete capture, an
-        // unmatched predicted stop may simply be past where the capture stopped, not a real absence.
-        if (capture.Complete)
+        // unmatched predicted stop may simply be past where the capture stopped, not a real absence. NEVER
+        // reported for ScreenReaderCaptureScope.FocusableElementsOnly (TalkBack), even when Complete is
+        // true: the harness has no way today to say which exact elements it walked, only how many items it
+        // captured, so a predicted-but-uncaptured stop there could just as easily be a node-identity
+        // mismatch (AndroidCollector.LoadScreenReaderCapture matches by a computed key, not a stable id) or
+        // one slow element as a genuine gap -- see ScreenReaderCaptureScope's own remarks. Only
+        // ScreenReaderCaptureScope.AllElements (the Accessibility Inspector route) has this checked at all.
+        if (capture.Complete && capture.Scope == ScreenReaderCaptureScope.AllElements)
         {
             foreach (var stop in predicted.Where(a => a.HasName && !matchedPaths.Contains(a.NodePath)))
                 diffs.Add(new(ScreenReaderDifferenceKind.Missing, stop, null,

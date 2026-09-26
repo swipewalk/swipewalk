@@ -207,14 +207,17 @@ public static partial class AndroidCollector
         if (!File.Exists(resultPath) && !File.Exists(skipPath))
             return null;
 
+        // Scope is a constant fact about the TalkBack route itself (see ScreenReaderCaptureScope's own
+        // remarks), not something that varies per capture -- set here directly rather than carried through
+        // the harness's own JSON contract, on every path (skipped, unreadable, and the real result below).
         if (File.Exists(skipPath))
             return new ScreenReaderCapture(ScreenReaderSource.TalkBack, ToolVersion: "unknown", DateTimeOffset.UtcNow, [], Complete: false,
-                NotCompleteReason: File.ReadAllText(skipPath).Trim());
+                NotCompleteReason: File.ReadAllText(skipPath).Trim(), Scope: ScreenReaderCaptureScope.FocusableElementsOnly);
 
         var harness = JsonSerializer.Deserialize<AndroidHarness.ScreenReaderHarnessResult>(File.ReadAllText(resultPath));
         if (harness is null)
             return new ScreenReaderCapture(ScreenReaderSource.TalkBack, ToolVersion: "unknown", DateTimeOffset.UtcNow, [], Complete: false,
-                NotCompleteReason: "the screen-reader capture result could not be read");
+                NotCompleteReason: "the screen-reader capture result could not be read", Scope: ScreenReaderCaptureScope.FocusableElementsOnly);
 
         var keyPaths = UiAutomatorParser.KeyPathsByPackage(fullXml, package);
         var items = harness.Items.Select(item =>
@@ -227,7 +230,7 @@ public static partial class AndroidCollector
 
         return new ScreenReaderCapture(
             ScreenReaderSource.TalkBack, harness.ToolVersion ?? "unknown", DateTimeOffset.UtcNow, items, harness.Complete, harness.NotCompleteReason,
-            harness.Language);
+            harness.Language, Scope: ScreenReaderCaptureScope.FocusableElementsOnly);
     }
 
     /// <summary>
