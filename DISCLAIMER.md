@@ -3,7 +3,7 @@
 Swipewalk is free to use, including for commercial work, under the [Swipewalk License](LICENSE).
 (Versions 0.1.0 to 0.4.1 were released under the Apache License 2.0 and stay under it.) This page
 explains what the results mean and what you are responsible for. It does not add to or change the
-license.
+licence.
 
 ## What the results are, and are not
 
@@ -36,7 +36,7 @@ license.
 
 ## No warranty
 
-As the [license](LICENSE) says (section 6), Swipewalk is provided "as is", without
+As the [licence](LICENSE) says (section 6), Swipewalk is provided "as is", without
 warranties of any kind, and, as far as the law allows, the authors are not liable for damages arising
 from its use, including decisions made on the basis of its results.
 
@@ -45,7 +45,7 @@ from its use, including decisions made on the basis of its results.
 WCAG is a W3C standard. Android is a trademark of Google LLC; iOS, iPhone, VoiceOver and Xcode are
 trademarks of Apple Inc.; Windows and .NET MAUI are trademarks of Microsoft Corporation. They are
 used here only to describe compatibility. Swipewalk is not affiliated with or endorsed by these
-companies or by the W3C. The license does not grant rights to the Swipewalk name beyond fairly
+companies or by the W3C. The licence does not grant rights to the Swipewalk name beyond fairly
 naming the software (Swipewalk License, section 10).
 
 Swipewalk's sample app BuggyApp belongs to the fictional "City of Exampleville". Any

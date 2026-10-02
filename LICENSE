@@ -16,7 +16,7 @@ service, pass on changed copies, or take it apart to get at its source code.
 
 "Swipewalk" means the software we publish under this licence from version 0.4.2 on, in the form we
 publish it: the Mac desktop app, the `swipewalk` command-line tool and its NuGet package, the
-Visual Studio Code extension, the small helper apps and test harnesses Swipewalk installs on a
+small helper apps and test harnesses Swipewalk installs on a
 device, and the documentation that comes with them. "We" and "Swipewalk" mean the organisation
 Swipewalk, the copyright holder.
 

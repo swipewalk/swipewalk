@@ -3,7 +3,17 @@
 Swipewalk is maintained part-time, so this is an order of work, not a schedule. Suggestions
 are welcome: open an issue.
 
-## Working now (0.4)
+## Working now
+
+### New in 0.4.2
+
+- The desktop app offers more of the command line's choices: a More checks section on New scan (dark/light, rotation, changing-content and web content checks, an app framework menu), iPhone signing, a check that an app is installed on the Devices page, comparing any two runs, a team triage file, ACR author fields, and "Use my current laws and standards" when exporting.
+- Help pages in the desktop app listing every automated check and known limitation.
+- `swipewalk session --platform ios`, `swipewalk apps`, `swipewalk history --delete`, `swipewalk compare --app` and `--carry-triage`.
+- The command line and the desktop app now offer nearly the same things (choosing another History folder in the desktop app is still to come), apart from a short list of exceptions that each have a stated reason (for example options meant for scripts).
+- On Android, the dark/light and rotation checks no longer leave the phone's setting changed when it can't be read first.
+
+### Earlier
 
 - Scan the screen shown now on Android (emulator or USB device) and iOS (Simulator or iPhone).
 - Record mode: use the app, and each new screen is scanned, also at a large system text size (Android and iOS,

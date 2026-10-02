@@ -147,7 +147,8 @@ An emulator works with no setup beyond the Android SDK. For a physical phone:
 2. Connect the phone over USB and accept the "Allow USB debugging?" prompt on the phone — tick
    "Always allow" so you don't need to repeat this.
 3. Run `swipewalk devices` to confirm it's listed, then `swipewalk doctor --platform android` to
-   check everything else (screen unlocked, app installed). The app doesn't need to be in front:
+   check everything else (screen unlocked, app installed). `swipewalk apps --platform android` lists the
+   apps installed on it, so you can copy the package name for `--package`. The app doesn't need to be in front:
    Swipewalk brings it forward itself, or starts it if it isn't running, right before scanning.
 
 ### iOS: Simulator or iPhone
@@ -161,9 +162,8 @@ For a physical iPhone:
 2. Turn on Developer Mode: Settings > Privacy & Security > Developer Mode, then restart the phone.
 3. Apple requires the scanning harness (not your app) to be signed. Swipewalk picks the Apple
    developer team automatically when it can: with only one active Apple Development certificate in
-   your keychain, that team is used; with several, pass `--team <id>` once — running `swipewalk scan`
-   from a terminal remembers it for next time (`record` signs with the team you give it too, but only
-   for that recording). `swipewalk run` (unattended, driven by swipewalk.json), and any command whose
+   your keychain, that team is used; with several, pass `--team <id>` once — running `swipewalk scan` from a terminal remembers it for next time (`record` and `session --platform ios` sign with the team you give them too, but only
+   for that recording or session). `swipewalk run` (unattended, driven by swipewalk.json), and any command whose
    input is redirected (a script or CI), also sign with the given team, but never replace your
    remembered one. It then signs the harness itself, in this order:
    - with a development provisioning profile you already installed (no Apple ID in Xcode needed);
@@ -171,6 +171,14 @@ For a physical iPhone:
      to fit a company wildcard profile;
    - otherwise with Xcode automatic signing, which just needs a free Apple ID signed in to Xcode.
    Your app itself is never re-signed — only the harness is.
+
+   In the desktop app this is **iPhone signing** on New scan, shown only while a physical iPhone is
+   chosen. **Automatic** (the default) does what the command line does without `--team`; or pick a
+   development team from your keychain by name (the menu never shows team ids; a few readiness and error messages still include one). A team you pick for a single-screen scan is
+   remembered the same way `swipewalk scan --team` remembers one, shared with the command line (for a recording it is used for that recording only, as with `record`);
+   Automatic never changes the remembered team. **More signing options…** holds `--profile` (a
+   provisioning profile's name or id) and `--harness-bundle-prefix`. The Devices page shows the same
+   team menu for Check while a physical iPhone is listed (team only; a Check never remembers it). The desktop signing choices have not yet been tried on a physical iPhone; they pass the same values as `--team`, `--profile` and `--harness-bundle-prefix`. The iPhone option of the Screen reader session page shows the same menu (team only; the counterpart of `session --platform ios --team`) once a physical iPhone is chosen. A team picked on the session page is used for that session only. With several teams and none chosen or remembered, Start and Check stop and ask you to choose one; with none at all, the readiness checks report the missing certificate and how to fix it.
 4. The first scan or recording asks for Face ID or your passcode on the phone, to allow UI
    automation. Approve it; you won't be asked again.
 
@@ -457,7 +465,7 @@ Also in "Full audit detail" only:
   catch a control whose visible text sits only on a child node (a shape the tree-only Label in Name
   check can't see at all) when TalkBack's announcement leaves that text out. Controls that Label in
   Name already reports from the tree (their own text and a different name) aren't reported a second
-  time. A real capture of a Jetpack Compose button in samples/NativeAndroid (visible text and an
+  time. A real capture of a Jetpack Compose button in NativeAndroid (visible text and an
   overriding name split across two children) found TalkBack's announcement included the visible text
   alongside the overriding name, so nothing was reported there.
 - **Screen reader (captured), a person's own VoiceOver session** (with `--voiceover-captions` on
@@ -552,7 +560,7 @@ Also in "Full audit detail" only:
   scanned by default (see "WebView content needs TalkBack registered, done automatically only on an
   emulator" in [docs/limitations.md](limitations.md)) and test it by hand with TalkBack instead. Pass
   `--web-audit` (Android, debug builds only; `webAudit` in a swipewalk.json run) for a deeper audit of a
-  WebView's own DOM: Swipewalk runs axe-core (Deque's open-source engine, bundled — nothing to
+  WebView's own DOM: Swipewalk runs axe-core (Deque's engine, bundled — nothing to
   install) directly inside the page over the Chrome DevTools Protocol, entirely on the device, and adds
   its findings the same way Google's Accessibility Test Framework's are added — marked for review, with
   duplicates of Swipewalk's own findings merged rather than shown twice. It's skipped, with a reason,
@@ -689,7 +697,10 @@ nothing to flag. Most WCAG success criteria have no automated check at all yet; 
 checks cover only part of WCAG" limitation.
 
 Three reference pages that ship with Swipewalk describe what it checks and doesn't, and how; each is
-also printable from the CLI so it's always current with the version you have installed:
+also printable from the CLI so it's always current with the version you have installed. In the desktop
+app, **Help > Automated Checks** and **Help > Known Limitations** show the first two in a window (on macOS 27 the system replaces the Help menu and Swipewalk adds these items to it; a UI test on macOS 27.0.1 found them), from the
+same lists (the limitations can be filtered by platform and app framework, as `--platform` and
+`--framework` do):
 
 - `swipewalk checks` — every automated check Swipewalk runs (its own rules, plus the checks it reads
   from Apple's accessibility audit and Google's Accessibility Test Framework), what each looks for,
@@ -746,7 +757,7 @@ yet been checked against a real Flutter/React Native build in this project's own
 as "likely", not confirmed (see [docs/limitations.md](limitations.md) "framework-detection-partial" for
 the full list of gaps). Pass `--framework <name>` when you know the app's framework and want its own
 advice, or to override a wrong detection: `maui`, `androidviews`, `jetpackcompose`, `uikit`, `swiftui`,
-`flutter`, `reactnative` or `hybridweb` (the desktop app offers only the .NET MAUI option today).
+`flutter`, `reactnative` or `hybridweb` (in the desktop app, the App framework menu under More checks on New scan does the same).
 results.json carries the same detail as `framework`, `secondaryFramework`, `frameworkConfidence` and
 `frameworkEvidence` on every screen, for anything built on top of it.
 
@@ -998,7 +1009,7 @@ Saying no (or a non-interactive run) writes the report as usual.
 Unlike `scan`/`record` (Swipewalk driving the screen reader itself for a bounded, silent walk),
 `swipewalk session` lets you use TalkBack on the phone exactly as you normally would, for as long as
 you like, while Swipewalk passively records what happens: which controls TalkBack's focus reached, in
-what order, what TalkBack said, and what you activated. `swipewalk session` is Android only; the desktop app's Screen reader session page also offers an iPhone (VoiceOver) option, which works differently (see the Desktop app section).
+what order, what TalkBack said, and what you activated. `swipewalk session --platform android` is this live session; `swipewalk session --platform ios` and the desktop app's iPhone (VoiceOver) option are a different, per-screen design (see [iPhone VoiceOver session](#iphone-voiceover-session-swipewalk-session---platform-ios) below).
 
 ```
 swipewalk session --platform android --package <app package> [--device <id>] [--history <dir>]
@@ -1050,6 +1061,32 @@ Once the session starts, type a command and press Enter:
 If you leave the app, Swipewalk stops recording until you return to it or type `stop`, and says so the
 next time it prints status.
 
+### iPhone VoiceOver session (`swipewalk session --platform ios`)
+
+```
+swipewalk session --platform ios --bundle-id <id> [--device <udid>] [--history <dir>]
+                  [--app-name <name>] [--app-version <v>] [--team <id>] [--confirm]
+```
+
+The command-line version of the desktop app's iPhone (VoiceOver) option, using the same code. It has not itself been run on a device yet; the desktop option is what has been tried. It needs a physical iPhone
+connected by cable (VoiceOver doesn't run in the Simulator); `--device` picks the iPhone when more than one is connected.
+Swipewalk runs the same pre-flight as a scan and asks you to confirm that it will read VoiceOver's captions, including
+anything you type (`--confirm` answers for a non-interactive run). The app name and version default to the bundle id and the
+version read from the iPhone, as in the desktop app. `--team <id>` names the Apple development team that signs the scanning
+helper, as for `scan` ([Setting up an iPhone](#ios-simulator-or-iphone)); it is used for that session only and is not remembered. Swipewalk doesn't turn VoiceOver on or drive it: you do. It isn't the
+Android session's shape: nothing follows VoiceOver between screens or lists controls you didn't reach. For each screen you
+choose, the terminal shows the step you're on and the commands that work at it (press Enter after each):
+
+- `scan` — scan the screen that is showing now, with VoiceOver off (it may show iOS's "Automation Running" banner and ask for Face ID or your passcode, usually only the first time).
+- `start` or `skip` — read VoiceOver's captions for that screen, once you have turned on VoiceOver and its Caption Panel, or don't.
+- `done` — you've finished swiping through the screen in one pass; Swipewalk stops reading (it stops by itself after 10 minutes).
+- `off` — you've turned VoiceOver off again, so the next scan isn't disturbed.
+- `note <text>` — saves a note; `stop`, Ctrl-C or Ctrl-D ends the session and saves it to History.
+
+The desktop buttons Scan this screen now, Start reading captions, Don't read captions for this screen, I've finished swiping and
+I've turned VoiceOver off are these commands. Continuing a saved iPhone session isn't offered. The tried-so-far limits (one iPhone
+SE, one sample app, English) are in `swipewalk limitations`, entry `ios-voiceover-captions-capture`.
+
 **A picture of each screen.** For every screen state the session sees (up to three per screen), Swipewalk
 takes a plain screenshot shortly after the screen is detected, and the report shows it in the screen's
 own section, in the "Captured order" view of the screenshot, with a solid, numbered outline on each
@@ -1095,8 +1132,7 @@ the same confirmation applies on a physical phone.
 ## 6. CI and history
 
 For a repeatable, scriptable run, describe it once in a `swipewalk.json` file and run
-`swipewalk run`. Here's a minimal example, based on
-[`samples/BuggyApp/swipewalk.json`](../samples/BuggyApp/swipewalk.json):
+`swipewalk run`. Here's a minimal example:
 
 ```jsonc
 {
@@ -1169,11 +1205,23 @@ even if its results hold screen reader evidence. Nothing decides which version "
 [Combining several runs into one report](#combining-several-runs-into-one-report) below for choosing which
 version(s) to build a report from.
 
+`swipewalk apps --platform android|ios [--device <id>]` lists the apps installed on a device (package
+names on Android, bundle ids on iOS) so you can copy one into `--package` or `--bundle-id`; add
+`--include-system` to include the system apps. It is the command-line counterpart of "Choose app…" in the
+desktop app. `swipewalk history --delete <run>` deletes one saved run (its folder or id, as listed above) and
+nothing else; a recording still in progress is refused. The desktop app's Delete button, which asks first,
+does the same.
+
 To see what changed between two runs, compare them by run folder or `results.json` path:
 
 ```bash
 swipewalk compare <earlier> <later>
+swipewalk compare --app <app id>      # the newest saved run of that app against the one before it
 ```
+
+`--app` takes the app id shown by `swipewalk history`; add `--platform android|ios` when the same id was scanned on both,
+and `--history <dir>` for another History folder; the options can be given in any order. It compares the same two runs the desktop app's Dashboard card does: the newest scan or recording and the one before it
+(screen reader sessions are left out, since a session covers only the screens you went through, and so is an earlier run that captured no screens, since it has nothing to compare against).
 
 This reports what's new, what's no longer found, and what's still found. "No longer found" means
 the automated checks didn't report it this time — it does not mean the issue was fixed; check by
@@ -1198,7 +1246,9 @@ checks on your running app; automated checks find some issues, not all, so manua
 are asked to use a test device and test data; and reports show which laws and standards each finding is relevant
 to, with links to their official sources so you can check them (this is not legal advice). **Get started** (or
 Return, or Escape) closes it, and it doesn't open by itself again; **About these mappings** closes it and opens
-the Laws and standards page. To read it again, choose **Help > Welcome to Swipewalk**.
+the Laws and standards page. To read it again, choose **Help > Welcome to Swipewalk**. **Help > Automated Checks** lists every automated check Swipewalk runs (what `swipewalk checks`
+prints), and **Help > Known Limitations** lists what it cannot check or may get wrong (what `swipewalk
+limitations` prints), each row opening to its details. Use the Show menu at the top of the page to switch between the two lists.
 
 The pages:
 
@@ -1236,11 +1286,30 @@ The pages:
   and export from the app) and **Choose none** puts everything back. It changes only which laws a
   report and its exports list first, never what they include, and a specific "Law or standard" above
   still means that one only (the line next to the button then says the choice isn't used for that scan). Each scan keeps the choice it was made with, so a later export follows
-  it; an older run without one uses your current choice. The desktop export always follows the run's own choice (the command line's `export --my-laws` can override it; a desktop equivalent is not available yet).
+  it; an older run without one uses your current choice. An export follows the run's own choice unless you tick **Use my current laws and standards instead of the saved choice**, which the desktop export offers only when the run's saved choice differs from yours (the same as `export --my-laws` with your current laws; see [Exporting from the desktop app](#exporting-from-the-desktop-app)).
   An optional **App source folder** (Choose folder… and Clear; read on this Mac only) is the same as
   `--source` ([section 12](#12-finding-the-likely-source-line-net-maui-native-android-native-ios-react-native-flutter)):
   findings that Swipewalk can match point at a likely line in your project, for scans and
-  recordings.
+  recordings. An optional **Team triage file** (Choose file… and Clear, under **More checks** below, in both scan and record mode) is the same as `--triage <file>`
+  on `scan` and `record`: findings the file already marks (for example a `swipewalk-triage.json` your
+  team keeps in the app's repository) start out marked in the new run. Where a finding is marked both in that
+  file and in the previous run of the same app, the file's mark is the one kept; the previous run's marks
+  are carried forward only for findings the file says nothing about (see
+  [section 11](#11-triage-mark-a-finding-as-already-looked-at)).
+
+  **More checks** (a button that opens a collapsed section, closed until you ask for it) holds the
+  extra checks and options the command line has, each off by default like the command line:
+  "Also check in the other dark or light appearance" (`--appearance both`), "Also check the other
+  orientation (portrait or landscape)" (`--orientation both`), "Also check for content that changes by
+  itself" (`--auto-update-content`, with "Seconds before the first extra capture" for
+  `--auto-update-interval`, default 3; a number greater than 0) and "Also check web content inside the
+  app" (`--web-audit`; Android only, needs a debug build of the app). These four go through the same scan code as the command-line options. The first
+  three are for a single-screen scan only, so they're hidden while you choose Record (the command line
+  refuses them there too); the web content check works in both. "App framework" is a menu: Detect automatically (the default), .NET MAUI, Android Views, Jetpack
+  Compose, UIKit, SwiftUI, Flutter, React Native, or web content in an app — the same choices as
+  `--framework`, used for fix examples and source matching. While you choose Record, "Screens you plan to
+  cover" (comma-separated, for example Login, Home) is the same as `--expect`: the report lists the ones
+  you didn't scan. The optional **Team triage file** described above is in this section too, for both scans and recordings. On a physical phone, the dark/light and orientation checks change the phone's settings and put them back; a line under them says so when you tick one (the scan prints the same notice). The dark/light check is skipped, with the reason in the report, when an iPhone's appearance is set to Automatic. On Android the setting is put back as it was (on, off, sunset to sunrise, bedtime, or a custom schedule with its start and end times (the reading and restoring are checked in unit tests against sample `cmd uimode` output; restoring a schedule has not yet been tried on a phone)); if it or the rotation settings can't be read, the check is skipped with the reason. Use a test device.
 
   No device is chosen by default; Start (and Choose app…) stay disabled, with a short
   reason shown, until you pick one. "Scan automatically when the screen changes" only appears once
@@ -1327,7 +1396,9 @@ The pages:
   Devices and New scan pages naming any device Swipewalk still owes a restore to (see below).
 - **Screen reader session** — start with "Phone and screen reader": an Android phone with TalkBack
   (below) or an iPhone with VoiceOver (next item). Android, a live session: pick a device and app (type the package, or
-  Choose app… to pick from recently scanned and installed apps, the same as New scan), confirm that
+  Choose app… to pick from recently scanned and installed apps, the same as New scan; optionally an app name and an app version
+  to label the run with, like the command's `--app-name` and `--app-version`, which otherwise default to the package and the
+  version read from the phone), confirm that
   Swipewalk will change accessibility settings for the session, and Start. Unlike a normal scan or
   recording, Swipewalk doesn't drive anything and shows no step-by-step instructions — you use
   TalkBack on the phone as you normally would, for as long as you like, while Swipewalk records what
@@ -1385,7 +1456,8 @@ The pages:
 - **Screen reader session, iPhone (VoiceOver)** — choose "iPhone (VoiceOver)" under "Phone and screen
   reader". Only a physical iPhone is offered, connected by cable: VoiceOver doesn't run in the
   Simulator. Choose the iPhone, enter the app's bundle id (or press "Choose app…" to pick one from recently scanned apps
-  and the apps installed on the iPhone), tick the confirmation and press Start
+  and the apps installed on the iPhone; optionally an app name and version to label the run with, which otherwise
+  default to the bundle id and the version read from the iPhone), tick the confirmation and press Start
   session. This is not the Android session's shape: Swipewalk doesn't follow VoiceOver between
   screens or list controls you didn't reach, and it doesn't turn VoiceOver on or drive it — you do
   (Settings > Accessibility > VoiceOver, and VoiceOver > Caption Panel, on the iPhone). It reads
@@ -1432,7 +1504,10 @@ The pages:
   that device stops the leftover helper first, then restores the phone's accessibility settings — only
   once it's confirmed no other Swipewalk process on this computer still owns that device.
 - **Devices** — readiness checks and fix hints for each connected device, the same checks
-  `swipewalk doctor` runs. A device already being scanned elsewhere skips its Check with the same
+  `swipewalk doctor` runs. **App to check (optional)** takes an Android package or iOS bundle id, typed or chosen with
+  Choose app… (it browses the device you last pressed Check on, or the only device), and then Check
+  also says whether that app is installed (and, on Android, whether it is in front), like
+  `swipewalk doctor --package` or `--bundle-id`. A device already being scanned elsewhere skips its Check with the same
   message, rather than risk both racing to change and restore its settings at once. A banner at the
   top (also on New scan) names any device Swipewalk still owes a restore to — an interrupted scan left
   its text size, orientation, appearance or (Android) screen-reader settings changed and never put it
@@ -1443,7 +1518,7 @@ The pages:
   pending, and re-checks itself every time either page is opened.
 - **History** — every saved run, grouped by app and then by that app's own version, with a count at
   each level (a run's version is grouped under "version not recorded" when it wasn't known — see
-  [section 6](#6-ci-and-history)); open a run's report, or compare it, from its own row. A recording
+  [section 6](#6-ci-and-history)); open a run's report from its own row, or use Compare runs… at the top to compare any two runs. A recording
   that's still going (here, or in another window) shows "In progress"; one that stopped before Finish
   -- including Swipewalk itself being closed or crashing -- shows "Ended early" with a Continue button
   to resume it. A screen reader session works the same way: one still running shows "In progress", and
@@ -1469,12 +1544,26 @@ The pages:
   which app version — the same marking `swipewalk triage` does (see
   [section 11](#11-triage-mark-a-finding-as-already-looked-at)), saved into that run's own
   `triage.json` and shown in the report the moment the dialog closes. Reopening the dialog for an
-  already-marked finding shows what was saved and offers Clear mark. Clicking an external link inside the
+  already-marked finding shows what was saved and offers Clear mark. The findings list's **Team triage
+  file** (Choose file… and Clear) is the same as `swipewalk triage --triage <file>`: while a file is chosen,
+  Triage… reads and saves marks in that file instead of the run's own, Export…, Export selected… and the per-finding
+  tickets use it (the export page starts with the same file chosen), and the report is re-rendered from its marks, which also shows the report's own list of
+  marks that match nothing in this run (the "stale" list `swipewalk triage <run>` prints). Choosing Clear
+  re-renders the report from the run's own marks again. The report file keeps whichever marks were applied last. Clicking an external link inside the
   report (a W3C Understanding page, ada.gov, a standards source, an archive.org copy) opens it in your
   default browser instead of navigating the report itself away — so the report stays open and the Report
   page's own Back button still returns where you came from.
-- **Compare** — pick two runs and see new, no longer found, not checked again, and still-found
-  findings, with the same "no longer found isn't fixed" caveat as `swipewalk compare`.
+- **Compare runs** — pick any two saved runs and see new, no longer found, not checked again, and
+  still-found findings, with the same "no longer found isn't fixed" caveat as `swipewalk compare` (it
+  uses the same comparison). Two pickers, **Earlier run** and **Later run**, list every saved run
+  grouped by app and app version, each row naming the app, version, platform, time and counts. History's
+  **Compare runs…** button opens the page on the newest run and the previous run of the same app and platform; the Dashboard's
+  "Compare with previous run" opens it on that card's run and its previous run. Neither starting pair
+  includes a screen reader session (as the Dashboard and `swipewalk compare --app` leave them out), though
+  sessions stay in both lists. You can change either side, so you can compare release 1.1 with 1.3, or two devices. Swipewalk never swaps your choice: if
+  the run you picked as earlier was started after the later one, the page says so plainly. Findings are
+  marked with the later run's own triage marks, or with the marks in an optional **Team triage file**
+  instead (the same as `swipewalk compare --triage <file>`; the two are never merged).
 
 Download the signed `.dmg` from the
 [releases page](https://github.com/swipewalk/swipewalk/releases). See the
@@ -1521,19 +1610,18 @@ that run's own restore, and says so. The common ones:
 - **No iOS Simulator runtime is installed.** A warning, not a failure — a physical iPhone can still
   be scanned. To add a Simulator runtime: Xcode > Settings > Components, or run
   `xcodebuild -downloadPlatform iOS`.
-- **iOS harness not found.** Reinstall Swipewalk (the harness ships with it), or pass
-  `--harness <path to .xcodeproj>`.
-- **iOS: Accessibility Inspector walk not found ("Could not find harness/mac-inspector-walk/InspectorWalk.swift").**
+- **iOS harness not found.** Reinstall Swipewalk (the harness ships with it). `--harness <path to .xcodeproj>`
+  is only for Swipewalk's maintainers, to test a harness build; you should never need it.
+- **iOS: the Accessibility Inspector walk's script was not found (the message starts "Could not find").**
   Reinstall Swipewalk (the script ships with both the desktop app and the command-line tool).
 - **Android: Google's accessibility checks (ATF) didn't run.** Swipewalk installs a small prebuilt
   instrumentation harness the first time it's needed. If it can't be installed or a run fails, the scan
   still completes with today's checks; the report and results.json say why (see
   [docs/limitations.md](limitations.md), "Google's Accessibility Test Framework needs the instrumentation
-  harness to install and run"). `--android-harness <path>` points at a harness project folder to build with
-  Gradle instead; an installed copy doesn't need it.
-- **Android: `--screen-reader` (TalkBack capture) "did not run: No bundled TTS-engine APK and could
-  not find harness/android".** Reinstall Swipewalk (a prebuilt copy ships with it), or pass
-  `--android-harness <path>` to point at a harness project folder to build with Gradle instead (an installed copy doesn't need it).
+  harness to install and run"). `--android-harness <path>` is only for Swipewalk's maintainers, who use it to
+  test a harness build with Gradle; the prebuilt copy that ships with Swipewalk needs no option.
+- **Android: `--screen-reader` (TalkBack capture) "did not run: No bundled TTS-engine APK".** Reinstall Swipewalk (a prebuilt copy ships with it). `--android-harness <path>`
+  is only for Swipewalk's maintainers; you should never need it.
 - **No booted simulator or device chosen (iOS).** Boot a Simulator, or connect an iPhone and pass
   `--device <udid>` (see `swipewalk devices`).
 - **iOS device: cannot sign the scanning harness.** You need a development provisioning profile
@@ -1610,8 +1698,7 @@ Swipewalk runs entirely on your computer: no accounts, no analytics, no telemetr
 network requests of its own. Scan output goes to the folder you choose and to a local run history
 on your machine; nothing is sent to the Swipewalk authors or anyone else. The Android accessibility
 harness (Google's Accessibility Test Framework) ships prebuilt, so it needs no network access
-either — only a harness project folder you name with
-`--android-harness` is built with Gradle instead, which does use the network (see
+either — only a maintainer's own harness build (`--android-harness`) uses Gradle instead, which does use the network (see
 [PRIVACY.md](../PRIVACY.md)). See PRIVACY.md for exactly what's stored, where, and what the platform
 tools (`adb`, `xcodebuild`, `devicectl`) may do on their own.
 
@@ -1633,7 +1720,7 @@ and the app's framework if you can.
 Want to help improve the list? If something about how a law or standard is mapped to WCAG looks wrong or
 is missing, check the official source linked in its details (choose its name on the desktop app's **Laws and
 standards** page, or see [docs/standards.md](standards.md)). Then use "Suggest a correction" there,
-"Suggest a law or standard" for one that isn't listed, or the "Law or standard mapping" issue form on the
+"Suggest a law or standard" for one that isn't listed, or the "Help improve Swipewalk's law mappings" issue form on the
 [Swipewalk issue tracker](https://github.com/swipewalk/swipewalk/issues/new/choose). Include a link to the
 official text that shows the correct information. The issue is public on GitHub.
 
@@ -1700,8 +1787,7 @@ that fits where the findings are going:
   `--format html`, it always writes the whole report, so `--finding` is rejected with it too. The PDF
   itself has a real tagged structure (headings, lists, a table for the coverage summary), a document
   title and language, alt text on every screenshot, and bookmarks for each screen, each root-cause
-  group and each finding listed individually, targeting PDF/UA-1 and checked with the open-source
-  [veraPDF](https://verapdf.org/) checker (see `docs/accessibility-statement.md` for exactly what was
+  group and each finding listed individually, targeting PDF/UA-1 and checked with the [veraPDF](https://verapdf.org/) checker (see `docs/accessibility-statement.md` for exactly what was
   checked and what isn't covered yet). It needs nothing installed: the PDF is built entirely by a
   bundled .NET library ([PDFsharp](https://www.pdfsharp.net/), MIT-licensed), with the same Open Sans
   typeface as the rest of the report embedded in the file, plus three more embedded fonts (Devanagari,
@@ -1862,12 +1948,19 @@ the whole report. The desktop app has the same combined export from History's ow
 The desktop app exports the same five formats using the same code, from the two places that export a
 whole run (Report page → Export… and History → Export…); the Findings list's per-finding export stays
 CSV/tickets only, same as before (see below — a chosen subset of findings has no per-criterion shape
-for an ACR). The ACR draft doesn't yet have its own dialog for the app name or author contact — it
-uses the same defaults as the CLI without `--app-name`/`--author-email`/`--author-name` (the scanned
-app's own id, and a placeholder contact the draft's notes say to fill in); use
-`swipewalk export --format acr` from a terminal for a report with those filled in (the CLI's own
-export needs the run to have at least one finding, unlike the desktop app's ACR export above, which
-works for a clean run too).
+for an ACR). Choosing the ACR format shows three optional fields, the desktop counterparts of
+`--app-name`, `--author-name` and `--author-email`, on both the single-run export and a version's own
+export: **App name**, **Author name** and **Author email**. Leave one empty and the draft falls back as the
+CLI's does (the app's id for a single run, or its name as shown in History for a version's export; no author name, and a placeholder contact the draft's notes say to fill
+in). Nothing is taken from your Mac and nothing is remembered between exports, as with the CLI. The
+draft is still a draft for you to review and complete; whoever publishes the report is responsible for its
+statements.
+
+**Laws that matter to me.** An export lists the laws saved with the run first (or yours, when the run saved none). When the
+run's saved choice differs from the one you have now, the export page also shows **Use my current laws and
+standards instead of the saved choice**, with a line explaining it; tick it to list your current laws first instead, the
+desktop counterpart of `swipewalk export --my-laws`. A version's own combined export has the same choice when any of its scans
+saved a different choice. The saved run is never changed, and the draft ACR ignores the choice, as it ignores the law or standard.
 
 - **Report page → Export…** exports every finding in the run you're viewing: choose a format
   (report as HTML, report as PDF, CSV, tickets, or a draft Accessibility Conformance Report),
@@ -1880,10 +1973,14 @@ works for a clean run too).
 - **Law or standard (Report page → Export…, History → Export…, the Findings list's export and a version's own Export…)** — the desktop
   counterpart of `swipewalk export --standard`, in the same grouped menu as New scan. It starts on the
   law or standard the run was scanned with (All standards unless the scan named one; for a version, the one
-  every run of it was scanned with when they agree, otherwise All standards). Choosing another works out
+  its newest run was scanned with, the same as `swipewalk export --app`). If the run was scanned with a law
+  or standard that this version no longer lists, the menu shows All standards and a line says so. Choosing another works out
   again which laws and standards each issue is relevant to from its WCAG criteria, so nothing is scanned again and the saved run is unchanged. It applies to the report (HTML or
   PDF), CSV and ticket exports. The draft Accessibility Conformance Report is written per WCAG criterion, so
   for it the choice is disabled, with the reason below it.
+- **Optional team triage file (Report page → Export…, History → Export… and the Findings list's export)** — the desktop counterpart of
+  `swipewalk export --triage <file>`: the marks in this file are used INSTEAD of the run's own `triage.json`
+  (the two are never merged), for every format. Left empty, the run's own marks are used, as before. Marks you save from the Report page while a team file is chosen are written into that file, not into the run's own `triage.json`.
 - **Optional app source folder (Report page → Export…, History → Export… and the Findings list's export)** — the same field as
   New scan's, the desktop counterpart of `swipewalk export --source`: choose the project folder and the
   export (report, CSV or tickets; not the ACR draft, which has no per-finding lines) fills in a likely
@@ -2006,12 +2103,12 @@ notes on finding ids). Rescanning an unchanged screen reproduces the same id, so
 *when the same triage file is read for both runs* — either a project file named with `--triage <file>`
 (or picked up automatically by `swipewalk run`, see above), or by continuing the same recording
 (`record --continue`) into the same run folder. A brand new scan or recording started from the CLI
-still begins with its own empty `triage.json` unless you pass `--triage <file>`, so marks from an
-earlier, separate run don't carry over on their own there. If a screen's layout changes enough to move
+still begins with its own empty `triage.json` unless you pass `--triage <file>` or `--carry-triage` (see
+below), so marks from an earlier, separate run don't carry over by default there. If a screen's layout changes enough to move
 the element's position in the tree, its id changes too, and an older mark for it shows as stale rather
 than silently applying to a different element.
 
-### Desktop app: marks carry forward automatically
+### Carrying marks forward (desktop app, and `--carry-triage`)
 
 A new scan or recording started from the **desktop app** for the same app and platform automatically
 carries forward the marks that are currently set on that app's most recent previous run in History, so
@@ -2058,9 +2155,18 @@ current mark from then on — clear or re-mark it the same way (`swipewalk triag
 button in the desktop app's Report page findings list). The report shows it distinctly from a mark made
 directly against this run, for example: "Marked in the run from *(original date)*: *(status)* —
 *(reason)* (marked by *(name)*). *(WCAG caveat, for won't fix/accepted risk)* Carried forward from an
-earlier run of this app; you can clear or re-mark it." A run started from the **CLI** is unaffected by
-this — it keeps the `--triage <file>`/`swipewalk run` behaviour described above. There is currently no
-setting to turn this off for one run.
+earlier run of this app; you can clear or re-mark it." On the command line the same step is opt-in: add
+`--carry-triage` to `scan` or `record` and, once the run is saved to History, Swipewalk carries the
+previous run's marks into it with the same rules and the same messages as above (it needs History, so
+not with `--no-history`, `--from` or `--continue`, and it is not part of `swipewalk run`). Without the flag a CLI run
+keeps the `--triage <file>`/`swipewalk run` behaviour described above. There is currently no setting to
+turn this off for one run in the desktop app.
+
+When a scan in the desktop app is given a **Team triage file** (New scan, the same as `--triage <file>`), that
+file is applied first: its marks become the new run's marks, the same as the CLI seeds them. The carry-forward
+from the previous run then only fills in findings the file says nothing about (a finding the file marks or
+clears is never overridden). The report lists any mark in the file that matches nothing in the new run, in its
+"stale" list.
 
 ## 12. Finding the likely source line (.NET MAUI, native Android, native iOS, React Native, Flutter)
 
@@ -2164,7 +2270,7 @@ different source shapes underneath:
    misidentified multi-module build) — checked first against the app's own package as actually detected
    from the scan being mapped (the most reliable source: a uiautomator `resource-id` package is the app's
    actual installed `applicationId`. Verified with a real build installed on the Android emulator (not yet
-   on a physical phone): a single-module sample app (samples/NativeAndroid) given `applicationIdSuffix` on
+   on a physical phone): a single-module sample app (NativeAndroid) given `applicationIdSuffix` on
    its debug build type, so its installed `applicationId` differed from its Gradle `namespace` — every
    app-owned `resource-id` reported (every one outside Android's own `android:` package) carried the
    suffixed `applicationId`, never the plain `namespace` the source declares), falling back to the
@@ -2229,7 +2335,7 @@ Matching tries, in order:
    doesn't know which screen (or even which framework) actually produced the finding it's mapping, only
    whether a matching declaration exists anywhere in the given source, so on a project with more than one
    screen it can point at a *different* screen's element (see `swipewalk limitations`,
-   `ios-source-mapping-scope`, which shows this happening for real in samples/NativeiOS). SwiftUI has no
+   `ios-source-mapping-scope`, which shows this happening for real in NativeiOS). SwiftUI has no
    equivalent here at all, since its views are rarely named local variables — an unnamed SwiftUI element
    is "not found" (item 6 below needs a label to go on, so it never applies to an unnamed element).
 6. **A merged SwiftUI group** — tried only for a finding whose label looks combined from several views
@@ -2331,13 +2437,13 @@ against a view requires. Jetpack Compose is the opposite case — identifier mat
 the app opts into `testTagsAsResourceId`, and even then a shared tag with no per-item value still lands on
 one line for many elements. The Kotlin/Java side of Android matching is careful lexical scanning of specific
 patterns, not a full parser, so it's conservative by design. On native iOS, a hand review of several real,
-unrelated open-source apps found a storyboard/XIB's own design-time text is frequently a decoy — the shipped
+unrelated apps found a storyboard/XIB's own design-time text is frequently a decoy — the shipped
 text is assigned in code via the outlet's own property — and every SwiftUI app reviewed had at least one
 label whose text comes from data at runtime, with no literal anywhere in the source to point at.
 Text/resource matching is expected to handle a static screen's toolbar, settings and form fields well on
 any of these frameworks — but that, and each mapper as a whole, has so far only been tested against
-Swipewalk's own sample apps (`samples/BuggyApp` for MAUI, `samples/NativeAndroid` for Views/Compose,
-`samples/NativeiOS` for UIKit/SwiftUI), not a real third-party app; Compose `testTag` matching hasn't been
+Swipewalk's own sample apps (`BuggyApp` for MAUI, `NativeAndroid` for Views/Compose,
+`NativeiOS` for UIKit/SwiftUI), not a real third-party app; Compose `testTag` matching hasn't been
 tested on a real capture at all yet (the sample doesn't set `testTagsAsResourceId`). See
 `swipewalk limitations` for the full picture (`maui-source-mapping-scope`, `android-source-mapping-scope`,
 `ios-source-mapping-scope`; `reactnative-flutter-source-mapping-scope` for React Native and Flutter).

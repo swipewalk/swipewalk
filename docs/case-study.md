@@ -17,12 +17,11 @@ and manual testing with assistive technology is still required.
 
 ## 1. BuggyApp: a sample .NET MAUI app with planted bugs
 
-`samples/BuggyApp` is a one-screen "Pay a parking ticket" app for the
+`BuggyApp` is a one-screen "Pay a parking ticket" app for the
 fictional City of Exampleville, written the way many real MAUI apps are. It has 11 planted
-accessibility bugs (B1–B11) and some correctly built controls for comparison. The answer key is
-`ground-truth.json`, and an acceptance test
-(`GroundTruthTests`) fails if a scan of the saved Android and iOS captures finds anything more or less
-than it lists. The only saved large-text capture is the Android one, so the iOS large-text expectations
+accessibility bugs (B1–B11) and some correctly built controls for comparison. The answer key lists
+them, and an automated test fails if a scan of the saved Android and iOS captures finds anything more or less
+than the key lists. The only saved large-text capture is the Android one, so the iOS large-text expectations
 in the answer key are written down for reference but not yet enforced by a test. The [README](../README.md)'s
 screenshot of this app on iOS is rendered from the saved iOS capture at normal text size only, so it
 shows one fewer needs-review item (4) than the "iOS Simulator" column below (5), which also includes
@@ -44,7 +43,7 @@ coverage lines quoted below.
 (This table's counts are from the 2026-09-23 recompute described above; a later ruleset may find a
 slightly different count on the same saved captures -- the docs sweep before each release recomputes it.
 Re-checked 2026-09-27 against ruleset 2026.09.39 for the 0.3.0 release: the same saved captures give the
-same counts and the same coverage lines below, so nothing in this section changed. Re-checked again on 2026-09-29 against ruleset 2026.09.41 for the 0.4.0 release, by re-scanning the repository's saved BuggyApp captures with `scan --from`: the Android capture gives the same 6, 8 and 4 and the same coverage line; the saved iOS capture has no AX3 rescan, so it gives 6, 4 and 2 (the fifth needs-review item in the table needs the rescan, as noted above) and the same coverage line. Re-checked once more on 2026-10-01 against ruleset 2026.09.43 for the 0.4.1 release, the same way: the same counts (6, 8 and 4 on Android; 6, 4 and 2 on iOS) and the same two coverage lines.)
+same counts and the same coverage lines below, so nothing in this section changed. Re-checked again on 2026-09-29 against ruleset 2026.09.41 for the 0.4.0 release, by re-scanning the saved BuggyApp captures with `scan --from`: the Android capture gives the same 6, 8 and 4 and the same coverage line; the saved iOS capture has no AX3 rescan, so it gives 6, 4 and 2 (the fifth needs-review item in the table needs the rescan, as noted above) and the same coverage line. Re-checked once more on 2026-10-01 against ruleset 2026.09.43 for the 0.4.1 release, the same way: the same counts (6, 8 and 4 on Android; 6, 4 and 2 on iOS) and the same two coverage lines.)
 
 | | Android | iOS Simulator |
 |---|---|---|
@@ -182,7 +181,7 @@ The sample apps (BuggyApp for .NET MAUI, and the native Android and iOS ones) ar
 
 The sample app above was written to be tested. To see what Swipewalk reports on apps it wasn't
 written for, we scanned three of Microsoft's official .NET MAUI sample apps from
-[`dotnet/maui-samples`](https://github.com/dotnet/maui-samples) (MIT license):
+[`dotnet/maui-samples`](https://github.com/dotnet/maui-samples) (MIT licence):
 
 - **DeveloperBalance**: the sample app that `dotnet new maui --sample-content` produces;
 - **TipCalc**: a small form with text fields and a slider;
@@ -351,7 +350,7 @@ publishing these results:
 ## 3. WeatherTwentyOne: one screen, two themes, and Google's ATF
 
 The samples in section 2 were scanned once each. To see what changes between scans, we went back
-to a fourth Microsoft sample, **WeatherTwentyOne** (`dotnet/maui-samples`, `10.0/Apps`, MIT license,
+to a fourth Microsoft sample, **WeatherTwentyOne** (`dotnet/maui-samples`, `10.0/Apps`, MIT licence,
 `Microsoft.Maui.Controls` 10.0.60), and scanned its first screen twice: once on a Pixel 4a in the
 device's own dark mode, and once on an Android emulator in light mode.
 
@@ -422,11 +421,11 @@ starting appearance afterward:
   first (confirmed by comparing the two capture files directly), so `--appearance both` reported the
   screen as unchanged rather than silently repeating the same findings under two labels. The specific
   reason here isn't "MAUI ignores appearance changes" -- WeatherTwentyOne is MAUI too, and it redrew
-  live above. BuggyApp's `App.xaml.cs` sets `UserAppTheme = AppTheme.Light` deliberately (the ground
-  truth assumes light colors), which forces light appearance regardless of the system setting on
+  live above. BuggyApp's `App.xaml.cs` sets `UserAppTheme = AppTheme.Light` deliberately (the answer
+  key assumes light colours), which forces light appearance regardless of the system setting on
   every platform MAUI's `UserAppTheme` applies to -- exactly what was observed on all three.
-- **samples/NativeAndroid's launcher screen** (the plain "VIEWS SCREEN" / "COMPOSE SCREEN" picker
-  shown on launch, not the Views or Compose ground-truth screens themselves), on the same emulator
+- **NativeAndroid's launcher screen** (the plain "VIEWS SCREEN" / "COMPOSE SCREEN" picker
+  shown on launch, not the Views or Compose screens with the planted bugs), on the same emulator
   and Pixel 4a: also byte-identical between the two captures. Its theme
   (`Theme.MaterialComponents.DayNight.DarkActionBar`) is otherwise DayNight-aware, but the app's
   `styles.xml` overrides `android:windowBackground` to a fixed white and doesn't vary
@@ -434,7 +433,7 @@ starting appearance afterward:
   native Android. From the source, its Compose screen also hard-codes its own colors directly (e.g.
   `Color(0xFF1F1F1F)`), the same reason: nothing there is theme-aware to begin with either, though
   that screen itself wasn't part of this device verification (only the launcher screen was scanned).
-- **samples/NativeiOS** (UIKit "Pay a parking ticket" screen), on the iOS Simulator: this screen sets
+- **NativeiOS** (UIKit "Pay a parking ticket" screen), on the iOS Simulator: this screen sets
   a fixed white `view.backgroundColor` in code, the same kind of forced-color choice as the two
   samples above -- but changed partly anyway: the second capture found one additional WCAG 1.4.3
   Contrast (Minimum) (AA) failure not present in the first ("View payment history", about 1.48:1,
@@ -448,8 +447,8 @@ None of this shows that a framework class (MAUI, native Android, native iOS) gen
 doesn't respond live to an appearance change -- it depends on whether the specific colors in play
 (background, text, icons) are theme-aware or fixed, which can differ element by element within one
 screen, and which a scan can't tell from the outside. WeatherTwentyOne (MAUI, `AppThemeBinding`)
-changed throughout; BuggyApp (MAUI, a forced theme) and samples/NativeAndroid's launcher (fixed
-colors) didn't change at all; samples/NativeiOS (a fixed background, but at least one dynamic text
+changed throughout; BuggyApp (MAUI, a forced theme) and NativeAndroid's launcher (fixed
+colors) didn't change at all; NativeiOS (a fixed background, but at least one dynamic text
 color) changed partly. The deciding factor was each app's own color handling, not the platform or
 framework.
 
@@ -458,12 +457,11 @@ Appearance on a physical iPhone (reading the current Light/Dark/Automatic choice
 other explicit appearance, then restoring it) instead of being skipped. First attempt failed
 cleanly with a reason ("element not found: Light button"): the Light/Dark picker had moved to its
 own top-level "Appearance" row in this iOS release, separate from Display & Brightness -- found by
-dumping the Settings root's accessibility tree rather than guessing, and fixed
-(`harness/ios/HarnessUITests/SettingsAppearance.swift`). After the fix, two full end-to-end
+dumping the Settings root's accessibility tree rather than guessing, and fixed. After the fix, two full end-to-end
 `swipewalk scan --appearance both` runs succeeded, restoring the device's original appearance
 ("dark" both times) each time with no leftover marker: BuggyApp (MAUI) showed the same screen after
 switching to light (correctly reported as "looked the same" -- BuggyApp forces its own theme, as
-noted above); samples/NativeiOS showed a real, different capture in light appearance. A device left
+noted above); NativeiOS showed a real, different capture in light appearance. A device left
 on Automatic is skipped with a reason instead of guessed (unverified on hardware in this pass -- the
 test iPhone was on an explicit choice, not Automatic, both times).
 
@@ -482,7 +480,7 @@ no API to read its true original orientation):
 - **BuggyApp (MAUI), Android emulator and Pixel 4a**: the first screen rotated cleanly on both
   devices (screenshot dimensions swapped, e.g. 1080x2424 to 2424x1080 on the emulator), and every
   rule's findings were tagged by orientation as expected -- no `orientation-restricted` finding.
-- **samples/NativeAndroid's launcher screen, Android emulator and Pixel 4a**: rotated cleanly too
+- **NativeAndroid's launcher screen, Android emulator and Pixel 4a**: rotated cleanly too
   (screenshot dimensions swapped on each device).
 - **WeatherTwentyOne (MAUI), Android emulator and Pixel 4a**: rotated cleanly on both devices.
 - **A harness screenshot bug, found and fixed while verifying the iOS Simulator (Simulator only;
@@ -496,13 +494,13 @@ no API to read its true original orientation):
   (confirmed directly: `image.size` correctly reported the rotated size and `imageOrientation ==
   .left`, but `pngRepresentation` still wrote the un-rotated buffer). Fixed by re-rendering the
   image through `UIGraphicsImageRenderer`, which applies `imageOrientation`, before encoding to PNG
-  (`harness/ios/HarnessUITests/ScanTests.swift`) -- a capture-only fix, nothing about how the device
+  -- a capture-only fix, nothing about how the device
   is rotated or restored changed.
 - **BuggyApp (MAUI), iOS Simulator, re-verified after the fix**: rotated cleanly (screenshot
   1206x2622 to 2622x1206), findings tagged by orientation ("both"/"portrait"/"landscape"), and no
   `orientation-restricted` finding -- run end-to-end through `swipewalk scan --orientation both`,
   not just the harness in isolation.
-- **samples/NativeiOS's launcher screen (UIKit), iOS Simulator, re-verified after the fix**: also
+- **NativeiOS's launcher screen (UIKit), iOS Simulator, re-verified after the fix**: also
   rotated cleanly, confirmed visually against a `simctl` screenshot taken at the same moment. Its
   Info.plist and project.yml declare no orientation list (no `UISupportedInterfaceOrientations` key
   in either), and it still rotated on this Simulator and iOS/Xcode version -- one observation, not a
@@ -517,7 +515,7 @@ no API to read its true original orientation):
 iPhone through the same harness call as the Simulator (`XCUIDevice.shared.orientation`, signed for
 the device), instead of being skipped. Two full end-to-end `swipewalk scan --orientation both` runs
 against a physical iPhone both rotated cleanly: BuggyApp (MAUI, screenshot 750x1334 to 1334x750) and
-samples/NativeiOS (same dimensions swapped), both with findings tagged by orientation and no
+NativeiOS (same dimensions swapped), both with findings tagged by orientation and no
 `orientation-restricted` finding, and both restored to portrait with no leftover marker afterward
 (confirmed via `swipewalk doctor`, which reported nothing pending). A further run with Control
 Center's rotation lock deliberately turned on (iOS 27.0, iPhone SE) found the interface still
@@ -580,22 +578,21 @@ The known issues that remain, including what hasn't been tested yet, are listed 
 ## 5. Native samples: the same bugs, four UI toolkits, no .NET MAUI
 
 Every other sample in this document is a .NET MAUI app. To see whether Swipewalk's rules behave the
-same way outside MAUI, `samples/NativeAndroid` and
-`samples/NativeiOS` plant the same 8 bug classes -- an unlabeled icon
+same way outside MAUI, `NativeAndroid` and
+`NativeiOS` plant the same 8 bug classes -- an unlabeled icon
 button, low-contrast text, a small touch target, an identifier used as a label, a label-in-name
 mismatch, an unlabeled field, text that doesn't grow with the system text size, and a low-contrast
 icon -- into
 four screens, one per toolkit: classic Android Views, Jetpack Compose, UIKit and SwiftUI. Each bug
 is planted the way a developer working in that specific toolkit would actually make the mistake,
 not copied verbatim between screens. Full detail, including every corrected assumption, is in each
-sample's own README and ground-truth files; this section summarizes what stood out.
+sample's own notes and answer key, which are not published; this section summarizes what stood out.
 
 Scanned on 2026-09-23: an Android emulator (Android 16, API 36) and a physical Pixel 4a (Android
 13, API 33), both with Google's Accessibility Test Framework via the instrumentation harness; an
 iPhone 17 Simulator (iOS 26.5) and a physical iPhone (iOS 27.0). The emulator and Simulator
-captures are saved as fixtures with an acceptance test
-(`NativeSamplesGroundTruthTests`); the physical-device scans were live checks only, described here
-and in the ground-truth files' notes, not saved as fixtures.
+captures are saved and checked by an automated test against each sample's answer key; the physical-device scans were live checks only, described here
+and in the answer key's notes, not saved.
 
 ### Found per toolkit
 
@@ -614,7 +611,7 @@ On iOS, the unlabeled icon button didn't reproduce on either toolkit, and SwiftU
 the label-in-name mismatch. On Compose, three bugs (small touch target, label-in-name, low-contrast
 icon) weren't found, and one (fixed-size text) didn't reproduce as designed. None of this
 was assumed going in -- every "not found" and "did not reproduce" cell above was confirmed by
-reading the raw captured tree, then corrected in the ground-truth files rather than left as a wrong
+reading the raw captured tree, then corrected in the answer key rather than left as a wrong
 guess. That correction process is itself the point of building sample apps and comparing them to a
 live scan, rather than writing an answer key from reading the rules alone.
 
@@ -744,7 +741,7 @@ Each capture cost roughly what [known limitations](limitations.md) already docum
 1-2 seconds per focusable element, so BuggyApp's ten-element screen finished (including the rest of
 the scan, not just the capture) in under 20 seconds on the same emulator.
 
-Capture was also run against `samples/NativeAndroid`'s two screens (section 5 above) — the same
+Capture was also run against `NativeAndroid`'s two screens (section 5 above) — the same
 planted-bug app built once with classic Views, once with Jetpack Compose, neither using .NET MAUI
 — to check whether the walk itself behaves differently by UI toolkit. It didn't: Views captured 10
 focusable elements, Compose captured 9, both matching what each screen visibly offers, and both
@@ -807,9 +804,9 @@ for controls matched confidently enough; 0 controls were flagged for review beca
 announcement didn't include that text. ... manual check still needed", where it previously said nothing
 at all.
 
-Two apps not built with .NET MAUI were also checked outside this repo's own test fixtures — one
+Two apps not built with .NET MAUI were also checked outside Swipewalk's own test apps — one
 using Jetpack Compose, one using classic Views — and worked the same way on both; their detailed
-results aren't included here because they aren't Swipewalk's own test fixtures.
+results aren't included here because they aren't Swipewalk's own test apps.
 
 ### What this study doesn't show
 
@@ -841,7 +838,7 @@ Section 5's iOS screens compare Swipewalk's predicted transcript against the acc
 turning a screen reader on, it walks Xcode's Accessibility Inspector on the Mac over the macOS
 Accessibility API and reads back its panel — the same accessibility properties VoiceOver would read,
 without VoiceOver running (see [known limitations](limitations.md), "The Accessibility Inspector
-route..."). This study is from a physical iPhone, across BuggyApp (.NET MAUI) and `samples/NativeiOS`
+route..."). This study is from a physical iPhone, across BuggyApp (.NET MAUI) and `NativeiOS`
 (no MAUI), including a screen change followed without touching the Inspector again.
 
 BuggyApp's first screen captured 18 elements, complete, with real traits for each one. One of them
@@ -855,7 +852,7 @@ own panel doesn't leave an empty field blank: it prints the literal text **"None
 label, value, hint or identifier, and **"Empty string"** for an empty text field's value — which, read
 at face value, made BuggyApp's planted bug B7 (an `ImageButton` with only an `AutomationId`, no
 accessible name) look like it was actually named "None", a false difference from the correctly-null
-predicted name. Second, a separate capture of `samples/NativeiOS`'s root menu — where the one-time
+predicted name. Second, a separate capture of `NativeiOS`'s root menu — where the one-time
 setup click had apparently landed on the app's window rather than a button — came back as a single,
 entirely empty item, reported as a normal, *complete* walk; taken at face value that would have turned
 every one of the screen's real elements into a false "not reported by the Inspector" review item.

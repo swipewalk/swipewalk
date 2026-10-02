@@ -75,13 +75,17 @@ It scans apps on devices you connect; it doesn't include the platform tools. For
 swipewalk scan --platform android --out report                          # screen now shown on the device
 swipewalk scan --platform ios --bundle-id com.example.app --out report  # app on the booted Simulator
 swipewalk record --platform android --out report                        # use the app; press Enter to scan each screen you choose
+swipewalk session --platform android --package com.example.app          # you use TalkBack yourself; Swipewalk records what happens
+swipewalk session --platform ios --bundle-id com.example.app            # iPhone: you use VoiceOver yourself, one screen at a time (not yet tried on an iPhone from the command line)
+swipewalk apps --platform android                                       # list the apps installed on a device, to copy an id
+swipewalk compare --app com.example.app                                 # an app's newest run against the one before it
 ```
 
-Output: `report/report.html` and `report/results.json`. Every command and option is in the [user guide](docs/user-guide.md); a run can also be described once in [`swipewalk.json`](samples/BuggyApp/swipewalk.json) and started with `swipewalk run`.
+Output: `report/report.html` and `report/results.json`. Every command and option is in the [user guide](docs/user-guide.md); a run can also be described once in a `swipewalk.json` file ([example](samples/BuggyApp/swipewalk.json)) and started with `swipewalk run`.
 
 ## Desktop app (macOS)
 
-The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare runs, mark findings as already looked at, and export tickets, a CSV, a shareable report, a tagged PDF or a draft Accessibility Conformance Report.
+The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare any two runs (what is new, what is no longer found, what is still found, and what was not checked again; "no longer found" does not mean fixed), mark findings as already looked at, and export tickets, a CSV, a shareable report, a tagged PDF or a draft Accessibility Conformance Report.
 
 ![The Swipewalk dashboard: 2 runs saved of 1 app, 7 WCAG issues and 6 items to review in the latest run, "since the previous run: 1 new, 1 no longer found", and a bar chart of WCAG issues per run](docs/images/desktop-dashboard.png)
 
@@ -93,6 +97,6 @@ Wrong findings, missed issues and wrong WCAG or law mappings are the most useful
 
 ## License and terms
 
-Free to use, including commercially, under the [Swipewalk License](LICENSE): you may use it for any purpose the licence allows, including paid work testing your clients' apps, and give others unmodified copies free of charge, but not sell it, offer it to others as a hosted or online service, share modified copies or reverse engineer it. It is not open source: the source code of the app and the command-line tool is not public (a few small helper parts ship as source because they are built or run on your computer). Versions 0.1.0 to 0.4.1 were released under the Apache License 2.0; anyone who has a copy of those versions keeps the rights that licence gave them. See the [disclaimer and terms of use](DISCLAIMER.md) (what results mean, scanning only apps you may test), [privacy](PRIVACY.md) (no telemetry; Swipewalk makes no network requests of its own) and [third-party notices](THIRD-PARTY-NOTICES.md).
+Free to use, including commercially, under the [Swipewalk License](LICENSE): you may use it for any purpose the licence allows, including paid work testing your clients' apps, and give others unmodified copies free of charge, but not sell it, offer it to others as a hosted or online service, share modified copies or reverse engineer it. The source code of the app and the command-line tool is not public (a few small helper parts ship as source because they are built or run on your computer). Versions 0.1.0 to 0.4.1 were released under the Apache License 2.0; anyone who has a copy of those versions keeps the rights that licence gave them. See the [disclaimer and terms of use](DISCLAIMER.md) (what results mean, scanning only apps you may test), [privacy](PRIVACY.md) (no telemetry; Swipewalk makes no network requests of its own) and [third-party notices](THIRD-PARTY-NOTICES.md).
 
-The sample apps belong to the fictional "City of Exampleville".
+The sample apps shown in the screenshots and case study belong to the fictional "City of Exampleville".

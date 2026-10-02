@@ -6,7 +6,7 @@ app for macOS, the HTML reports it produces, and the PDF it can export (`swipewa
 not a statement of conformance: automated and developer testing cannot show that software meets every
 requirement, and some checks listed below still need to be done by people who use assistive technology every day.
 
-Last reviewed: 2026-10-01; the items added for 0.4.0 were reviewed on macOS 27 (desktop app 0.4.0), and the items added for 0.4.1 (the Laws and standards page, Laws that matter to me, the welcome screen, File > New Scan and the Law or standard choice when exporting) were reviewed by the developers only: none has been walked with VoiceOver by a person yet (see Known issues). The PDF export section below was last checked on 2026-09-27.
+Last reviewed: 2026-10-01; the items added for 0.4.2 (the More checks section and iPhone signing choice on New scan, the iPhone signing choice on the Devices and Screen reader session pages, the Compare runs choices, the ACR author fields, the team triage file field, the Help pages that list the automated checks and known limitations, and the keyboard handling of checkboxes and pop-up menus) were reviewed by the developers only and checked with UI tests, not by a person using VoiceOver or the keyboard (see Known issues); the items added for 0.4.0 were reviewed on macOS 27 (desktop app 0.4.0), and the items added for 0.4.1 (the Laws and standards page, Laws that matter to me, the welcome screen, File > New Scan and the Law or standard choice when exporting) were reviewed by the developers only: none has been walked with VoiceOver by a person yet (see Known issues). The PDF export section below was last checked on 2026-09-27.
 
 ## What we test against
 
@@ -17,14 +17,14 @@ Last reviewed: 2026-10-01; the items added for 0.4.0 were reviewed on macOS 27 (
 
 Every change is checked with:
 
-- **Desktop UI tests** (`scripts/desktop-uitests.sh`), which drive the app only through the macOS accessibility
+- **Desktop UI tests**, which drive the app only through the macOS accessibility
   interface, finding every control by its accessible name. They cover navigating to every page with the sidebar and
   with keyboard shortcuts, the choice controls exposing their name and value, enlarging text to 200%, the readiness
   check, error messages, and a full scan from start to report and history.
-- **axe-core** (`scripts/report-axe.sh`) on generated reports in light and dark mode: no violations of the WCAG
+- **axe-core** on generated reports in light and dark mode: no violations of the WCAG
   2.0–2.2 A/AA and best-practice rules it covers. axe-core finds only some kinds of issue, so the reports also need
   manual review.
-- **A contrast test for the app's palette** (`DesktopPaletteTests`): every text color meets 4.5:1 and every text
+- **A contrast test for the app's palette**: every text color meets 4.5:1 and every text
   field outline 3:1 against its background, in light and dark mode.
 - **Developer review of screenshots** at 100% and 200% text size, in light and dark mode.
 
@@ -37,9 +37,16 @@ Every change is checked with:
   recorded, and the final result.
 - Every page is reachable from the keyboard: ⌘1 Dashboard, ⌘2 or ⌘N New scan (also File > New Scan), ⌘3 Devices, ⌘4 History, ⌘5 Laws and standards. Help >
   Keyboard Shortcuts lists them.
+- Key handling was added for checkboxes and pop-up menus (relevant to WCAG 2.1.1 Keyboard (A)). For checkboxes, a UI test that
+  makes a checkbox the control receiving key presses through a test-only launch option found that Space turns it on or off once
+  per press and Return leaves it unchanged, as on standard Mac checkboxes (2026-10-01, one Mac running macOS 27.0.1; other
+  macOS versions not run). For pop-up menus the same test found that Space and Return do not open the menu: the code that
+  should open it runs, but the menu stays closed, so a keyboard-only person may not be able to open these menus. It is meant not to affect
+  VoiceOver's activate action (VO-Space); not yet checked with VoiceOver. Not yet tried with Tab, Full Keyboard Access or by a person (see Known issues).
 - The one-time welcome screen has a heading, four short points, a Get started button and an About these
   mappings button; Return and Escape close it, and Help > Welcome to Swipewalk opens it again. Its VoiceOver
   reading has not yet been checked with VoiceOver itself.
+- Help > Automated Checks and Help > Known Limitations open a reference page. It has no sidebar item or ⌘ shortcut. Each row is a button whose name says whether it is expanded or collapsed (Mac Catalyst has no native expanded state). A UI test on macOS 27.0.1 (2026-10-01) found all five Help menu items and that Known Limitations opens this page; the page's VoiceOver reading has not yet been checked with VoiceOver itself.
 - Text can be enlarged to 200% with ⌘= (Text Size menu), including the embedded report, with the exceptions listed
   below. In our developer checks at 200% the layout reflows without losing content.
 - Automated tests check that the app's text colors reach 4.5:1 and text-field outlines 3:1 against their
@@ -135,11 +142,10 @@ screenshot), a document title and language, and bookmarks for each screen, each 
 each finding listed individually. It targets
 [PDF/UA-1](https://www.iso.org/standard/64599.html) (ISO 14289-1).
 
-**Checked 2026-09-27** with [veraPDF](https://verapdf.org/) 1.28.2 (`verapdf --flavour ua1`), the open-source
-PDF/UA validator: a report built from a saved Android scan of the sample app BuggyApp was exported
-to PDF and run through veraPDF. That export, and a larger export of a saved multi-screen run with
-screenshots included, both got "PDF file is compliant with Validation Profile requirements" from veraPDF with
-0 failed checks. Also checked by hand (not yet scripted): the document language and structure tree with
+**Checked 2026-09-27** with [veraPDF](https://verapdf.org/) 1.28.2 (`verapdf --flavour ua1`), the PDF/UA validator: a report built from a saved Android scan of the sample app BuggyApp was exported
+to PDF and run through veraPDF. For that export, and for a larger export of a saved multi-screen run with
+screenshots included, veraPDF reported
+0 failed checks against its PDF/UA-1 profile. Also checked by hand (not yet scripted): the document language and structure tree with
 [pikepdf](https://pikepdf.readthedocs.io/), and that the text extracts in reading order and matches the report's
 real text (not images of text) with [pdfminer.six](https://pdfminer-six.readthedocs.io/).
 
@@ -147,7 +153,7 @@ real text (not images of text) with [pdfminer.six](https://pdfminer-six.readthed
 section (the same open/triaged split, per-finding note and "Triaged by your team" group the HTML report
 already has) and a fix for a token too wide for a line being split by character instead of truncated -- both
 change the structure tree veraPDF validated above. They are covered by new unit tests (reopening with
-PDFsharp, structure assertions), but not by a fresh `verify-pdf-export.sh` + veraPDF run; that's still owed
+PDFsharp, structure assertions), but not by a fresh veraPDF run; that's still owed
 before relying on this section's PDF/UA-1 claim for triaged exports or a report with a very long token.
 
 What it covers for non-Latin text: findings can contain real app text and captured screen-reader speech in any
@@ -162,8 +168,8 @@ missing-glyph box or, worse, PDFsharp's own invisible ".notdef" glyph (which an 
 hit on a real character in a real report — caught by exporting a real saved run and checking it with veraPDF, not
 by a unit test with only ASCII text, and fixed by reading the bundled fonts' real character coverage instead of
 guessing which parts of a Unicode block they cover). Verified with a fixture containing Hindi, Arabic and
-Japanese text: reopens correctly, text extracts correctly for Hindi and Japanese, and still passes veraPDF's
-PDF/UA-1 checks.
+Japanese text: reopens correctly, text extracts correctly for Hindi and Japanese, and veraPDF still reported
+0 failed checks against its PDF/UA-1 profile.
 
 Arabic is drawn with its glyphs reordered right-to-left for a sighted reader (PDFsharp does not perform Arabic
 letter shaping/joining, so each letter is drawn in its isolated form, not its normal joined form) — but a screen
@@ -184,22 +190,22 @@ implementation:
 |---|---|---|---|
 | The text inside native Mac controls (the values of menu buttons, button titles such as "Choose…", checkbox labels and sidebar items) stays at the system size when the in-app text size is increased. The labels next to them do scale. | 1.4.4 Resize Text (AA) | Use macOS Zoom (System Settings > Accessibility > Zoom); this magnifies the screen and does not fix the issue. | Check whether these controls follow the macOS text size setting; investigate drawing them at the app's text size without losing their native accessibility. |
 | On the Mac, the menu buttons are reported as buttons (with their selected value and a hint that they open a menu) rather than pop-up buttons, and the checkboxes as switches. Their names, values and states are announced; only the role names differ from native Mac apps. | 4.1.2 Name, Role, Value (A) | — | Revisit when Mac Catalyst exposes pop-up button and checkbox roles. |
-| Not every control has been checked for keyboard operation and a visible focus indicator, with and without macOS Full Keyboard Access (System Settings > Accessibility > Keyboard). | 2.1.1 Keyboard (A), 2.4.7 Focus Visible (AA) | Use ⌘1–⌘5 to move between pages. | Planned: a keyboard-only walkthrough of every page. |
+| Not every control has been checked for keyboard operation and a visible focus indicator, with and without macOS Full Keyboard Access (System Settings > Accessibility > Keyboard). Space on the checkboxes has been added in code, and Space or Return on the pop-up menus was tried but does not open them; UI tests that give the control keyboard focus through a test-only launch option showed Space turning the checkbox on and off with Return leaving it unchanged, and the pop-up menu not opening on 2026-10-01 (one Mac), but no person has tried the checkbox with Keyboard navigation or Full Keyboard Access on, and the UI test that needs real Keyboard navigation (Tab to a lower checkbox) was skipped because it was off. No other keyboard way to open the pop-up menus has been tried. A person with macOS Keyboard navigation turned on (System Settings > Keyboard; Full Keyboard Access was not recorded) reported that Tab reaches only the controls visible in the window, not those further down a long page such as New scan. The app now scrolls a checkbox or pop-up menu into view when it becomes the control that receives key presses: a UI test that gives a checkbox below the visible part of New scan that focus through a test-only launch option found it inside the window afterwards (2026-10-01, one Mac; the same test failed with that code switched off). The same test with a pop-up menu found it inside the window afterwards (2026-10-01, one Mac, text enlarged to 200% so the menu starts below the visible part). Whether Tab, with Keyboard navigation or Full Keyboard Access on, reaches controls below the visible part at all, and whether a control reached that way is scrolled into view, has not been checked. Other controls rely on a separate handler that follows the macOS focus system; it has not been checked. With macOS Keyboard navigation (System Settings > Keyboard) and Full Keyboard Access both off, Tab in Mac apps normally moves only between text fields and lists; this was not checked in Swipewalk. | 2.1.1 Keyboard (A), 2.4.7 Focus Visible (AA), 2.4.11 Focus Not Obscured (Minimum) (AA) (possible) | Use ⌘1–⌘5 to move between pages. | Planned: a keyboard-only walkthrough of every page. |
 | Contrast of control borders, checkbox and focus indicators has not been measured; only text-field outlines are tested. | 1.4.11 Non-text Contrast (AA) | — | Extend the palette test or measure from screenshots. |
 | The app has not yet been tested by a person using VoiceOver, Voice Control or Switch Control for a whole task. The UI tests use the same accessibility interface, but they are not a substitute. | — (not yet tested) | — | Planned: testing with people who use assistive technology. We welcome feedback in the meantime (see below). |
 | Progress messages in the log are only announced for key events, not every line. | 4.1.3 Status Messages (AA) | Review the Progress list after a scan. | Review with screen reader users. |
-| The Report page's findings list and the Export dialog have not yet been checked with VoiceOver for a whole export task (built following the same `SemanticProperties`/native-control conventions as the rest of the app, and covered by `Swipewalk.Desktop.Tests` unit tests for their non-UI logic, but not yet walked with VoiceOver on). | — (not yet tested) | Use the CLI's `swipewalk export` (the desktop app's export uses the same code) if you rely on assistive technology for this task today. | Include in the planned assistive-technology walkthrough. |
+| The Report page's findings list and the Export dialog have not yet been checked with VoiceOver for a whole export task (built following the same `SemanticProperties`/native-control conventions as the rest of the app, and covered by unit tests for their non-UI logic, but not yet walked with VoiceOver on). | — (not yet tested) | Use the CLI's `swipewalk export` (the desktop app's export uses the same code) if you rely on assistive technology for this task today. | Include in the planned assistive-technology walkthrough. |
 | The large-text restart question (a native action sheet shown during a scan or recording) has been driven through the app's accessibility tree by a UI test, but not checked with VoiceOver by a person. | — (not yet tested) | Use `--large-text-restart always` (restart and check) or `never` (don't check at the larger size) on the CLI to avoid the prompt if you rely on assistive technology for this today. | Include in the planned assistive-technology walkthrough. |
 | Clicking an external link inside the Report page's embedded report opens it in the default browser (checked with unit tests and a full build), but this has not been checked with VoiceOver on hardware -- the report itself sits in a `WebView` our UI tests already can't reliably query. | — (not yet tested) | Open `report.html` directly in a browser if you rely on assistive technology for this. | Include in the planned assistive-technology walkthrough. |
 | After the window is closed and reopened while a run is going, Tab did not reach the last button in the Progress panel when a person tried it once with VoiceOver; whether Full Keyboard Access was on wasn't recorded. A fix was tried and not confirmed, so it was left out. | 2.1.1 Keyboard (A), 2.4.3 Focus Order (A) (possible) | Reach the button with VoiceOver navigation or the pointer. | Re-check with Full Keyboard Access and VoiceOver, then fix. |
-| The Screen reader session page (Android and iPhone), the Laws and standards page, Laws that matter to me, the welcome screen, File > New Scan, the Law or standard menu in the Export dialogs and the version-grouped Export dialog have not been walked with VoiceOver on the Mac for a whole task by a person; UI tests drive them through the accessibility interface only. | — (not yet tested) | Use `swipewalk session`, `swipewalk export` (with `--standard` and `--my-laws`) or `swipewalk standards` (or docs/standards.md) on the command line if you rely on assistive technology for this today; the welcome text is also in the README and the user guide. | Include in the planned assistive-technology walkthrough. |
+| The Screen reader session page (Android and iPhone), the Laws and standards page, Laws that matter to me, the welcome screen, File > New Scan, the Law or standard menu in the Export dialogs, the version-grouped Export dialog, the More checks section and iPhone signing choice on New scan, the Compare runs choices, the ACR author fields, the team triage file field and the Help pages for automated checks and known limitations have not been walked with VoiceOver on the Mac for a whole task by a person; UI tests drive them through the accessibility interface only. | — (not yet tested) | Use `swipewalk session`, `swipewalk export` (with `--standard` and `--my-laws`) or `swipewalk standards` (or docs/standards.md) on the command line if you rely on assistive technology for this today; the welcome text is also in the README and the user guide. | Include in the planned assistive-technology walkthrough. |
 | Each sidebar icon (all six sidebar items have one; Laws and standards and Screen reader session have not been checked separately) is still exposed in the app's accessibility tree as a separate element with the icon's system name (e.g. "dashboard" next to Dashboard); several attempts to hide it at the native-view level haven't worked. The desktop UI tests, which use the same accessibility interface as assistive technology, find it. In one manual VoiceOver check (macOS, 2026-09-28) VoiceOver announced only the page names, not the icons (before the Laws and standards item was added and before Screen reader session had an icon); Voice Control and Switch Control have not been checked. | 1.1.1 Non-text Content (A), 4.1.2 Name, Role, Value (A) (possible) | In the VoiceOver check, each sidebar item was announced by its page name only. If an extra "dashboard"-style name shows up in Voice Control or Switch Control, use the page name or ⌘1–⌘5. | Find what exposes the icon's name and hide it; check with Voice Control and Switch Control. |
 | On the Laws and standards page, whether a row is expanded is given in the row button's name and hint ("…, collapsed"), not as a native expanded state, because Mac Catalyst has no native expanded state for it. | 4.1.2 Name, Role, Value (A) (possible) | The state is spoken as part of the button's name; `swipewalk standards` lists the same entries as plain text. | Revisit when Mac Catalyst exposes an expanded state. |
-| With macOS keyboard navigation turned on (System Settings > Keyboard), a person using version 0.4.0 found that Tab reaches only the controls visible in the window (it does not move to controls below the fold or scroll to them), and that Space does not change checkboxes or open pop-up menus. A fix is planned; Full Keyboard Access (System Settings > Accessibility > Keyboard) has not been checked separately. The "Laws that matter to me" list, new in 0.4.1, is covered by a UI test that presses Tab, the arrow keys and Space, but has not been tried by a person with keyboard navigation on. | 2.1.1 Keyboard (A), 2.4.3 Focus Order (A) (possible) | Use VoiceOver navigation or the pointer for controls Tab does not reach, or the command line, which covers most of the same tasks. | Fix, then re-check by hand with keyboard navigation on. |
+| With macOS keyboard navigation turned on (System Settings > Keyboard), a person using version 0.4.0 found that Tab reaches only the controls visible in the window (it does not move to controls below the fold or scroll to them), and that Space does not change checkboxes or open pop-up menus. Since then, Space handling for checkboxes and scrolling a focused checkbox or pop-up menu into view have been added, but Space and Return still do not open the pop-up menus (see the row on keyboard operation above); none of these has been tried by a person with keyboard navigation or Full Keyboard Access (System Settings > Accessibility > Keyboard) on. The "Laws that matter to me" list, new in 0.4.1, is covered by a UI test that presses Tab, the arrow keys and Space, but has not been tried by a person with keyboard navigation on. | 2.1.1 Keyboard (A), 2.4.3 Focus Order (A) (possible) | Use the pointer, or VoiceOver navigation (not yet checked for these menus) for controls Tab does not reach, or the command line, which covers most of the same tasks. | Make a focused pop-up menu open with Space or Return, then re-check by hand with keyboard navigation and Full Keyboard Access on. |
 | The Windows version has not been built or tested. | — (not yet tested) | — | Windows collector and desktop build (roadmap). |
 
 ## Feedback
 
 If you find an accessibility problem in Swipewalk, please open an issue in the
-[Swipewalk repository](https://github.com/swipewalk/swipewalk/issues) and describe what you were trying
+[Swipewalk issue tracker](https://github.com/swipewalk/swipewalk/issues) and describe what you were trying
 to do, what happened, and the assistive technology you use. We aim to reply within ten working days.

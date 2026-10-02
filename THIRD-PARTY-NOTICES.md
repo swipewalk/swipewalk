@@ -1,79 +1,149 @@
 # Third-party notices
 
 Swipewalk 0.4.2 and later is licensed under the [Swipewalk License](LICENSE); versions 0.1.0 to 0.4.1 were
-released under the Apache License 2.0. The components below are included in it or used by it and keep their
-own licences, which apply to them instead of the Swipewalk License.
+released under the Apache License 2.0. The components below are included in Swipewalk or used by it and keep
+their own licences, which apply to them instead of the Swipewalk License. This page lists every one, with its
+licence, and carries the copyright notices found in each component and the licence texts for MIT, BSD 3-Clause,
+Apache 2.0, Eclipse Public License 1.0 and SIL Open Font License 1.1. Where a component's copyright line could
+not be found, the table below says so. The Mozilla Public License 2.0 text for axe-core ships next to axe-core,
+as noted below.
 
-## Included in the desktop app and the sample app
+## Included in the desktop app
 
-| Component | License | Notes |
+| Component | Licence | Notes |
 |---|---|---|
-| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | Font files in `src/Swipewalk.Desktop/Resources/Fonts` and `samples/BuggyApp/Resources/Fonts`; the license is in `OFL.txt` next to them. |
-| [.NET MAUI](https://github.com/dotnet/maui) (`Microsoft.Maui.Controls`) | MIT | Desktop app and sample app. |
-| `Microsoft.Extensions.Logging.Debug` | MIT | Debug builds of the MAUI apps. |
+| [Open Sans](https://github.com/googlefonts/opensans) (Copyright 2020 The Open Sans Project Authors) | SIL Open Font License 1.1 | Font files used by the desktop app. Licence text below. |
+| [.NET MAUI](https://github.com/dotnet/maui) (`Microsoft.Maui.Controls` 10.0.110) | MIT | Desktop app. |
 | .NET runtime and libraries | MIT | Included in self-contained builds. |
 
-## Included in PDF export (`Swipewalk.Core`, used by the CLI's `swipewalk export --format pdf` and the desktop app's Export dialog)
+## Included in PDF export (the command-line tool's `swipewalk export --format pdf` and the desktop app's Export dialog)
 
-| Component | License | Notes |
+| Component | Licence | Notes |
 |---|---|---|
-| [PDFsharp](https://github.com/empira/PDFsharp) (`PdfSharp`) | MIT | Builds the tagged, PDF/UA-1 PDF `swipewalk export --format pdf` writes (`src/Swipewalk.Core/Export/Pdf`). |
-| [Open Sans](https://github.com/googlefonts/opensans) | SIL Open Font License 1.1 | Its own copy of the font files in `src/Swipewalk.Core/Resources/Fonts` (embedded in every generated PDF, so the export needs nothing installed on the host), separate from the desktop app's copy above. |
-| [Noto Sans Devanagari, Noto Sans Arabic, Noto Sans JP](https://github.com/notofonts) | SIL Open Font License 1.1 | Embedded fallback fonts for non-Latin report text (Devanagari, Arabic, common-use Japanese -- not Chinese, except characters Chinese shares with Japanese); NotoSansJP-Subset-Regular.ttf is a subset built with fontTools, see `src/Swipewalk.Core/Resources/Fonts/OFL.txt` and `docs/limitations.md`. |
+| [PDFsharp](https://github.com/empira/PDFsharp) (`PdfSharp` 6.2.4) | MIT | Builds the tagged, PDF/UA-1 PDF that `swipewalk export --format pdf` writes. |
+| [Open Sans](https://github.com/googlefonts/opensans) (Copyright 2020 The Open Sans Project Authors) | SIL Open Font License 1.1 | Embedded in every generated PDF, so the export needs nothing installed on the host. |
+| [Noto Sans Devanagari](https://github.com/notofonts/devanagari) (Copyright 2022 The Noto Project Authors), [Noto Sans Arabic](https://github.com/notofonts/arabic) (Copyright 2022 The Noto Project Authors), [Noto Sans JP](https://github.com/notofonts/noto-cjk) (Copyright 2014-2021 Adobe, with Reserved Font Name "Source") | SIL Open Font License 1.1 | Embedded fallback fonts for non-Latin report text (Devanagari, Arabic, common-use Japanese -- not Chinese, except characters Chinese shares with Japanese). The Noto Sans JP file is a modified version: a subset with only the Joyo kanji, kana, CJK punctuation and halfwidth/fullwidth forms, made with fontTools to keep the file small (see [docs/limitations.md](docs/limitations.md) for what that leaves out). Licence text below. |
 
-## Included in source mapping (`Swipewalk.Core`, used by `--source` for .NET MAUI apps)
+## Included in source mapping (used by `--source` for .NET MAUI apps)
 
-| Component | License | Notes |
+| Component | Licence | Notes |
 |---|---|---|
-| [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp` and the libraries it needs) | MIT | Reads your app's C# code-behind files locally to find the line a finding likely comes from. |
+| [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp` 4.11.0 and the libraries it needs) | MIT | Reads your app's C# code-behind files locally to find the line a finding likely comes from. |
 
-## Included in the Android instrumentation harness (`harness/android`)
+## Included in the Android instrumentation harness
 
-Compiled into `harness-debug-androidTest.apk`, which Swipewalk ships prebuilt inside the NuGet package
-and the desktop app (see `Swipewalk.Collectors.csproj`, `Swipewalk.Desktop.csproj` and
-`scripts/mac-release.sh`) and installs on the device with `adb`. The table below is every distinct
-licence among the harness's compiled dependencies (direct and transitive); run `./gradlew
-:harness:dependencies --configuration debugAndroidTestRuntimeClasspath` in `harness/android` for the
-exact full list, including every individual AndroidX/Kotlin artifact version.
+Swipewalk ships a small prebuilt test app (the Android instrumentation harness) inside the NuGet package and the
+desktop app, and installs it on the device with `adb` to run Google's checks. Everything below is on its resolved
+dependency list (direct and transitive); the licence of each was read from the component's own published
+metadata (its Maven POM).
 
-| Component | License | Notes |
+The first two are the components Swipewalk chose; the rest come with them.
+
+| Component | Licence | Notes |
 |---|---|---|
-| [Accessibility Test Framework for Android](https://github.com/google/Accessibility-Test-Framework-for-Android) (`accessibility-test-framework`) | Apache 2.0 | Runs Google's ATF checks against the app under test; see `harness/android/harness/build.gradle.kts` and `docs/limitations.md` ("android-atf-harness"). |
-| AndroidX Test (`androidx.test:runner`/`rules`/`monitor`/`core`, `androidx.test.ext:junit`, `androidx.test.uiautomator:uiautomator`, `androidx.test.espresso:espresso-core`, `androidx.test.services:storage`), the AndroidX support libraries they and ATF pull in (`androidx.core`, `androidx.appcompat`, `androidx.fragment`, `androidx.lifecycle`, `androidx.recyclerview` and others), Google Material Components (`com.google.android.material`), Guava (`com.google.guava`), `javax.inject`, `com.google.errorprone:error_prone_annotations`, `com.squareup:javawriter`, and the Kotlin standard library and coroutines (`org.jetbrains.kotlin`, `org.jetbrains.kotlinx`) | Apache 2.0 | Compiled into the harness APK as transitive dependencies of ATF, AndroidX Test and Espresso. |
-| [JUnit 4](https://junit.org/junit4/) (`junit:junit`) | Eclipse Public License 1.0 | Source code: <https://github.com/junit-team/junit4>. Transitive dependency of AndroidX Test; its own licence text (`LICENSE-junit.txt`) is bundled inside the APK unchanged. |
-| [Hamcrest](http://hamcrest.org/) (`org.hamcrest:hamcrest-core`/`hamcrest-library`/`hamcrest-integration`) | BSD 3-Clause | Transitive dependency of JUnit and Espresso. |
-| Protocol Buffers Java Lite runtime (`com.google.protobuf:protobuf-javalite`) | BSD 3-Clause | Transitive dependency of the Accessibility Test Framework. |
-| [jsoup](https://jsoup.org/) | MIT | Transitive dependency of the Accessibility Test Framework. |
-| [Checker Framework](https://checkerframework.org/) qualifiers (`org.checkerframework:checker-qual`/`checker-compat-qual`) | MIT | Transitive dependency of Guava. |
-| [FindBugs](https://findbugs.sourceforge.net/) `jsr305` (`com.google.code.findbugs:jsr305`) | BSD 3-Clause | Transitive dependency of Espresso. |
+| [Accessibility Test Framework for Android](https://github.com/google/Accessibility-Test-Framework-for-Android) 4.1.1 | Apache 2.0 | Runs Google's checks against the app under test; see [docs/limitations.md](docs/limitations.md) ("android-atf-harness"). |
+| AndroidX Test and UI Automator (`androidx.test`, `androidx.test.ext`, `androidx.test.uiautomator`, `androidx.test.espresso`, `androidx.test.services`) | Apache 2.0 | Gives the harness access to the device's accessibility API and a test runner. |
 
-## Included in the standalone TTS-engine app (`harness/android/ttsengine`), only installed when `--screen-reader` is used
+Full list, with versions:
 
-A small separate app (not the androidTest APK above -- a real text-to-speech engine has to be a normal
-installed app; see `harness/android/ttsengine/build.gradle.kts`) that TalkBack is pointed at during a
-`--screen-reader` capture so Swipewalk gets the exact text of every utterance, entirely on-device and
-locally. It has no dependencies beyond the Android SDK itself, so it adds nothing to this page beyond
-being Swipewalk's own code (covered by the Swipewalk License).
-
-## Included for the Android web-content audit (`third-party/axe-core`), only run when `--web-audit` is used
-
-| Component | License | Notes |
+| Component | Version | Licence |
 |---|---|---|
-| [axe-core](https://github.com/dequelabs/axe-core) 4.10.3 (`axe.min.js`) | MPL 2.0 | Vendored unmodified (see `third-party/axe-core/README.md`); injected into a WebView's own page over the Chrome DevTools Protocol by `scan --web-audit` (Android debug/inspectable builds only -- `src/Swipewalk.Collectors/Android/AndroidWebAudit.cs`) for a deeper audit of the WebView's DOM. Its own `LICENSE` file ships alongside it unchanged. This is a separate copy from the developer-only one below; distinct because this one ships with Swipewalk and runs against a scanned app's own WebView, while the one below only ever runs against Swipewalk's own generated reports during development. Source Code Form: https://github.com/dequelabs/axe-core/tree/v4.10.3 |
+| `androidx.activity:activity` | 1.0.0 | Apache 2.0 |
+| `androidx.annotation:annotation` | 1.7.0-beta01 | Apache 2.0 |
+| `androidx.annotation:annotation-experimental` | 1.1.0 | Apache 2.0 |
+| `androidx.annotation:annotation-jvm` | 1.7.0-beta01 | Apache 2.0 |
+| `androidx.appcompat:appcompat` | 1.1.0 | Apache 2.0 |
+| `androidx.appcompat:appcompat-resources` | 1.1.0 | Apache 2.0 |
+| `androidx.arch.core:core-common` | 2.1.0 | Apache 2.0 |
+| `androidx.arch.core:core-runtime` | 2.1.0 | Apache 2.0 |
+| `androidx.cardview:cardview` | 1.0.0 | Apache 2.0 |
+| `androidx.collection:collection` | 1.1.0 | Apache 2.0 |
+| `androidx.concurrent:concurrent-futures` | 1.1.0 | Apache 2.0 |
+| `androidx.concurrent:concurrent-futures-ktx` | 1.1.0 | Apache 2.0 |
+| `androidx.coordinatorlayout:coordinatorlayout` | 1.1.0 | Apache 2.0 |
+| `androidx.core:core` | 1.8.0 | Apache 2.0 |
+| `androidx.cursoradapter:cursoradapter` | 1.0.0 | Apache 2.0 |
+| `androidx.customview:customview` | 1.0.0 | Apache 2.0 |
+| `androidx.drawerlayout:drawerlayout` | 1.0.0 | Apache 2.0 |
+| `androidx.fragment:fragment` | 1.1.0 | Apache 2.0 |
+| `androidx.interpolator:interpolator` | 1.0.0 | Apache 2.0 |
+| `androidx.lifecycle:lifecycle-common` | 2.3.1 | Apache 2.0 |
+| `androidx.lifecycle:lifecycle-livedata` | 2.0.0 | Apache 2.0 |
+| `androidx.lifecycle:lifecycle-livedata-core` | 2.0.0 | Apache 2.0 |
+| `androidx.lifecycle:lifecycle-runtime` | 2.3.1 | Apache 2.0 |
+| `androidx.lifecycle:lifecycle-viewmodel` | 2.1.0 | Apache 2.0 |
+| `androidx.loader:loader` | 1.0.0 | Apache 2.0 |
+| `androidx.recyclerview:recyclerview` | 1.1.0 | Apache 2.0 |
+| `androidx.savedstate:savedstate` | 1.0.0 | Apache 2.0 |
+| `androidx.test:core` | 1.6.1 | Apache 2.0 |
+| `androidx.test:monitor` | 1.7.2 | Apache 2.0 |
+| `androidx.test:rules` | 1.6.1 | Apache 2.0 |
+| `androidx.test:runner` | 1.6.2 | Apache 2.0 |
+| `androidx.test.espresso:espresso-core` | 3.4.0 | Apache 2.0 |
+| `androidx.test.espresso:espresso-idling-resource` | 3.4.0 | Apache 2.0 |
+| `androidx.test.ext:junit` | 1.2.1 | Apache 2.0 |
+| `androidx.test.services:storage` | 1.5.0 | Apache 2.0 |
+| `androidx.test.uiautomator:uiautomator` | 2.3.0 | Apache 2.0 |
+| `androidx.tracing:tracing` | 1.1.0 | Apache 2.0 |
+| `androidx.transition:transition` | 1.2.0 | Apache 2.0 |
+| `androidx.vectordrawable:vectordrawable` | 1.1.0 | Apache 2.0 |
+| `androidx.vectordrawable:vectordrawable-animated` | 1.1.0 | Apache 2.0 |
+| `androidx.versionedparcelable:versionedparcelable` | 1.1.1 | Apache 2.0 |
+| `androidx.viewpager:viewpager` | 1.0.0 | Apache 2.0 |
+| `androidx.viewpager2:viewpager2` | 1.0.0 | Apache 2.0 |
+| `com.google.android.apps.common.testing.accessibility.framework:accessibility-test-framework` | 4.1.1 | Apache 2.0 |
+| `com.google.android.material:material` | 1.2.0-rc01 | Apache 2.0 |
+| `com.google.code.findbugs:jsr305` | 3.0.2 | Apache 2.0 (per its Maven metadata; the JSR-305 project itself states BSD 3-Clause) |
+| `com.google.errorprone:error_prone_annotations` | 2.14.0 | Apache 2.0 |
+| `com.google.guava:failureaccess` | 1.0.1 | Apache 2.0 |
+| `com.google.guava:guava` | 31.0.1-android | Apache 2.0 |
+| `com.google.guava:listenablefuture` | 9999.0-empty-to-avoid-conflict-with-guava | Apache 2.0 |
+| `com.google.j2objc:j2objc-annotations` | 1.3 | Apache 2.0 |
+| `com.google.protobuf:protobuf-javalite` | 3.19.1 | BSD 3-Clause |
+| `com.squareup:javawriter` | 2.1.1 | Apache 2.0 |
+| `javax.inject:javax.inject` | 1 | Apache 2.0 |
+| `junit:junit` | 4.13.2 | Eclipse Public License 1.0 (source code: <https://github.com/junit-team/junit4>; its licence text, `LICENSE-junit.txt`, ships unchanged inside the instrumentation harness) |
+| `org.checkerframework:checker-compat-qual` | 2.5.5 | MIT (the artifact is dual-licensed; used under the MIT licence) |
+| `org.checkerframework:checker-qual` | 3.22.1 | MIT |
+| `org.hamcrest:hamcrest-core` | 1.3 | BSD 3-Clause |
+| `org.hamcrest:hamcrest-integration` | 1.3 | BSD 3-Clause |
+| `org.hamcrest:hamcrest-library` | 1.3 | BSD 3-Clause |
+| `org.jetbrains:annotations` | 23.0.0 | Apache 2.0 |
+| `org.jetbrains.kotlin:kotlin-stdlib` | 2.0.20 | Apache 2.0 |
+| `org.jetbrains.kotlin:kotlin-stdlib-common` | 2.0.20 | Apache 2.0 |
+| `org.jetbrains.kotlin:kotlin-stdlib-jdk7` | 1.8.20 | Apache 2.0 |
+| `org.jetbrains.kotlin:kotlin-stdlib-jdk8` | 1.8.20 | Apache 2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-bom` | 1.7.1 | Apache 2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.7.1 | Apache 2.0 |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm` | 1.7.1 | Apache 2.0 |
+| `org.jsoup:jsoup` | 1.15.1 | MIT |
+
+## Included in the text-to-speech helper app, only installed when `--screen-reader` is used
+
+A small separate app, listed as "Swipewalk (testing only)" in the device's text-to-speech settings, that TalkBack
+is pointed at during a `--screen-reader` capture so that Swipewalk gets the exact text of every utterance, entirely
+on your devices and computer. It has no dependencies beyond the Android SDK itself, so it adds nothing to this
+page: it is Swipewalk's own code, covered by the Swipewalk License.
+
+## Included for the Android web-content audit, only run when `--web-audit` is used
+
+| Component | Licence | Notes |
+|---|---|---|
+| [axe-core](https://github.com/dequelabs/axe-core) 4.10.3 (`axe.min.js`) | MPL 2.0 | Bundled unmodified and injected into a WebView's own page over the Chrome DevTools Protocol by `scan --web-audit` (Android debug or inspectable builds only), for a deeper audit of the WebView's DOM. Its own licence file ships alongside it unchanged (`third-party/axe-core/LICENSE` inside the app bundle and the NuGet package). Source Code Form: <https://github.com/dequelabs/axe-core/tree/v4.10.3> |
 
 **axe-core source.** axe-core is licensed under the Mozilla Public License 2.0. The copy above is unmodified, and its
 source code is available from its authors: <https://github.com/dequelabs/axe-core/tree/v4.10.3>. If Swipewalk ever
 changes axe-core, the changed files stay under the MPL 2.0 and are published.
 
-## Used only to build and test (not distributed)
+## Used only to build, test and check Swipewalk (not distributed)
 
-| Component | License |
+| Component | Licence |
 |---|---|
 | [xUnit](https://github.com/xunit/xunit) (`xunit`, `xunit.runner.visualstudio`) | Apache 2.0 |
 | `Microsoft.NET.Test.Sdk` | MIT |
 | [coverlet](https://github.com/coverlet-coverage/coverlet) (`coverlet.collector`) | MIT |
-| [axe-core](https://github.com/dequelabs/axe-core) (`tools/report-axe`, developer check of the HTML reports) | MPL 2.0 |
-| [Puppeteer](https://github.com/puppeteer/puppeteer) (`puppeteer-core`, same tool) | Apache 2.0 |
+| [axe-core](https://github.com/dequelabs/axe-core) (a developer check of the HTML reports; a separate copy from the one above) | MPL 2.0 |
+| [Puppeteer](https://github.com/puppeteer/puppeteer) (`puppeteer-core`, same developer check) | Apache 2.0 |
 
 ## Tools Swipewalk runs but does not include
 
@@ -83,3 +153,624 @@ Swipewalk calls these tools on your computer; install them yourself under their 
 - Xcode and its command-line tools (`xcodebuild`, `xcrun simctl`, `devicectl`), under Apple's Xcode
   and Apple SDKs Agreement.
 - Apple's accessibility audit (`XCUIApplication.performAccessibilityAudit`), part of XCTest.
+
+## Copyright notices (MIT and BSD components)
+
+The MIT and BSD 3-Clause licences ask for the copyright notice to travel with the software. Each line below was
+copied from the component's own licence file or package metadata (the NuGet package's `LICENSE.TXT` or `.nuspec`,
+or the file inside the Maven artifact), as found on 2026-10-01. Where a package carries no copyright line, this page
+says so instead of guessing.
+
+| Component | Licence | Copyright line | Where it was read |
+|---|---|---|---|
+| .NET MAUI (`Microsoft.Maui.Controls` 10.0.110) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE.TXT` and `.nuspec` in the package |
+| .NET runtime and libraries (`Microsoft.NETCore.App.Runtime` 10.0.8) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE.TXT` and `.nuspec` in the package |
+| Mac Catalyst runtime (`Microsoft.MacCatalyst.Runtime.maccatalyst-arm64.net10.0_26.0` 26.0.11017) | MIT | Copyright (c) .NET Foundation Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE` and `.nuspec` in the package |
+| `Microsoft.Extensions.Logging.Debug` 10.0.0 | MIT | © Microsoft Corporation. All rights reserved. | `.nuspec` in the package |
+| PDFsharp (`PdfSharp` 6.2.4) | MIT | © 2026 empira (package owner: empira Software GmbH) | `.nuspec` in the package (the package has no separate licence file) |
+| Roslyn (`Microsoft.CodeAnalysis.CSharp` and `Microsoft.CodeAnalysis.Common` 4.11.0) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `ThirdPartyNotices.rtf` (in the `CSharp` package) and `.nuspec` in the packages |
+| `org.checkerframework:checker-qual` 3.22.1 | MIT | Copyright 2004-present by the Checker Framework developers | `META-INF/LICENSE.txt` in the artifact |
+| `org.checkerframework:checker-compat-qual` 2.5.5 | MIT (the artifact is dual-licensed; used under MIT) | copyright line not found: the artifact contains no licence file | its Maven metadata names the licence only |
+| `org.jsoup:jsoup` 1.15.1 | MIT | Copyright (c) 2009-2022 Jonathan Hedley <https://jsoup.org/> | `META-INF/LICENSE` in the artifact |
+| `org.hamcrest:hamcrest-core`, `hamcrest-integration`, `hamcrest-library` 1.3 | BSD 3-Clause | Copyright (c) 2000-2006, www.hamcrest.org | `LICENSE.txt` in each artifact (text below) |
+| `com.google.protobuf:protobuf-javalite` 3.19.1 | BSD 3-Clause | copyright line not found: the artifact contains no licence file | its Maven metadata names no licence text |
+| `com.google.code.findbugs:jsr305` 3.0.2 (listed here because the JSR-305 project itself states BSD 3-Clause) | Apache 2.0 per its Maven metadata | copyright line not found: the artifact contains no licence file | its Maven metadata |
+
+The fonts' copyright lines are in their rows above and in the SIL Open Font License section below. axe-core's
+copyright line is in its own licence file, which ships next to it.
+
+## NOTICE files of Apache 2.0 components
+
+Apache License 2.0, section 4(d), asks that a NOTICE file shipped with a component be passed on. Each of the 69
+artifacts on the Android harness list above was opened (including the archives inside the `.aar` files) on 2026-10-01:
+none contains a NOTICE file (the binary artifacts Swipewalk includes; upstream source repositories were not
+checked). The Apache 2.0 text is included below. If a
+future version of a component ships a NOTICE file, its content is added here.
+
+## Licence texts
+
+The texts follow in this order: MIT, BSD 3-Clause, Hamcrest's BSD licence, Apache 2.0, Eclipse Public License 1.0,
+SIL Open Font License 1.1. The MPL 2.0 text for axe-core ships next to axe-core (`third-party/axe-core/LICENSE`).
+The MIT and BSD 3-Clause texts are the standard (SPDX) texts; the copyright holders are in the table above, and each
+table line takes the place of the `Copyright (c) <year> <copyright holder>` line for that component.
+JUnit's source code is at <https://github.com/junit-team/junit4>.
+
+### MIT License
+
+```text
+MIT License
+
+Copyright (c) <year> <copyright holder>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### BSD 3-Clause License
+
+```text
+BSD 3-Clause License
+
+Copyright (c) <year>, <copyright holder>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### Hamcrest's BSD licence (as shipped in the Hamcrest artifacts)
+
+```text
+BSD License
+
+Copyright (c) 2000-2006, www.hamcrest.org
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of
+conditions and the following disclaimer. Redistributions in binary form must reproduce
+the above copyright notice, this list of conditions and the following disclaimer in
+the documentation and/or other materials provided with the distribution.
+
+Neither the name of Hamcrest nor the names of its contributors may be used to endorse
+or promote products derived from this software without specific prior written
+permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+```
+
+### Apache License 2.0
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+```
+
+### Eclipse Public License 1.0 (JUnit)
+
+```text
+Eclipse Public License - v 1.0
+
+THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
+LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION OF THE PROGRAM
+CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+
+1. DEFINITIONS
+
+"Contribution" means:
+
+      a) in the case of the initial Contributor, the initial code and
+         documentation distributed under this Agreement, and
+      b) in the case of each subsequent Contributor:
+
+      i) changes to the Program, and
+
+      ii) additions to the Program;
+
+      where such changes and/or additions to the Program originate from and are
+distributed by that particular Contributor. A Contribution 'originates' from a
+Contributor if it was added to the Program by such Contributor itself or anyone
+acting on such Contributor's behalf. Contributions do not include additions to
+the Program which: (i) are separate modules of software distributed in
+conjunction with the Program under their own license agreement, and (ii) are
+not derivative works of the Program. 
+
+"Contributor" means any person or entity that distributes the Program.
+
+"Licensed Patents " mean patent claims licensable by a Contributor which are
+necessarily infringed by the use or sale of its Contribution alone or when
+combined with the Program.
+
+"Program" means the Contributions distributed in accordance with this Agreement.
+
+"Recipient" means anyone who receives the Program under this Agreement,
+including all Contributors.
+
+2. GRANT OF RIGHTS
+
+      a) Subject to the terms of this Agreement, each Contributor hereby grants
+Recipient a non-exclusive, worldwide, royalty-free copyright license to
+reproduce, prepare derivative works of, publicly display, publicly perform,
+distribute and sublicense the Contribution of such Contributor, if any, and
+such derivative works, in source code and object code form.
+
+      b) Subject to the terms of this Agreement, each Contributor hereby grants
+Recipient a non-exclusive, worldwide, royalty-free patent license under
+Licensed Patents to make, use, sell, offer to sell, import and otherwise
+transfer the Contribution of such Contributor, if any, in source code and
+object code form. This patent license shall apply to the combination of the
+Contribution and the Program if, at the time the Contribution is added by the
+Contributor, such addition of the Contribution causes such combination to be
+covered by the Licensed Patents. The patent license shall not apply to any
+other combinations which include the Contribution. No hardware per se is
+licensed hereunder. 
+
+      c) Recipient understands that although each Contributor grants the
+licenses to its Contributions set forth herein, no assurances are provided by
+any Contributor that the Program does not infringe the patent or other
+intellectual property rights of any other entity. Each Contributor disclaims
+any liability to Recipient for claims brought by any other entity based on
+infringement of intellectual property rights or otherwise. As a condition to
+exercising the rights and licenses granted hereunder, each Recipient hereby
+assumes sole responsibility to secure any other intellectual property rights
+needed, if any. For example, if a third party patent license is required to
+allow Recipient to distribute the Program, it is Recipient's responsibility to
+acquire that license before distributing the Program.
+
+      d) Each Contributor represents that to its knowledge it has sufficient
+copyright rights in its Contribution, if any, to grant the copyright license
+set forth in this Agreement. 
+
+3. REQUIREMENTS
+
+A Contributor may choose to distribute the Program in object code form under
+its own license agreement, provided that:
+
+      a) it complies with the terms and conditions of this Agreement; and
+
+      b) its license agreement:
+
+      i) effectively disclaims on behalf of all Contributors all warranties and
+conditions, express and implied, including warranties or conditions of title
+and non-infringement, and implied warranties or conditions of merchantability
+and fitness for a particular purpose; 
+
+      ii) effectively excludes on behalf of all Contributors all liability for
+damages, including direct, indirect, special, incidental and consequential
+damages, such as lost profits; 
+
+      iii) states that any provisions which differ from this Agreement are
+offered by that Contributor alone and not by any other party; and
+
+      iv) states that source code for the Program is available from such
+Contributor, and informs licensees how to obtain it in a reasonable manner on
+or through a medium customarily used for software exchange. 
+
+When the Program is made available in source code form:
+
+      a) it must be made available under this Agreement; and 
+
+      b) a copy of this Agreement must be included with each copy of the
+Program. 
+
+Contributors may not remove or alter any copyright notices contained within the
+Program.
+
+Each Contributor must identify itself as the originator of its Contribution, if
+any, in a manner that reasonably allows subsequent Recipients to identify the
+originator of the Contribution.
+
+4. COMMERCIAL DISTRIBUTION
+
+Commercial distributors of software may accept certain responsibilities with
+respect to end users, business partners and the like. While this license is
+intended to facilitate the commercial use of the Program, the Contributor who
+includes the Program in a commercial product offering should do so in a manner
+which does not create potential liability for other Contributors. Therefore, if
+a Contributor includes the Program in a commercial product offering, such
+Contributor ("Commercial Contributor") hereby agrees to defend and indemnify
+every other Contributor ("Indemnified Contributor") against any losses, damages
+and costs (collectively "Losses") arising from claims, lawsuits and other legal
+actions brought by a third party against the Indemnified Contributor to the
+extent caused by the acts or omissions of such Commercial Contributor in
+connection with its distribution of the Program in a commercial product
+offering. The obligations in this section do not apply to any claims or Losses
+relating to any actual or alleged intellectual property infringement. In order
+to qualify, an Indemnified Contributor must: a) promptly notify the Commercial
+Contributor in writing of such claim, and b) allow the Commercial Contributor
+to control, and cooperate with the Commercial Contributor in, the defense and
+any related settlement negotiations. The Indemnified Contributor may
+participate in any such claim at its own expense.
+
+For example, a Contributor might include the Program in a commercial product
+offering, Product X. That Contributor is then a Commercial Contributor. If that
+Commercial Contributor then makes performance claims, or offers warranties
+related to Product X, those performance claims and warranties are such
+Commercial Contributor's responsibility alone. Under this section, the
+Commercial Contributor would have to defend claims against the other
+Contributors related to those performance claims and warranties, and if a court
+requires any other Contributor to pay any damages as a result, the Commercial
+Contributor must pay those damages.
+
+5. NO WARRANTY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, THE PROGRAM IS PROVIDED ON AN
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
+IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE,
+NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each
+Recipient is solely responsible for determining the appropriateness of using
+and distributing the Program and assumes all risks associated with its exercise
+of rights under this Agreement, including but not limited to the risks and
+costs of program errors, compliance with applicable laws, damage to or loss of
+data, programs or equipment, and unavailability or interruption of operations.
+
+6. DISCLAIMER OF LIABILITY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, NEITHER RECIPIENT NOR ANY
+CONTRIBUTORS SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION LOST
+PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+WAY OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS
+GRANTED HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+7. GENERAL
+
+If any provision of this Agreement is invalid or unenforceable under applicable
+law, it shall not affect the validity or enforceability of the remainder of the
+terms of this Agreement, and without further action by the parties hereto, such
+provision shall be reformed to the minimum extent necessary to make such
+provision valid and enforceable.
+
+If Recipient institutes patent litigation against any
+entity (including a cross-claim or counterclaim in a lawsuit) alleging that the
+Program itself (excluding combinations of the Program with other software or
+hardware) infringes such Recipient's patent(s), then such Recipient's rights
+granted under Section 2(b) shall terminate as of the date such litigation is
+filed.
+
+All Recipient's rights under this Agreement shall terminate if it fails to
+comply with any of the material terms or conditions of this Agreement and does
+not cure such failure in a reasonable period of time after becoming aware of
+such noncompliance. If all Recipient's rights under this Agreement terminate,
+Recipient agrees to cease use and distribution of the Program as soon as
+reasonably practicable. However, Recipient's obligations under this Agreement
+and any licenses granted by Recipient relating to the Program shall continue
+and survive.
+
+Everyone is permitted to copy and distribute copies of this Agreement, but in
+order to avoid inconsistency the Agreement is copyrighted and may only be
+modified in the following manner. The Agreement Steward reserves the right to
+publish new versions (including revisions) of this Agreement from time to time.
+No one other than the Agreement Steward has the right to modify this Agreement.
+The Eclipse Foundation is the initial Agreement Steward. The Eclipse Foundation may assign the responsibility to
+serve as the Agreement Steward to a suitable separate entity. Each new version
+of the Agreement will be given a distinguishing version number. The Program
+(including Contributions) may always be distributed subject to the version of
+the Agreement under which it was received. In addition, after a new version of
+the Agreement is published, Contributor may elect to distribute the Program
+(including its Contributions) under the new version. Except as expressly stated
+in Sections 2(a) and 2(b) above, Recipient receives no rights or licenses to
+the intellectual property of any Contributor under this Agreement, whether
+expressly, by implication, estoppel or otherwise. All rights in the Program not
+expressly granted under this Agreement are reserved.
+
+This Agreement is governed by the laws of the State of New York and the
+intellectual property laws of the United States of America. No party to this
+Agreement will bring a legal action under this Agreement more than one year
+after the cause of action arose. Each party waives its rights to a jury trial
+in any resulting litigation. 
+```
+
+### SIL Open Font License 1.1 (the fonts)
+
+```text
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font
+creation efforts of academic and linguistic communities, and to
+provide a free and open framework in which fonts may be shared and
+improved in partnership with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply to
+any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software
+components as distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to,
+deleting, or substituting -- in part or in whole -- any of the
+components of the Original Version, by changing formats or by porting
+the Font Software to a new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed,
+modify, redistribute, and sell modified and unmodified copies of the
+Font Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components, in
+Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the
+corresponding Copyright Holder. This restriction only applies to the
+primary font name as presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created using
+the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+```

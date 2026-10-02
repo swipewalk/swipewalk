@@ -34,9 +34,9 @@ Swipewalk itself makes no network requests. The platform tools it runs may: for 
 `devicectl`. Their own privacy terms apply.
 
 The Android accessibility harness (Google's Accessibility Test Framework) ships prebuilt inside
-Swipewalk, so using it needs no network access either, only `adb`. Swipewalk builds it with
-Gradle instead only when you point `--android-harness <path>` at a harness project folder of your own;
-Gradle then downloads itself, build tools and
+Swipewalk, so using it needs no network access either, only `adb`. Only a harness build named with
+`--android-harness` (an option for Swipewalk's maintainers; normal use never needs it) is built with Gradle instead,
+and Gradle then downloads itself, build tools and
 dependencies from Gradle's, Google's and Maven Central's servers, and their own privacy terms apply.
 
 A live screen-reader session (desktop app and `swipewalk session`, Android) passes each TalkBack
