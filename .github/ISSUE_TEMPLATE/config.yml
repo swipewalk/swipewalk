@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/swipewalk/swipewalk/security/advisories/new
+    about: Please report security problems privately.
+  - name: User guide and known limitations
+    url: https://github.com/swipewalk/swipewalk/blob/main/docs/user-guide.md
+    about: Check the user guide and the known limitations before opening an issue.

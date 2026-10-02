@@ -1,0 +1,28 @@
+name: Bug
+description: A scan fails, crashes or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and the output. Remove device serials, paths and personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "macOS 26.6, .NET 10.0.100, Android 16 emulator"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Swipewalk version

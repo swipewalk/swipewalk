@@ -1,0 +1,48 @@
+name: Wrong or missing finding
+description: A false positive, a missed issue, or a wrong WCAG / standards mapping.
+labels: [findings]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please don't attach screenshots or trees that contain personal data, or apps you are not allowed to share.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's wrong?
+      options:
+        - Reported, but not a real issue (false positive)
+        - A real issue was not reported
+        - Wrong WCAG criterion, level or standards mapping
+        - Wording in the report is wrong or misleading
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID and WCAG criterion shown
+      placeholder: "missing-name · 4.1.2 Name, Role, Value (A)"
+  - type: textarea
+    id: details
+    attributes:
+      label: What you expected, and why
+      description: For mapping problems, link the primary source (w3.org, the standard's text).
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform, device and OS version
+      placeholder: "Android 16 emulator / iPhone 17 Simulator, iOS 26.5"
+    validations:
+      required: true
+  - type: input
+    id: framework
+    attributes:
+      label: App framework
+      placeholder: ".NET MAUI 10 / native / Flutter / React Native / ..."
+  - type: input
+    id: version
+    attributes:
+      label: Swipewalk version and ruleset
+      description: Shown at the top of the report.

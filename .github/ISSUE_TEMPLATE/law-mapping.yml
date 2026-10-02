@@ -1,0 +1,43 @@
+name: Help improve Swipewalk's law mappings
+description: Suggest a correction to a law or standard's mapping, or suggest one we don't list yet.
+title: "Law mapping: "
+labels: [findings]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping. Every mapping links to its official source, and your check makes the list better.
+  - type: input
+    id: entry
+    attributes:
+      label: Law or standard
+      description: Filled in when you use "Suggest a correction" in the desktop app. For a new one, give its name and country or state.
+      placeholder: "Texas (us-tx)"
+    validations:
+      required: true
+  - type: textarea
+    id: current-data
+    attributes:
+      label: What Swipewalk currently says
+      description: Filled in by the desktop app. Leave it as it is, or empty if you opened this form on GitHub.
+  - type: textarea
+    id: what-is-wrong
+    attributes:
+      label: What should change
+      placeholder: "For example: it references WCAG 2.1, but the current text says 2.2."
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Link to the official text
+      placeholder: "https://"
+    validations:
+      required: true
+  - type: checkboxes
+    id: reference-only
+    attributes:
+      label: One thing to know
+      options:
+        - label: I know Swipewalk shares reference information and isn't a source of legal advice.
+          required: true
