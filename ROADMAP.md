@@ -5,16 +5,44 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.5
+
+- `swipewalk share` and `swipewalk import` (and Share run… and File > Open… in the desktop app) send a saved run
+  to someone else as one `.swipewalk` file, signed by default and checked before anything is added; `swipewalk keys` manages the
+  keys you trust. Files are not encrypted, and a signature shows which key signed a file, not who the person is.
+  The desktop app's History can read a folder you choose, such as one a team shares.
+- A VS Code extension (a preview; not on the Marketplace yet) marks each finding on the source line
+  it likely comes from, read from a saved run; read-only, with no network calls or telemetry. Checked on macOS only.
+- `swipewalk helpers remove` (and Remove Swipewalk helpers… on the Devices page) removes Swipewalk's own helper
+  apps from a device, after asking; tried on an Android emulator and an iOS Simulator only.
+- `swipewalk diagnostics` (and Help > Save Diagnostic Report…) saves a local diagnostic report for a bug report,
+  made from a short local log; nothing is sent anywhere.
+- The desktop app's pop-up menus are now drawn by the app itself so that Space or Return opens them with the keyboard (Return on macOS 14.4 and later; checked in UI tests, not yet by a person).
+- A Search… button beside the desktop app's Law or standard menu, for finding one by typing part of its name or a place.
+- results.json format 0.8 (a stable id, "who is affected" and a report link on every finding; see
+  docs/results-schema.md).
+- The desktop app's three search boxes (the law Search sheet, Laws that matter to me and the app picker) are system
+  search fields: Escape clears what you typed, then closes the sheet (choices already made in Laws that matter to me are kept).
+- Each release carries two downloads of a made-up sample app (an Android .apk and an iOS Simulator .zip) to scan before
+  trying your own app, with the full third-party notices and licence texts for what they carry.
+- The Screen reader session page uses only the device you choose, checks it before changing anything and has a New session
+  button after a session; a run's pictures are kept inside its own folder, and a shared or saved run can no longer point
+  the app at files outside that folder.
+- Scanning recovers when the Android helper on the phone was signed with a different key than the installed copy, error
+  messages no longer show internal paths, and the README has install tips for an unreachable NuGet feed and for the
+  PATH.
+
 ### New in 0.4.2
 
 - The desktop app offers more of the command line's choices: a More checks section on New scan (dark/light, rotation, changing-content and web content checks, an app framework menu), iPhone signing, a check that an app is installed on the Devices page, comparing any two runs, a team triage file, ACR author fields, and "Use my current laws and standards" when exporting.
 - Help pages in the desktop app listing every automated check and known limitation.
 - `swipewalk session --platform ios`, `swipewalk apps`, `swipewalk history --delete`, `swipewalk compare --app` and `--carry-triage`.
-- The command line and the desktop app now offer nearly the same things (choosing another History folder in the desktop app is still to come), apart from a short list of exceptions that each have a stated reason (for example options meant for scripts).
+- The command line and the desktop app now offer nearly the same things (choosing another History folder in the desktop app came in 0.5), apart from a short list of exceptions that each have a stated reason (for example options meant for scripts).
 - On Android, the dark/light and rotation checks no longer leave the phone's setting changed when it can't be read first.
 
 ### Earlier
 
+- A desktop app for macOS, with more of the command line's scan, export and standards choices (an app source folder, any mapped US state or country, a Law or standard choice when exporting), a Laws and standards page with a way to suggest corrections, and a one-time welcome.
 - Scan the screen shown now on Android (emulator or USB device) and iOS (Simulator or iPhone).
 - Record mode: use the app, and each new screen is scanned, also at a large system text size (Android and iOS,
   including physical devices — a physical iPhone's is driven through its own Settings app). Screens that weren't
@@ -73,7 +101,6 @@ are welcome: open an issue.
 - HTML and JSON reports with a predicted screen-reader transcript, swipe order, and (with `--screen-reader`)
   captured screen-reader evidence next to the prediction.
 - Run history, comparing runs, and CI exit codes (`swipewalk run`).
-- A desktop app for macOS, with more of the command line's scan, export and standards choices (an app source folder, any mapped US state or country, a Law or standard choice when exporting), a Laws and standards page with a way to suggest corrections, and a one-time welcome.
 - Findings come from automated checks only; manual testing with assistive technology is still required.
 
 ## Next

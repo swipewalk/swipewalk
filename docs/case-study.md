@@ -36,19 +36,30 @@ today's checks alone if it can't install or run; ruleset 2026.09.11 — see "Fou
 planted" and "False positives" below for what ATF added); the iOS numbers are unchanged. The finding
 counts and coverage lines below were then updated again (ruleset 2026.09.12, three new rules —
 page-titled, input-purpose, icon-contrast) by recomputing from those same saved captures against the
-new ruleset, not a fresh device rescan; the screenshots below were re-rendered on 2026-09-27 from those
-same saved captures against ruleset 2026.09.39 (the 0.3.0 "What to fix" view), and show the same
-coverage lines quoted below.
+new ruleset, not a fresh device rescan; the iOS screenshot in the README was re-rendered from the saved iOS
+capture (the 0.3.0 "What to fix" view), and the Android screenshot below is from the 2026-10-02 scan
+described next.
 
-(This table's counts are from the 2026-09-23 recompute described above; a later ruleset may find a
-slightly different count on the same saved captures -- the docs sweep before each release recomputes it.
-Re-checked 2026-09-27 against ruleset 2026.09.39 for the 0.3.0 release: the same saved captures give the
-same counts and the same coverage lines below, so nothing in this section changed. Re-checked again on 2026-09-29 against ruleset 2026.09.41 for the 0.4.0 release, by re-scanning the saved BuggyApp captures with `scan --from`: the Android capture gives the same 6, 8 and 4 and the same coverage line; the saved iOS capture has no AX3 rescan, so it gives 6, 4 and 2 (the fifth needs-review item in the table needs the rescan, as noted above) and the same coverage line. Re-checked once more on 2026-10-01 against ruleset 2026.09.43 for the 0.4.1 release, the same way: the same counts (6, 8 and 4 on Android; 6, 4 and 2 on iOS) and the same two coverage lines.)
+Counts come from recomputing saved captures against the ruleset current at the time, so a later
+ruleset may find a slightly different count; the docs sweep before each release recomputes them. The iOS
+column was last recomputed for the 0.5.0 release against ruleset 2026.09.43, by re-scanning the saved iOS
+capture with `scan --from`: it has no AX3 rescan, so it gives 6, 4 and 2, and the fifth needs-review item
+in the table needs the rescan, as noted above.
+
+The Android column and the screenshot below are from a scan, on 2026-10-02 against ruleset 2026.09.43, of
+the Release build that is attached to each release as the sample app download, run on a 1080×2424
+Android 16 emulator at normal size and at 200% text: 6, 9 and 4, with the same coverage line as before. One
+of the 9 items for review is a content-lost-at-large-text item (WCAG 1.4.4) naming "Help center", the last
+button on the screen. The button was added to the app after the first saved Android capture was taken; that
+capture, taken before the button existed, gives 6, 8 and 4. At 200% the button is missing from the
+accessibility tree and nothing on the screen reports itself as scrollable, so the scan can't tell whether a
+person could still reach it. Whether this item appears depends on the screen height: on a screen tall
+enough for the button to fit at 200%, the scan doesn't report it.
 
 | | Android | iOS Simulator |
 |---|---|---|
 | WCAG issues | 6 | 6 |
-| Needs review | 8 | 5 |
+| Needs review | 9 | 5 |
 | Platform advisories | 4 | 2 |
 
 Both reports also say what was **not** checked, and the two differ because Google's Accessibility
@@ -86,7 +97,7 @@ what was seen by eye. Neither of those two capture sizes is what the numbers abo
 those are still from the larger, 402×874 pt iPhone 17 Simulator capture, where this screen fits and
 offscreen-unreachable finds nothing.
 
-![Android report for BuggyApp: 6 WCAG issues, 8 needing review, 4 platform advisories, the "What to fix" view with a "Likely same root cause" group for two touch-target findings, and each finding's WCAG criterion and who it affects](images/report-android.png)
+![Android report for BuggyApp, scanned on a 1080×2424 emulator: 6 WCAG issues, 9 needing review (one is content that may be lost at 200% text, "Help center") and 4 platform advisories, with a "Likely same root cause" group for two touch-target findings and each finding's WCAG criterion and who it affects](images/report-android.png)
 
 ### Planted bugs
 
@@ -136,6 +147,12 @@ that way, because the fix is an iOS one. The bug never changed; the scanner's vi
   described below, can also stop TalkBack announcing what was actually typed into the field, so it
   needs a check — and `ImageContrastCheck` on the decorative divider and `DuplicateSpeakableTextCheck`
   on the same field, both described next.
+- **"Help center" may be cut off at 200% text** (WCAG 1.4.4, needs review; seen on Android: the iOS runs
+  either predate the button or had no large-text rescan): the large-text-lost-content rule. At 200%,
+  "Help center" is missing from the accessibility tree on the 1080×2424 emulator and nothing on the screen
+  reports itself as scrollable; the scan reports that a control present at normal size is missing at the
+  larger size and asks a person to check whether it can still be reached. Whether it appears depends on the
+  screen height, and it is not one of the 11 planted bugs.
 
 ### False positives, past and present
 
@@ -175,7 +192,9 @@ that way, because the fix is an iOS one. The bug never changed; the scanner's vi
 
 ### Where the sample apps are
 
-The sample apps (BuggyApp for .NET MAUI, and the native Android and iOS ones) are Swipewalk's own, made-up test apps with planted bugs. Their source code is not published, so the scans in this study can't be rerun from here; the numbers and screenshots are from the runs described in each section.
+The sample apps (BuggyApp for .NET MAUI, and the native Android and iOS ones) are Swipewalk's own, made-up test apps with planted bugs. Their source code is not published, but you can rerun the BuggyApp scans yourself: each release has ready-to-install builds for the Android emulator and the iOS Simulator (see [Try Swipewalk on the sample app](user-guide.md#try-swipewalk-on-the-sample-app)). The native sample apps are not offered as downloads.
+
+The numbers and screenshots in this study are from the runs described in each section. A rerun can differ a little on another device or system version.
 
 ## 2. Real apps: Microsoft's .NET MAUI samples
 

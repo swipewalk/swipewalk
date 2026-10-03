@@ -4,23 +4,33 @@ Swipewalk 0.4.2 and later is licensed under the [Swipewalk License](LICENSE); ve
 released under the Apache License 2.0. The components below are included in Swipewalk or used by it and keep
 their own licences, which apply to them instead of the Swipewalk License. This page lists every one, with its
 licence, and carries the copyright notices found in each component and the licence texts for MIT, BSD 3-Clause,
-Apache 2.0, Eclipse Public License 1.0 and SIL Open Font License 1.1. Where a component's copyright line could
-not be found, the table below says so. The Mozilla Public License 2.0 text for axe-core ships next to axe-core,
+BSD 2-Clause, Apache 2.0, Eclipse Public License 1.0 and SIL Open Font License 1.1. Where a component's copyright line
+could not be found, the table below says so. The Mozilla Public License 2.0 text for axe-core ships next to axe-core,
 as noted below.
+
+Microsoft's own licence and notice files for the .NET runtime, .NET MAUI, the Mac Catalyst, iOS and Android runtimes
+and Roslyn, and PDFsharp's licence file, ship unchanged in the `third-party` folder of the Mac app (inside the app
+bundle's Resources) and of the NuGet package; the sample app downloads carry the ones the sample contains.
+`third-party/SOURCES.txt` lists where each file came from and its SHA-256.
+
+The Swipewalk extension for Visual Studio Code (the `.vsix` download) has no runtime dependencies: it is built from Swipewalk's
+own code and uses only what VS Code itself provides (Node's built-in compression (zlib) and cryptography modules at run time). The tools it is built
+with (TypeScript, esbuild and the test tools) are not part of the download.
 
 ## Included in the desktop app
 
 | Component | Licence | Notes |
 |---|---|---|
 | [Open Sans](https://github.com/googlefonts/opensans) (Copyright 2020 The Open Sans Project Authors) | SIL Open Font License 1.1 | Font files used by the desktop app. Licence text below. |
-| [.NET MAUI](https://github.com/dotnet/maui) (`Microsoft.Maui.Controls` 10.0.110) | MIT | Desktop app. |
-| .NET runtime and libraries | MIT | Included in self-contained builds. |
+| [.NET MAUI](https://github.com/dotnet/maui) (`Microsoft.Maui.Controls` 10.0.110) | MIT | Desktop app. Its licence and notice files: `third-party/dotnet-maui`. |
+| .NET runtime and libraries (the Mono runtime pack 10.0.8) | MIT | Included in self-contained builds. Licence and notice files: `third-party/dotnet-runtime`. |
+| Mac Catalyst runtime and SDK | MIT (the licence file also carries notices for parts under other licences) | Part of the desktop app. Licence file: `third-party/apple-sdk`. |
 
 ## Included in PDF export (the command-line tool's `swipewalk export --format pdf` and the desktop app's Export dialog)
 
 | Component | Licence | Notes |
 |---|---|---|
-| [PDFsharp](https://github.com/empira/PDFsharp) (`PdfSharp` 6.2.4) | MIT | Builds the tagged, PDF/UA-1 PDF that `swipewalk export --format pdf` writes. |
+| [PDFsharp](https://github.com/empira/PDFsharp) (`PdfSharp` 6.2.4) | MIT | Builds the tagged, PDF/UA-1 PDF that `swipewalk export --format pdf` writes. Its licence file: `third-party/pdfsharp/LICENSE` (the package itself has none). The package's `PdfSharp.WPFonts.dll`, which embeds Microsoft's Segoe WP fonts, is not used and is left out of every Swipewalk download. |
 | [Open Sans](https://github.com/googlefonts/opensans) (Copyright 2020 The Open Sans Project Authors) | SIL Open Font License 1.1 | Embedded in every generated PDF, so the export needs nothing installed on the host. |
 | [Noto Sans Devanagari](https://github.com/notofonts/devanagari) (Copyright 2022 The Noto Project Authors), [Noto Sans Arabic](https://github.com/notofonts/arabic) (Copyright 2022 The Noto Project Authors), [Noto Sans JP](https://github.com/notofonts/noto-cjk) (Copyright 2014-2021 Adobe, with Reserved Font Name "Source") | SIL Open Font License 1.1 | Embedded fallback fonts for non-Latin report text (Devanagari, Arabic, common-use Japanese -- not Chinese, except characters Chinese shares with Japanese). The Noto Sans JP file is a modified version: a subset with only the Joyo kanji, kana, CJK punctuation and halfwidth/fullwidth forms, made with fontTools to keep the file small (see [docs/limitations.md](docs/limitations.md) for what that leaves out). Licence text below. |
 
@@ -28,7 +38,7 @@ as noted below.
 
 | Component | Licence | Notes |
 |---|---|---|
-| [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp` 4.11.0 and the libraries it needs) | MIT | Reads your app's C# code-behind files locally to find the line a finding likely comes from. |
+| [Roslyn](https://github.com/dotnet/roslyn) (`Microsoft.CodeAnalysis.CSharp` 4.11.0 and the libraries it needs) | MIT | Reads your app's C# code-behind files locally to find the line a finding likely comes from. Its notice file: `third-party/roslyn/ThirdPartyNotices.rtf`. |
 
 ## Included in the Android instrumentation harness
 
@@ -125,6 +135,126 @@ is pointed at during a `--screen-reader` capture so that Swipewalk gets the exac
 on your devices and computer. It has no dependencies beyond the Android SDK itself, so it adds nothing to this
 page: it is Swipewalk's own code, covered by the Swipewalk License.
 
+## Included in the sample app builds (the Android .apk and iOS Simulator download attached to each release)
+
+The sample app, BuggyApp, is a .NET MAUI app. Its downloads carry this page, the Swipewalk License and the notice
+files of the Microsoft .NET runtime, .NET MAUI and SDK runtimes in `third-party` inside the app (as the `notices` asset); the iOS Simulator zip also
+has them beside `BuggyApp.app`. The versions below were read from the sample's resolved package list when the
+downloads were last built.
+
+| Component | Licence | Notes |
+|---|---|---|
+| [.NET MAUI](https://github.com/dotnet/maui) (`Microsoft.Maui.Controls`, `.Core`, `.Xaml`, `Microsoft.Maui.Core`, `.Essentials`, `.Graphics`: 10.0.110) and `Microsoft.Extensions.*` 10.0.0 | MIT | Notice files: `third-party/dotnet-maui`. |
+| .NET runtime (Mono) 10.0.8 for Android and the iOS Simulator | MIT | Notice files: `third-party/dotnet-runtime`. |
+| .NET for Android runtime (36.1.53) and the Apple iOS runtime and SDK | MIT (the Apple licence file also carries notices for parts under other licences) | Files: `third-party/android-runtime` and `third-party/apple-sdk`. |
+| [Open Sans](https://github.com/googlefonts/opensans) (Copyright 2020 The Open Sans Project Authors) | SIL Open Font License 1.1 | Font files in the app. Licence text below. |
+| The Android libraries listed next | Apache 2.0 (Glide also BSD 2-Clause and MIT; JSR-305 see below) | See the next paragraph. |
+
+The Android build carries the libraries below as .NET packages. Each package is Microsoft's .NET binding (MIT)
+around an Android or Java library that keeps its own licence: Apache 2.0, and for Glide also the BSD 2-Clause
+licence (and MIT for its GIF decoder; see the copyright table below). The licence column is what each package's own
+metadata states. None of the 93 packages (including the archives inside them) contains an Apache NOTICE file. Each has
+Microsoft's `THIRD-PARTY-NOTICES.txt`, which holds only licence texts (no copyright lines); those texts are on this
+page. Upstream source repositories were not checked. The JSR-305 project
+itself states BSD 3-Clause, although its package metadata says Apache 2.0, as for the harness list above. The iOS
+Simulator build carries none of them.
+
+| Package | Version | Licence |
+|---|---|---|
+| `GoogleGson` | 2.13.1.1 | MIT and Apache-2.0 |
+| `Xamarin.Android.Glide.Annotations` | 4.16.0.14 | MIT and BSD-2-Clause and Apache-2.0 |
+| `Xamarin.Android.Glide.DiskLruCache` | 4.16.0.14 | MIT and BSD-2-Clause and Apache-2.0 |
+| `Xamarin.Android.Glide.GifDecoder` | 4.16.0.14 | MIT and BSD-2-Clause and Apache-2.0 |
+| `Xamarin.Android.Glide` | 4.16.0.14 | MIT and BSD-2-Clause and Apache-2.0 |
+| `Xamarin.AndroidX.Activity.Ktx` | 1.10.1.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Activity` | 1.10.1.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Annotation.Experimental` | 1.5.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Annotation.Jvm` | 1.9.1.5 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Annotation` | 1.9.1.5 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.AppCompat.AppCompatResources` | 1.7.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.AppCompat` | 1.7.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Arch.Core.Common` | 2.2.0.18 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Arch.Core.Runtime` | 2.2.0.18 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Browser` | 1.8.0.11 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.CardView` | 1.0.0.36 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Collection.Jvm` | 1.5.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Collection.Ktx` | 1.5.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Collection` | 1.5.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Concurrent.Futures` | 1.3.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ConstraintLayout.Core` | 1.1.1.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ConstraintLayout` | 2.2.1.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.CoordinatorLayout` | 1.3.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Core.Core.Ktx` | 1.16.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Core.ViewTree` | 1.0.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Core` | 1.16.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.CursorAdapter` | 1.0.0.34 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.CustomView.PoolingContainer` | 1.1.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.CustomView` | 1.2.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.DrawerLayout` | 1.2.0.18 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.DynamicAnimation` | 1.1.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Emoji2.ViewsHelper` | 1.5.0.6 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Emoji2` | 1.5.0.6 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ExifInterface` | 1.4.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Fragment.Ktx` | 1.8.8.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Fragment` | 1.8.8.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Interpolator` | 1.0.0.34 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Common.Jvm` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Common` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.LiveData.Core` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.LiveData` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Process` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Runtime.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Runtime.Ktx.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Runtime.Ktx` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.Runtime` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.ViewModel.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.ViewModel.Ktx` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.ViewModel` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.ViewModelSavedState.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Lifecycle.ViewModelSavedState` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Loader` | 1.1.0.34 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.Common.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.Common` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.Fragment` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.Runtime.Android` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.Runtime` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Navigation.UI` | 2.9.2.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ProfileInstaller.ProfileInstaller` | 1.4.1.5 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.RecyclerView` | 1.4.0.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ResourceInspection.Annotation` | 1.0.1.22 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.SavedState.SavedState.Android` | 1.3.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.SavedState.SavedState.Ktx` | 1.3.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.SavedState` | 1.3.1.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Security.SecurityCrypto` | 1.1.0.4-alpha07 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.SlidingPaneLayout` | 1.2.0.22 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Startup.StartupRuntime` | 1.2.0.5 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.SwipeRefreshLayout` | 1.1.0.29 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Tracing.Tracing.Android` | 1.3.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Tracing.Tracing` | 1.3.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Transition` | 1.6.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.VectorDrawable.Animated` | 1.2.0.8 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.VectorDrawable` | 1.2.0.8 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.VersionedParcelable` | 1.2.1.3 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ViewPager` | 1.1.0.4 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.ViewPager2` | 1.1.0.8 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Window.WindowCore.Jvm` | 1.4.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Window.WindowCore` | 1.4.0.1 | MIT and Apache-2.0 |
+| `Xamarin.AndroidX.Window` | 1.4.0.1 | MIT and Apache-2.0 |
+| `Xamarin.Google.Android.Material` | 1.12.0.5 | MIT and Apache-2.0 |
+| `Xamarin.Google.Code.FindBugs.JSR305` | 3.0.2.21 | MIT and Apache-2.0 |
+| `Xamarin.Google.Crypto.Tink.Android` | 1.18.0.1 | MIT and Apache-2.0 |
+| `Xamarin.Google.ErrorProne.Annotations` | 2.41.0.1 | MIT and Apache-2.0 |
+| `Xamarin.Google.Guava.ListenableFuture` | 1.0.0.29 | MIT and Apache-2.0 |
+| `Xamarin.JSpecify` | 1.0.0.4 | MIT and Apache-2.0 |
+| `Xamarin.Jetbrains.Annotations` | 26.0.2.3 | MIT and Apache-2.0 |
+| `Xamarin.Kotlin.StdLib` | 2.2.0.1 | MIT and Apache-2.0 |
+| `Xamarin.KotlinX.Coroutines.Android` | 1.10.2.1 | MIT and Apache-2.0 |
+| `Xamarin.KotlinX.Coroutines.Core.Jvm` | 1.10.2.1 | MIT and Apache-2.0 |
+| `Xamarin.KotlinX.Coroutines.Core` | 1.10.2.1 | MIT and Apache-2.0 |
+| `Xamarin.KotlinX.Serialization.Core.Jvm` | 1.9.0.1 | MIT and Apache-2.0 |
+| `Xamarin.KotlinX.Serialization.Core` | 1.9.0.1 | MIT and Apache-2.0 |
+
 ## Included for the Android web-content audit, only run when `--web-audit` is used
 
 | Component | Licence | Notes |
@@ -164,17 +294,18 @@ says so instead of guessing.
 | Component | Licence | Copyright line | Where it was read |
 |---|---|---|---|
 | .NET MAUI (`Microsoft.Maui.Controls` 10.0.110) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE.TXT` and `.nuspec` in the package |
-| .NET runtime and libraries (`Microsoft.NETCore.App.Runtime` 10.0.8) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE.TXT` and `.nuspec` in the package |
-| Mac Catalyst runtime (`Microsoft.MacCatalyst.Runtime.maccatalyst-arm64.net10.0_26.0` 26.0.11017) | MIT | Copyright (c) .NET Foundation Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE` and `.nuspec` in the package |
+| .NET runtime and libraries (`Microsoft.NETCore.App.Runtime.Mono.maccatalyst-arm64` 10.0.8) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE.TXT` and `.nuspec` in the package |
+| Mac Catalyst runtime (`Microsoft.MacCatalyst.Runtime.maccatalyst-arm64.net10.0_26.5` 26.5.10284) | MIT | Copyright (c) .NET Foundation Contributors; © Microsoft Corporation. All rights reserved. | `LICENSE` and `.nuspec` in the package |
 | `Microsoft.Extensions.Logging.Debug` 10.0.0 | MIT | © Microsoft Corporation. All rights reserved. | `.nuspec` in the package |
-| PDFsharp (`PdfSharp` 6.2.4) | MIT | © 2026 empira (package owner: empira Software GmbH) | `.nuspec` in the package (the package has no separate licence file) |
+| PDFsharp (`PdfSharp` 6.2.4) | MIT | Copyright (c) 2001-2026 empira Software GmbH, Troisdorf (Cologne Area), Germany (the package metadata says © 2026 empira) | `LICENSE` at tag `v6.2.4` of the PDFsharp repository (`third-party/pdfsharp/LICENSE`); the package has no licence file |
 | Roslyn (`Microsoft.CodeAnalysis.CSharp` and `Microsoft.CodeAnalysis.Common` 4.11.0) | MIT | Copyright (c) .NET Foundation and Contributors; © Microsoft Corporation. All rights reserved. | `ThirdPartyNotices.rtf` (in the `CSharp` package) and `.nuspec` in the packages |
 | `org.checkerframework:checker-qual` 3.22.1 | MIT | Copyright 2004-present by the Checker Framework developers | `META-INF/LICENSE.txt` in the artifact |
-| `org.checkerframework:checker-compat-qual` 2.5.5 | MIT (the artifact is dual-licensed; used under MIT) | copyright line not found: the artifact contains no licence file | its Maven metadata names the licence only |
+| `org.checkerframework:checker-compat-qual` 2.5.5 | MIT (the artifact is dual-licensed; used under MIT) | no copyright line: the upstream licence file for this version states none | [`LICENSE.txt` at tag `checker-framework-2.5.5`](https://github.com/typetools/checker-framework/blob/checker-framework-2.5.5/LICENSE.txt); the artifact itself contains no licence file |
 | `org.jsoup:jsoup` 1.15.1 | MIT | Copyright (c) 2009-2022 Jonathan Hedley <https://jsoup.org/> | `META-INF/LICENSE` in the artifact |
 | `org.hamcrest:hamcrest-core`, `hamcrest-integration`, `hamcrest-library` 1.3 | BSD 3-Clause | Copyright (c) 2000-2006, www.hamcrest.org | `LICENSE.txt` in each artifact (text below) |
-| `com.google.protobuf:protobuf-javalite` 3.19.1 | BSD 3-Clause | copyright line not found: the artifact contains no licence file | its Maven metadata names no licence text |
-| `com.google.code.findbugs:jsr305` 3.0.2 (listed here because the JSR-305 project itself states BSD 3-Clause) | Apache 2.0 per its Maven metadata | copyright line not found: the artifact contains no licence file | its Maven metadata |
+| `com.google.protobuf:protobuf-javalite` 3.19.1 | BSD 3-Clause | Copyright 2008 Google Inc.  All rights reserved. | [`LICENSE` at tag `v3.19.1`](https://github.com/protocolbuffers/protobuf/blob/v3.19.1/LICENSE); the artifact itself contains no licence file |
+| `com.google.code.findbugs:jsr305` 3.0.2 (listed here because the JSR-305 project itself states BSD 3-Clause) | BSD 3-Clause per the project's own licence file; Apache 2.0 per its Maven metadata (the two disagree; both texts are on this page) | Copyright (c) 2007-2009, JSR305 expert group | the project's `ri/LICENSE`; the artifact itself contains no licence file |
+| [Glide](https://github.com/bumptech/glide) 4.16.0 (`Xamarin.Android.Glide`, sample app only) | BSD 2-Clause; its disk cache (DiskLruCache) Apache 2.0; its GIF decoder (GifDecoder) MIT | Copyright 2014 Google, Inc. All rights reserved. Disk cache: Copyright 2012 Jake Wharton; Copyright 2011 The Android Open Source Project. GIF decoder: Copyright (c) 2013 Xcellent Creations, Inc. | [`LICENSE` at tag `v4.16.0`](https://github.com/bumptech/glide/blob/v4.16.0/LICENSE); the .NET package has the licence text but no copyright lines |
 
 The fonts' copyright lines are in their rows above and in the SIL Open Font License section below. axe-core's
 copyright line is in its own licence file, which ships next to it.
@@ -184,13 +315,14 @@ copyright line is in its own licence file, which ships next to it.
 Apache License 2.0, section 4(d), asks that a NOTICE file shipped with a component be passed on. Each of the 69
 artifacts on the Android harness list above was opened (including the archives inside the `.aar` files) on 2026-10-01:
 none contains a NOTICE file (the binary artifacts Swipewalk includes; upstream source repositories were not
-checked). The Apache 2.0 text is included below. If a
-future version of a component ships a NOTICE file, its content is added here.
+checked). The 93 Android library packages in the sample app were opened the same way on 2026-10-02: none contains
+an Apache NOTICE file (each has Microsoft's `THIRD-PARTY-NOTICES.txt`, licence texts only). The Apache 2.0 text is included below. If a future version of a component ships a NOTICE file, its
+content is added here.
 
 ## Licence texts
 
-The texts follow in this order: MIT, BSD 3-Clause, Hamcrest's BSD licence, Apache 2.0, Eclipse Public License 1.0,
-SIL Open Font License 1.1. The MPL 2.0 text for axe-core ships next to axe-core (`third-party/axe-core/LICENSE`).
+The texts follow in this order: MIT, BSD 3-Clause, Hamcrest's BSD licence, BSD 2-Clause, Apache 2.0, Eclipse Public
+License 1.0, SIL Open Font License 1.1. The MPL 2.0 text for axe-core ships next to axe-core (`third-party/axe-core/LICENSE`).
 The MIT and BSD 3-Clause texts are the standard (SPDX) texts; the copyright holders are in the table above, and each
 table line takes the place of the `Copyright (c) <year> <copyright holder>` line for that component.
 JUnit's source code is at <https://github.com/junit-team/junit4>.
@@ -285,6 +417,36 @@ BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
 WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
+```
+
+### BSD 2-Clause License (Glide)
+
+```text
+Copyright 2014 Google, Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+         conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+         of conditions and the following disclaimer in the documentation and/or other materials
+         provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Google, Inc.
 ```
 
 ### Apache License 2.0

@@ -30,8 +30,11 @@ It does **not** certify compliance. Automated checks catch only part of what WCA
 - **Screen reader evidence (`--screen-reader`; off by default on the command line, on by default for Android in the desktop app):** TalkBack on Android and Xcode's Accessibility Inspector on iOS, with differences from the predicted announcement listed for you to check by hand.
 - **Reports:** a "What to fix" view for developers and a "Full audit detail" view with the full WCAG 2.2 coverage table. Findings say who is affected, and findings that look like the same cause are grouped. Findings can be marked as triaged by your team.
 - **Exports:** Markdown tickets, CSV, a single HTML file, a tagged PDF and a draft accessibility conformance report for a person to review.
-- **Laws and standards:** each issue lists the laws and standards it is relevant to, for reference only and not legal advice. See [laws and standards](docs/standards.md).
-- **App source (optional, `--source`):** points a finding at a likely source line in a project folder on your computer. The folder is read locally and never uploaded.
+- **Laws and standards:** each issue lists the laws and standards it is relevant to, for reference only and not legal advice. In the desktop app you can find one by typing part of its name or a place, and list the ones you care about first. See [laws and standards](docs/standards.md).
+- **App source (optional, `--source`):** points a finding at a likely source line in a project folder on your computer. The folder is read locally and never uploaded. So far this has been tested only on Swipewalk's sample apps.
+- **Sharing:** `swipewalk share` saves one run as a single `.swipewalk` file (screenshots and triage marks optional; not encrypted; signed by default with a key kept on your computer) that someone else opens with `swipewalk import` or the desktop app, after the file has been checked. A signature shows that the file has not changed since it was signed and which key signed it, not who made it. See [Sharing a run](docs/user-guide.md#13-sharing-a-run).
+- **VS Code extension (preview):** reads a saved run and marks each finding on the source line it likely comes from. It is read-only, makes no network calls and sends no telemetry, and has been tested on macOS only, by automated tests (nobody has tried it by hand on Windows or Linux yet). Download the `.vsix` from the [releases page](https://github.com/swipewalk/swipewalk/releases); see [Seeing findings in VS Code](docs/user-guide.md#14-seeing-findings-in-vs-code).
+- **Helpers and diagnostics:** `swipewalk helpers remove` removes the helper apps Swipewalk leaves on a device, after asking, and `swipewalk diagnostics` saves a diagnostic report from a short local log for a bug report, with serial numbers, device names, team IDs and your user name removed by pattern (which can miss something), so read it before attaching it. Nothing is sent anywhere.
 
 Automated checks find only part of what WCAG asks for; manual testing is still required. The [user guide](docs/user-guide.md) describes each option.
 
@@ -64,10 +67,14 @@ The command-line tool needs the [.NET 10 SDK](https://dotnet.microsoft.com/downl
 | Windows | Android (Windows apps: planned, not yet available) |
 | Linux | Android |
 
+Android scanning from Windows and Linux is new and hasn't yet been verified on a real Windows or Linux machine; `swipewalk doctor --platform android` shows where it looked for `adb`.
+
 ```bash
 dotnet tool install -g Swipewalk
 swipewalk --version
 ```
+
+If the install fails because your NuGet settings list a feed that can't be reached or needs a sign-in, add `--ignore-failed-sources` to the same command. If the terminal then says `swipewalk` is not found, add .NET's tool folder to your PATH: on macOS with the default zsh, run `echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.zshrc` once and open a new terminal window; on Linux with bash, add the line `export PATH="$PATH:$HOME/.dotnet/tools"` to `~/.bashrc` instead.
 
 It scans apps on devices you connect; it doesn't include the platform tools. For Android, install the [Android SDK platform-tools](https://developer.android.com/tools/releases/platform-tools) (`adb`). For iOS (macOS only), install Xcode. Run `swipewalk doctor --platform android|ios` to check what's missing.
 
@@ -81,11 +88,15 @@ swipewalk apps --platform android                                       # list t
 swipewalk compare --app com.example.app                                 # an app's newest run against the one before it
 ```
 
+Use test data in a screen reader session: everything TalkBack says while the app is in front is recorded, including typed characters.
+
+To see a scan before trying your own app, install the made-up sample app from the [releases page](https://github.com/swipewalk/swipewalk/releases) on an Android emulator or the iOS Simulator: see [Try Swipewalk on the sample app](docs/user-guide.md#try-swipewalk-on-the-sample-app).
+
 Output: `report/report.html` and `report/results.json`. Every command and option is in the [user guide](docs/user-guide.md); a run can also be described once in a `swipewalk.json` file ([example](samples/BuggyApp/swipewalk.json)) and started with `swipewalk run`.
 
 ## Desktop app (macOS)
 
-The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare any two runs (what is new, what is no longer found, what is still found, and what was not checked again; "no longer found" does not mean fixed), mark findings as already looked at, and export tickets, a CSV, a shareable report, a tagged PDF or a draft Accessibility Conformance Report.
+The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare any two runs (what is new, what is no longer found, what is still found, and what was not checked again; "no longer found" does not mean fixed), mark findings as already looked at, share a run as one file, remove Swipewalk's helper apps from a device, and export tickets, a CSV, a shareable report, a tagged PDF or a draft Accessibility Conformance Report.
 
 ![The Swipewalk dashboard: 2 runs saved of 1 app, 7 WCAG issues and 6 items to review in the latest run, "since the previous run: 1 new, 1 no longer found", and a bar chart of WCAG issues per run](docs/images/desktop-dashboard.png)
 

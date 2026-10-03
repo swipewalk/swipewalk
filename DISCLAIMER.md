@@ -29,7 +29,7 @@ licence.
   follow the app's and the app store's terms.
 - **Handle reports as sensitive.** Screenshots and accessibility trees can contain personal data
   that was on screen (names, account details, messages). Use test accounts and test data where you
-  can, and review a report before sharing it. Swipewalk blanks status bars, but not app content.
+  can, and review a report before sharing it. A shared `.swipewalk` file is not encrypted and holds all the text Swipewalk read on each screen, so review it too. Swipewalk blanks status bars, but not app content.
 - **Keep the device safe.** Scans can change device settings temporarily (for example the text size
   during a large-text check) and restore them afterwards. Use test devices rather than personal ones
   where you can.

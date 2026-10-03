@@ -87,6 +87,7 @@ the full detail on each platform.
 1. [Install](#1-install)
 2. [Set up a device](#2-set-up-a-device)
 3. [First scan](#3-first-scan)
+   - [Try Swipewalk on the sample app](#try-swipewalk-on-the-sample-app)
 4. [Reading a report](#4-reading-a-report)
 5. [Record mode and the large-text check](#5-record-mode-and-the-large-text-check)
 6. [CI and history](#6-ci-and-history)
@@ -96,6 +97,8 @@ the full detail on each platform.
 10. [Exporting findings](#10-exporting-findings)
 11. [Triage: mark a finding as already looked at](#11-triage-mark-a-finding-as-already-looked-at)
 12. [Finding the likely source line (.NET MAUI, native Android, native iOS, React Native, Flutter)](#12-finding-the-likely-source-line-net-maui-native-android-native-ios-react-native-flutter)
+13. [Sharing a run](#13-sharing-a-run)
+14. [Seeing findings in VS Code](#14-seeing-findings-in-vs-code)
 
 ## 1. Install
 
@@ -120,6 +123,18 @@ yet. `swipewalk doctor --platform android` tells you exactly where it looked if 
 dotnet tool install -g Swipewalk
 swipewalk --version
 ```
+
+If the install fails because your NuGet configuration lists a private feed that can't be reached or
+needs a sign-in, add `--ignore-failed-sources` to the same command.
+
+If the terminal then says `swipewalk` is not found, add .NET's tool folder to your PATH. On macOS
+with the default zsh, run this once, then open a new terminal window:
+
+```bash
+echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.zshrc
+```
+
+On Linux with bash, add the line `export PATH="$PATH:$HOME/.dotnet/tools"` to `~/.bashrc` instead.
 
 Swipewalk doesn't include the platform tools it scans through — install the ones for the
 platform you're testing:
@@ -201,7 +216,104 @@ if a scan was interrupted partway through). It prints a notice before doing this
 use a test device where you can. Expect it to take a couple of minutes per screen on an iPhone, and
 keep the phone unlocked for the whole scan or recording, not just at the start.
 
+### What Swipewalk installs on a device
+
+Scanning needs a few small helper apps of Swipewalk's own on the device. They are not your app and are never
+signed over it. Most stay installed after a scan, so the next one starts faster, which is one more reason to
+use a test device. Nothing else is installed, apart from a build of your own app that you ask Swipewalk to install with `--install`.
+
+| Device | Helper | Why it is there | When it is installed and removed |
+|---|---|---|---|
+| Android phone or emulator | Scanning helper, package `org.swipewalk.harness.test` | Reads the accessibility tree and runs Google's Accessibility Test Framework checks on the app in front, and moves TalkBack's focus for a TalkBack capture or session. | Installed by the first scan, recording or session (or by a settings repair, such as `swipewalk doctor`), and replaced when Swipewalk updates it. Stays until you remove it. |
+| Android phone or emulator | Text-to-speech helper, package `org.swipewalk.harness.ttsengine`, listed as "Swipewalk (testing only)" in the text-to-speech settings | Only for `--screen-reader` and the screen reader session: it receives what TalkBack says. | Installed for a TalkBack capture and removed again once every changed setting reads back as restored. It is left only when that could not be confirmed. |
+| iPhone | Scanning helper app, bundle id `org.swipewalk.harness.runner`, and its test runner app, `org.swipewalk.harness.uitests.xctrunner` | Run Apple's accessibility audit and read the screen; on a physical iPhone they also drive the Settings app for the large-text check. | Installed by the first scan or recording (signed with your Apple development team) and stay until you remove them. If you signed them with `--harness-bundle-prefix`, the ids start with your prefix instead. |
+| iOS Simulator | The test runner app, with the standard id (in testing the scanning helper app was not found installed on the Simulator; it is removed too if present) | The same, apart from the Settings app. | The same. |
+
+On Android, if the device holds a copy of a helper from another Swipewalk build, signed with a different key, Android will not update it. Swipewalk then removes that copy (it is Swipewalk's own, not your data), installs its own and says so in the scan's output. It does not remove the text-to-speech helper while the phone still uses it as its speech engine; the message says how to put the setting back. If a copy cannot be removed, the checks that need it are skipped (Google's checks and the screen reader capture for the scanning helper, the screen reader capture for the speech helper) and the report says why. Tried on an Android emulator only, not yet on a physical phone.
+
+Swipewalk also keeps a few small files on your computer (the remembered team and records used to put a device's settings back in `~/.config/swipewalk`, and, once you share a run, a signing key and your trusted keys); see [PRIVACY.md](../PRIVACY.md).
+
+To remove the helpers from a device:
+
+- **Desktop app:** on the Devices page, choose **Remove Swipewalk helpers…** on the device's row (available while the device shows no problem). It asks first,
+  saying exactly which apps it will remove, then lists what it removed. For an iPhone you signed with a company
+  wildcard profile, enter the prefix you used in **Helper bundle id prefix for removal** first.
+- **Command line:** `swipewalk helpers remove --platform android|ios [--device <id>] [--harness-bundle-prefix <prefix>] [--yes]`.
+  It prints what it will remove and asks, unless you add `--yes` (a script has no one to ask and needs it).
+  `--harness-bundle-prefix` applies to a physical iPhone only.
+
+What happens when you remove them:
+
+- On Android, any TalkBack or text-to-speech setting an interrupted scan left changed is put back first, the same
+  way `swipewalk doctor` does, and the scanning helper is stopped first if it was left running by an interrupted
+  scan or session. If putting the settings back cannot be confirmed, or the device's text-to-speech engine is still
+  set to Swipewalk's helper with no record of the engine it replaced, or Swipewalk cannot read which engine is set,
+  or the scanning helper is running with nothing interrupted to repair, nothing is removed and you are told why.
+  Fix the setting by hand (TalkBack in Settings > Accessibility, and Text-to-speech output, under Settings >
+  Accessibility or Settings > System > Languages on most phones; the place varies by Android version) or run
+  `swipewalk doctor --platform android`, then try again.
+- Only the helpers in the table are removed. The app you scan, your other apps and your data are left alone, and so
+  are the runs saved on your computer.
+- A device that is busy, because a scan, recording or screen reader session is running on this computer, is refused
+  with the same message a second scan gets. A scan or session running from another computer cannot be seen from here;
+  a scanning helper left running with nothing to repair makes the removal stop, as above, but make sure none is
+  running first.
+- The next scan installs the helpers again; the first scan afterwards takes a little longer, and on an iPhone it
+  asks for Face ID or the passcode again if the phone needs it.
+
+To remove them by hand instead: on Android, `adb -s <serial> uninstall org.swipewalk.harness.test` (and
+`org.swipewalk.harness.ttsengine` if it is there; first check the text-to-speech engine is your usual one); on an
+iPhone, `xcrun devicectl device uninstall app --device <udid> <bundle id>` for each id; on the Simulator,
+`xcrun simctl uninstall <udid> <bundle id>`.
+
+This was checked on an Android emulator and an iOS Simulator. Removing the helpers from a physical Android phone and a
+physical iPhone is built the same way but has not been tried on those devices yet.
+
 ## 3. First scan
+
+### Try Swipewalk on the sample app
+
+If you want to see a scan before pointing Swipewalk at your own app, each
+[release](https://github.com/swipewalk/swipewalk/releases) has two downloads of the sample app, BuggyApp:
+`Swipewalk-SampleApp-<version>-android.apk` and `Swipewalk-SampleApp-<version>-ios-simulator.zip`. Its
+Android package name and iOS bundle id are both `org.swipewalk.buggyapp`. It is a made-up app for a
+fictional "City of Exampleville" with accessibility bugs planted on purpose, so a scan of it is expected
+to report issues. Its source code is not published for versions from 0.4.2 on.
+
+Download it only from the releases page, and install it only on an emulator, a Simulator or a test phone. The
+key that signs the Android build is not secret, so the signature does not show where a copy came from.
+
+- **Android emulator** (a test phone also works): start the emulator, then
+  `adb install <path to the .apk>`, and open "BuggyApp" on the device.
+- **iOS Simulator** (the download is built for the Simulator only and can't be installed on a physical
+  iPhone): unzip the download, boot a Simulator, then run
+  `xcrun simctl install booted <path to BuggyApp.app>` and
+  `xcrun simctl launch booted org.swipewalk.buggyapp`.
+
+Then scan it like any other app, with the first screen ("Pay a parking ticket") in front:
+
+```bash
+swipewalk scan --platform android --package org.swipewalk.buggyapp --out report
+swipewalk scan --platform ios --bundle-id org.swipewalk.buggyapp --out report
+```
+
+In the desktop app, choose the emulator or Simulator on New scan, then choose `org.swipewalk.buggyapp` as
+the app. Add `--large-text` to the commands to include the large-text check too. In the desktop app, the New scan
+option "Also check with large system text" does this, and it is on by default.
+
+The planted bugs, and which of them each platform reports, are listed in
+[the case study](case-study.md#1-buggyapp-a-sample-net-maui-app-with-planted-bugs). The numbers depend on
+the device, the screen height, the system version and the text size, so expect them to be close to the
+case study's, not identical. The case study's counts include the large-text check. For example, the last
+button on the screen, "Help center", can fall below the screen when the text is enlarged to 200% (it did on
+a 1080×2424 emulator), and then the Android scan with the large-text check adds an item for review about content that may be lost at
+the larger size.
+
+The sample builds are covered by the [Swipewalk License](../LICENSE), like the rest of the release. Third-party
+parts keep their own licences; see [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md). The downloads carry the notices: inside the app, and
+beside it in the iOS Simulator zip.
+
+### Scan your own app
 
 Start with a readiness check, then scan:
 
@@ -1022,7 +1134,10 @@ saved run the same way they label an ACR export (see [section 10](#10-exporting-
 <dir>` saves the run elsewhere instead of your real History (useful for testing). On a physical phone,
 Swipewalk asks to confirm before installing its helper app and changing accessibility settings for the
 session, the same way `scan --screen-reader`/`record --screen-reader` do — `--confirm` skips the
-prompt for a non-interactive run. While the app is in front, everything TalkBack says is recorded,
+prompt for a non-interactive run. The session uses only the device you name (or the only one connected): with several
+connected and no `--device`, it stops and asks you to name one. Before it changes anything it checks that device (still
+connected, Google's TalkBack installed, the app installed); if the device can't run a session, for example an emulator image
+without TalkBack, it says which device and why, changes nothing and does not try another device. If the helper doesn't confirm within 30 seconds that the session started, Swipewalk stops it, asks the device to put its settings back and says so, rather than showing an empty session. While the app is in front, everything TalkBack says is recorded,
 including a notification it reads out, text-field contents and typed characters — use test data, never real passwords
 or personal details.
 
@@ -1200,7 +1315,8 @@ be read, is grouped under "version not recorded"). Each run line also says what 
 Recording or Screen reader session) and adds "Screen reader evidence" when the run holds any: a scan or
 recording that captured screen reader evidence (`--screen-reader`: what TalkBack said on Android, or
 Accessibility Inspector readings on iOS; or `--voiceover-captions`: VoiceOver's captions), or a live
-session in which TalkBack's focus reached at least one control. A run saved by an earlier version shows only its kind,
+session in which TalkBack's focus reached at least one control. A run opened from a shared file also shows
+"Imported" (see [Sharing a run](#13-sharing-a-run)). A run saved by an earlier version shows only its kind,
 even if its results hold screen reader evidence. Nothing decides which version "counts" for you — see
 [Combining several runs into one report](#combining-several-runs-into-one-report) below for choosing which
 version(s) to build a report from.
@@ -1235,7 +1351,7 @@ Every scanned screen's raw capture (accessibility tree, screenshot) is also save
 re-run the rules against it later — after updating Swipewalk, for example — without the device:
 `swipewalk scan --platform android --from <capture dir> --out report` (or `--platform ios`)
 re-scans a saved capture instead of a live device. Find capture directories inside a run folder in
-history: `capture/` for a single scan, or `screens/01`, `screens/02`, … for a recording.
+history: `capture/` for a single scan, or `screens/01`, `screens/02`, … for a recording. A run folder may also have a `pictures/` folder. It holds pictures that were captured elsewhere (a saved capture replayed with `--from`) or copied in from an older run, so the run folder holds its own pictures. It is not a capture directory.
 
 ## 7. The desktop app
 
@@ -1248,7 +1364,9 @@ to, with links to their official sources so you can check them (this is not lega
 Return, or Escape) closes it, and it doesn't open by itself again; **About these mappings** closes it and opens
 the Laws and standards page. To read it again, choose **Help > Welcome to Swipewalk**. **Help > Automated Checks** lists every automated check Swipewalk runs (what `swipewalk checks`
 prints), and **Help > Known Limitations** lists what it cannot check or may get wrong (what `swipewalk
-limitations` prints), each row opening to its details. Use the Show menu at the top of the page to switch between the two lists.
+limitations` prints), each row opening to its details. Use the Show menu at the top of the page to switch between the two lists. **Help > Save Diagnostic Report…**
+writes the diagnostic report described in [section 8](#saving-a-diagnostic-report-for-a-bug-report) (what
+`swipewalk diagnostics` does).
 
 The pages:
 
@@ -1260,6 +1378,8 @@ The pages:
   run count ("Versions: 1.2.0 (3 run(s)), 1.1.0 (5 run(s))") — this is only a summary; build a report from
   a chosen version in History (below) or `swipewalk export --app`/`--app-version`/`--run`
   ([section 10](#10-exporting-findings)).
+  After Swipewalk closed unexpectedly, a notice at the top offers to save a diagnostic report (see
+  [section 8](#saving-a-diagnostic-report-for-a-bug-report)).
 - **Laws and standards** — every law and standard Swipewalk tracks, grouped as US federal, US states,
   EU and member states, UK, and other countries, with a search and a count. Each row shows the name,
   whether it is mapped (or not mapped, with a one-line reason) and what it references. For a mapped
@@ -1281,8 +1401,22 @@ The pages:
   countries under their own headings, each as a name and what it references (for example "New York
   (WCAG 2.2 AA)"); the choice is the same as `--standard <id>` on the command line, and only the
   jurisdictions Swipewalk has mapped are listed (the rest are in [docs/standards.md](standards.md)).
+  The menu is quick for the usual choices; **Search…**, the button beside it
+  (also beside the same choice in the export dialogs), opens a sheet for finding one by typing part of its
+  name or a place, such as "Texas" or "Germany". The sheet shows the same entries under the same headings,
+  with how many match; clicking an entry chooses it and closes the sheet, and Return in the
+  search field chooses it when only one matches. Escape in the search field clears what you typed; Escape with the field empty, or **Cancel**, closes the sheet without changing anything. The search box is a system search field, as in **Laws that matter to me** and the app picker; nobody has yet checked how it looks; with VoiceOver it reads the match count and each entry, but has the gaps below.
+  The entry that is chosen now is marked, and choosing one sets exactly what the menu would. **Known gap
+  in this release:** from the keyboard, Space and Return on a list entry do not choose it, and with VoiceOver
+  neither does VO+Space; after typing, Tab stays in the search field instead of reaching the list or Cancel;
+  and with VoiceOver, focus starts on the first list entry and VO-arrow navigation stays in the list.
+  Instead, type the name and press Return when exactly one law matches, press Escape or choose **Cancel** to
+  close the sheet, or, with the pointer, choose from the **Law or standard** menu itself, which lists every mapped state and
+  country. This was found in a hands-on check on 2026-10-03 (macOS 27, keyboard navigation on, VoiceOver); a
+  fix is planned for a later release (see the [accessibility statement](accessibility-statement.md)). The command line takes the
+  same ids as `--standard <id>`; `swipewalk standards` lists them.
   **Laws that matter to me…** (also on the Laws and standards page) opens a searchable list of the same laws and standards, grouped the
-  same way, with a check mark beside each chosen law; it works from the keyboard alone (Tab from the filter into the list, arrow keys to move, Space to choose or clear the focused law, Escape to close) and each law's accessible name ends with "checked" or "not checked"; a choice is saved as you make it (on this Mac, for every scan
+  same way, with a check mark beside each chosen law; each law's accessible name ends with "checked" or "not checked", and Escape clears the filter, or closes the list when it is empty. Choosing a law with Space or VO+Space has not been checked by hand and likely does not work, the same gap as in the Search sheet above; use the pointer, or `--my-laws <ids>` on the command line; a choice is saved as you make it (on this Mac, for every scan
   and export from the app) and **Choose none** puts everything back. It changes only which laws a
   report and its exports list first, never what they include, and a specific "Law or standard" above
   still means that one only (the line next to the button then says the choice isn't used for that scan). Each scan keeps the choice it was made with, so a later export follows
@@ -1386,7 +1520,15 @@ The pages:
   the run uses, read-only). Version 0.4.0 uses the window setup macOS 27 requires, which is what makes
   this possible; 0.3.0 was stopped by macOS 27 as it launched. One known gap, seen once by a person with
   VoiceOver: after the window is reopened while a run is going, Tab did not reach the last button in the
-  Progress panel (whether Full Keyboard Access was on wasn't recorded); a fix was not confirmed, so reach it with VoiceOver navigation or the pointer. The
+  Progress panel (whether Full Keyboard Access was on wasn't recorded); a fix was not confirmed, so reach it with VoiceOver navigation or the pointer. **Known keyboard
+  and VoiceOver gaps (found in a hands-on check on 2026-10-03, macOS 27; fixes planned for a later release):**
+  with macOS keyboard navigation on, Tab and Shift-Tab move only between controls that are visible in the
+  window, so make the window taller or scroll with the mouse or trackpad to reach the others; in an open
+  pop-up menu (checked on **What to scan**) the arrow keys move the highlight but Return does not choose it (press Space to open the menu, type the first letters of
+  the item, then click to choose); the Search sheet described above has the gaps listed there; and the same
+  row-choosing gap likely affects **Laws that matter to me**, the app picker and History rows with VoiceOver (not
+  checked on each; in the app picker, type the app id in the field instead; on History, the row's buttons work with the
+  pointer; with VoiceOver they haven't been tried). The [accessibility statement](accessibility-statement.md) lists each with its checks. The
   Dock's own Quit, logging out and shutting down can't be asked about first — that's a Mac Catalyst
   limitation, not a choice Swipewalk makes — but for those, Swipewalk still requests a cancellation as
   the app closes, using the same restore code Cancel uses, though the app may close before that restore
@@ -1399,7 +1541,11 @@ The pages:
   Choose app… to pick from recently scanned and installed apps, the same as New scan; optionally an app name and an app version
   to label the run with, like the command's `--app-name` and `--app-version`, which otherwise default to the package and the
   version read from the phone), confirm that
-  Swipewalk will change accessibility settings for the session, and Start. Unlike a normal scan or
+  Swipewalk will change accessibility settings for the session, and Start. No device is chosen for you: pick one from the list, and
+  the page says which device the session will run on and that it uses no other (the session never switches device). On a physical
+  phone, Start asks you to confirm once more, naming the phone. Before anything is changed, Swipewalk checks that the chosen device can
+  run a session (still connected, Google's TalkBack installed, the app installed); if it can't, for example an emulator image without
+  TalkBack, a message names the device and why, and nothing on it is changed. Unlike a normal scan or
   recording, Swipewalk doesn't drive anything and shows no step-by-step instructions — you use
   TalkBack on the phone as you normally would, for as long as you like, while Swipewalk records what
   happens: which controls TalkBack's focus reached, in what order, what TalkBack said, and what you
@@ -1426,7 +1572,9 @@ The pages:
   the settings restore can't be confirmed, the summary says so — then saves the session as its own run in History, alongside
   your scans and recordings, together with a normal scan of the first screen. The summary after Stop
   counts what was recorded — screens visited, controls reached and not reached, notes and evidence items to
-  review (counts, not a result) — and has an Open report button. Each note (in the session and in that
+  review (counts, not a result) — and has an Open report button and a New session button (the iPhone session's summary has both too); New session closes the summary and
+  shows the setup again, with the same device and app still filled in; the confirmation has to be ticked again, and the saved
+  session stays in History. Each note (in the session and in that
   summary) has Copy ticket and Save ticket… buttons: the note becomes a Markdown ticket in the same layout
   as a finding's ticket, with the screen, the last control TalkBack focused and what happened just
   before; it says plainly that it's the tester's own note, with no automated check behind it. Its report includes a
@@ -1515,7 +1663,12 @@ The pages:
   connected, the banner offers Restore now, which runs the same check as the Devices page's own Check
   button or `swipewalk doctor`; if it isn't, the banner says to connect it, then choose Restore now
   (starting a scan on it also puts it back). The banner disappears on its own once nothing is
-  pending, and re-checks itself every time either page is opened.
+  pending, and re-checks itself every time either page is opened. **Remove Swipewalk helpers…** on a
+  device's row (the same as `swipewalk helpers remove`) asks first, saying exactly which of Swipewalk's own
+  helper apps it will remove, then reports what it removed or why it refused; see
+  [What Swipewalk installs on a device](#what-swipewalk-installs-on-a-device). While a physical iPhone is listed,
+  **Helper bundle id prefix for removal (optional)** is for helpers signed with a company wildcard profile
+  (`--harness-bundle-prefix`).
 - **History** — every saved run, grouped by app and then by that app's own version, with a count at
   each level (a run's version is grouped under "version not recorded" when it wasn't known — see
   [section 6](#6-ci-and-history)); open a run's report from its own row, or use Compare runs… at the top to compare any two runs. A recording
@@ -1528,10 +1681,12 @@ The pages:
   shows "Screen reader evidence" when the run holds any (a scan or recording that captured screen reader
   evidence — `--screen-reader` or `--voiceover-captions` — a live session in which TalkBack's focus
   reached a control, or an iPhone session in which VoiceOver captions were read); a run saved by an earlier version shows only its kind. Each row also has an Export… button, to export that run without opening its report
-  first (see [section 10](#10-exporting-findings)). Delete is a red button. It asks first and names the run
+  first (see [section 10](#10-exporting-findings)), and a Share run… button (see [section 13](#13-sharing-a-run)); a run opened from a file
+  shows the tag Imported and the name the sender typed, if any. Delete is a red button. It asks first and names the run
   (app, date and time, platform and mode). Cancel is set as the alert's default button, so Return and Escape are
   meant to keep the run (not yet checked with a real key press). Only choosing Delete removes the run and its
-  report and screenshots. Each version's own header row has its own Export…
+  report and screenshots. In a shared History location (see [Where runs are saved](#where-runs-are-saved)) the red
+  button is replaced by **Remove from list**. Each version's own header row has its own Export…
   button that combines scans you choose from that version — nothing is ticked to start, you pick which
   ones — into one report covering every screen across them, resolving any screen two ticked scans both
   captured the same way the CLI does (see below) — the desktop app's counterpart of
@@ -1568,6 +1723,48 @@ The pages:
 Download the signed `.dmg` from the
 [releases page](https://github.com/swipewalk/swipewalk/releases). See the
 [Desktop app section of the README](../README.md#desktop-app-macos).
+
+### Where runs are saved
+
+By default the desktop app saves runs in its own folder on this computer. History shows the folder, with buttons
+above the list:
+
+- **Open in Finder** shows the folder.
+- **Change location…** lets you choose another folder for all runs, for example a project's `accessibility/runs`
+  folder or a shared drive. There is one location at a time. Once you have chosen a folder, Change location… also
+  offers **Use the default folder**.
+- **Show removed runs** and the **Other people use this folder** option appear when they apply (see below).
+
+After you choose a folder, Swipewalk asks whether to **move** the runs already saved or **leave them where they
+are**. It also reminds you that a folder synced by iCloud Drive, OneDrive or Dropbox can lock files or upload them
+only partly while a scan is saving; it does this for every folder and doesn't check whether the folder is synced.
+
+- Moving copies each run, checks the copy, and only then removes the original. Swipewalk never deletes an original
+  before its copy has been checked; a copy that fails the check is removed again and the original is kept. A
+  recording that is still going is never moved.
+- If some runs can't be moved, the location does not change and Swipewalk says how many moved and how many stayed.
+  The runs that did move are already in the new folder, so they don't show in History until you finish: choose
+  Change location… and the same folder again.
+- Leaving runs behind never deletes them: they just don't show in History until you switch back.
+- The location can't be changed while a scan, recording or screen reader session is running.
+
+**Shared folders and Remove from list.** Swipewalk then also asks: "Do other people use this folder?" Your answer is
+stored with the location, and you can change it later with the **Other people use this folder** option on History
+(shown only while a folder you chose is in use). The default folder is always private.
+
+- **Yes (shared).** Deleting a run there would remove it for everyone who reads the folder, so rows show **Remove
+  from list** instead of Delete. It hides the run on this Mac only: the files stay in the folder and other people
+  still see the run. The list of hidden runs is kept per user, outside the folder. When something is hidden, the
+  **Show removed runs (N)** button lists it again, marked as removed, with **Add back to list**; it then reads
+  **Hide removed runs**. To get rid of a run's files, delete its folder in Finder; Swipewalk itself refuses to
+  delete runs in a folder marked as shared.
+- **No (private).** Delete works as usual, for example on an external drive that only you use.
+
+The command line doesn't read this setting (so a script or CI job never writes somewhere different because of a
+desktop preference). `swipewalk` keeps its own default folder, and `--history <folder>` points `run`, `scan`,
+`record`, `session`, `history` and `export --app` at another one. While the app uses a different location, runs
+the command line saves to its default folder don't show in the app's History unless you give the command the same
+folder with `--history`.
 
 ## 8. Troubleshooting
 
@@ -1692,6 +1889,59 @@ Other things you might hit:
   capture path (result-bundle attachments) even on a Simulator. Everyday scans don't need it — the
   right path is chosen for you.
 
+### Saving a diagnostic report for a bug report
+
+When a scan fails, or Swipewalk closes unexpectedly, a diagnostic report tells whoever helps what happened, without
+you describing it all by hand. It is one plain text file made on your computer from Swipewalk's local log. Nothing is
+sent anywhere, and no device is touched.
+
+```
+swipewalk diagnostics --out swipewalk-diagnostics.txt
+```
+
+`--out` takes a file name or a folder; without it the file goes in the current folder as
+`swipewalk-diagnostics-<date>-<time>.txt`. In the desktop app choose **Help > Save Diagnostic Report…**, pick where
+to save it, and Swipewalk says the file is saved, with **Show in Finder** and **Done**. If the app closed
+unexpectedly last time, the Dashboard shows a short notice, "Swipewalk closed unexpectedly last time. Save a diagnostic
+report?", with **Save report…** and **Not now**. It is offered on the Dashboard once for that close: either choice means you aren't asked
+about it again, and nothing is saved or sent unless you choose Save report…. The Help menu item stays available.
+
+What the report holds:
+
+- the versions of Swipewalk, your system, `adb`, Xcode and Java (each says "not found" when it isn't there);
+- the last pre-flight results Swipewalk logged, with the time they were checked. The report does not run the
+  checks again (that touches your devices); to get fresh ones, run `swipewalk doctor --platform android|ios` (or
+  choose Check on the Devices page) first, then save the report;
+- the last five scans or recordings: platform, app id, framework, which options were on, how many screens, and the
+  counts of WCAG issues, items to review and platform advisories, or why it stopped;
+- the log lines from the last 24 hours (at most 2,000): what ran, warnings and errors.
+
+It never holds screenshots or the contents of `results.json`, and Swipewalk doesn't write text from the screens you
+scanned to it (labels, values, what TalkBack or VoiceOver said; a screen's name in a progress message is replaced by
+"…"). Error messages are kept as the tools gave them.
+
+Swipewalk removes device serial numbers and IDs, the names people gave their devices (the model is shown instead),
+Apple team IDs, signing identities, your user name, your computer's name and your home folder, from every line before it is written
+and again when the report is made. It keeps the package or bundle id of each app you scanned (for example
+`com.example.app`), because a fault is hard to diagnose without it, and the names of app files and folders you gave
+Swipewalk (your home folder shows as `~`) and the error messages the tools it runs give. The removal works by pattern, so it can miss
+something: **read the file, and remove anything you don't want to share, before you attach it** to a bug report;
+reports usually end up on a public GitHub issue.
+
+The log lives in `~/Library/Logs/Swipewalk` on macOS, `%LOCALAPPDATA%\Swipewalk\Logs` on Windows and
+`~/.local/state/swipewalk/logs` (or `$XDG_STATE_HOME/swipewalk/logs`) on Linux: one file a day (more if a day's log passes 4 MB). Files more than a week
+old are deleted, and older files are removed to keep the folder near 10 MB (checked when Swipewalk starts and once a
+day). The command line and the desktop app write to the same
+files. Delete the folder at any time to remove the log. By default the log holds the standard detail, with no commands
+recorded except where an error message names the command that failed. Setting the environment variable
+`SWIPEWALK_LOG=debug` in the terminal before running a command also records the tool commands Swipewalk runs (adb, xcrun,
+xcodebuild and others), with their arguments, exit codes and how long each took, with the same removal applied (the
+VoiceOver captions capture, used by `--voiceover-captions` and the iPhone VoiceOver session, is not yet included); the desktop app opened from Finder doesn't
+see a shell variable, so it writes the standard detail. The report says when its period includes debug lines. `SWIPEWALK_LOG_DIR` names another folder for the log (a full path), for CI and
+scripts; the command line then writes there and `swipewalk diagnostics` reads from there, while the desktop app opened from
+Finder keeps the folder above. If the log can't be
+written (a read-only disk, say), Swipewalk carries on without it.
+
 ## 9. Privacy and reporting wrong findings
 
 Swipewalk runs entirely on your computer: no accounts, no analytics, no telemetry, and it makes no
@@ -1711,6 +1961,10 @@ changed, so delete or re-export those yourself (details in PRIVACY.md).
 On Android, screenshots blank the status bar by default, since it can show notification text and
 other personal information; pass `--keep-status-bar` if you specifically need it left in the
 screenshot and are sure it won't show anything sensitive.
+
+Swipewalk also keeps a short, scrubbed log of what it did on your computer, and can save it as a diagnostic report to
+attach to a bug report; see [Saving a diagnostic report for a bug report](#saving-a-diagnostic-report-for-a-bug-report)
+and [PRIVACY.md](../PRIVACY.md). Nothing in it is sent anywhere.
 
 Found a false positive, a missed issue, or a wrong WCAG mapping? Please report it — that's the most
 useful kind of feedback right now. Use the "Wrong or missing finding" issue form on the
@@ -1971,7 +2225,7 @@ saved a different choice. The saved run is never changed, and the draft ACR igno
   than creating a second copy (the same "re-exporting reuses the same id" behavior as the CLI,
   described above).
 - **Law or standard (Report page → Export…, History → Export…, the Findings list's export and a version's own Export…)** — the desktop
-  counterpart of `swipewalk export --standard`, in the same grouped menu as New scan. It starts on the
+  counterpart of `swipewalk export --standard`, in the same grouped menu as New scan, with the same **Search…** button beside it for finding an entry by name or place. It starts on the
   law or standard the run was scanned with (All standards unless the scan named one; for a version, the one
   its newest run was scanned with, the same as `swipewalk export --app`). If the run was scanned with a law
   or standard that this version no longer lists, the menu shows All standards and a line says so. Choosing another works out
@@ -2451,3 +2705,291 @@ tested on a real capture at all yet (the sample doesn't set `testTagsAsResourceI
 `swipewalk export --source <path>` fills in a source location for a finding that doesn't already have
 one from the scan — useful when a run was scanned without the source at hand and it's since been
 found — without ever rewriting the run's own `results.json`.
+
+With a source folder, a run's `results.json` also records the folder's name in `sourceRootName` (the name
+only, never the full path), so a tool that reads the file can tell which folder each source line is
+relative to. Each finding also carries its stable id, who it affects and its anchor in `report.html`; see the
+[results.json reference](results-schema.md).
+
+## 13. Sharing a run
+
+A saved run can be sent to someone else as one file, so a tester can hand a developer what they found, or
+a team can keep runs in their repository. The file ends in `.swipewalk` and is a plain zip with a fixed
+layout. The person who opens it needs Swipewalk, but not your device or your computer.
+
+### Share a run
+
+```bash
+swipewalk share latest                                   # the newest finished run in History
+swipewalk share <run> --out ~/Desktop/                   # a run id from `swipewalk history`, or a run folder
+swipewalk share <run> --no-screenshots --no-triage       # leave those out
+swipewalk share <run> --shared-by "Sam (QA)"             # an optional note saying who sent it
+```
+
+`swipewalk share` prints the path of the file it wrote. The name is the app, its version and the date, for
+example `Example-App-1-2-0-20260930.swipewalk`: letters, digits and dashes only, with no device name and no
+user name. What goes in:
+
+- The run's results (`results.json`) and the run's record. There is no report in the file: whoever opens it gets
+  a report drawn by their own Swipewalk. For someone without Swipewalk, use the HTML export
+  ([section 10](#10-exporting-findings)) instead.
+- The screenshots the results refer to, unless you pass `--no-screenshots`. Screenshots show what was on the
+  screen when they were taken, so look at them before you send the file; with `--no-screenshots` the findings
+  are the same; the picture paths are removed from the results, and the report the other person's Swipewalk
+  draws has no pictures.
+- The run's triage marks ([section 11](#11-triage-mark-a-finding-as-already-looked-at)), unless you pass
+  `--no-triage`. Each mark includes the reason entered with it; the name entered with a mark (the "marked by" text,
+  often a person's name or email) is left out of the shared file.
+- `--shared-by` is free text you type, blank by default. It is shown to the person who opens the file, always introduced as
+  what the sender wrote ("Sender wrote: …"), never as a fact about who they are.
+- Sharing never replaces a file that already has the chosen name: the command stops and says so, and `--overwrite`
+  replaces it. (The desktop app writes the file where you choose in the system save panel, which asks before it replaces one.)
+
+What stays out: source code (for a run scanned with `--source`, the file names and line numbers the findings
+point to stay in), the app itself, device serial numbers and the device's own name (runs save the device model and the OS version; when the model isn't known, an iOS device name is kept only if it starts with "iPhone", "iPad" or "iPod" and has no apostrophe (such as "iPhone 16 Pro"; a name someone typed that follows that pattern would be kept), otherwise it shows as "iOS device" or "iOS simulator"; an Android name is the maker and model), the location
+of the run's folder, and the files a recording keeps to continue later. Where a message in the results quotes
+the run's folder or your home folder, that part is replaced with `.` or `~`. Every text saved in the file (in the results, the run's record and
+the reasons of triage marks) also goes through the same search the diagnostic log uses: device ids, Apple team names and ids, signing identities, names such as "Alex's
+iPhone" are replaced with placeholders, and the user and computer names Swipewalk knows are replaced in messages, notes, reasons and other free text (names that are part of an identifier, such as an app id like `com.alex.app`, stay as they are, because the file's other parts refer to them). That search works by pattern and can't be complete, so look at
+the report before you send the file. Only real picture files that sit inside the run's own folders are included; a path that leaves the
+folder, a link, a file that isn't a picture or one over the size limit is left out and the command says how many. An older run in your own History folder whose Swipewalk screenshots were kept elsewhere has them copied inside its folder first, when the folder can be written. A picture that is missing on this computer isn't in the file. The run's record and the file's
+listing give times in UTC; times inside the results (for example when a recording session started) and the run
+id keep the sender's local clock time. Apart from bringing an older run's pictures into its folder (see the paragraph about pictures in "Open a file someone sent you", below), sharing doesn't change the run on your computer.
+
+The file is not encrypted: anyone who has it can read everything in it. It is signed, unless you pass
+`--unsigned`, with a key that Swipewalk creates the first time you share a signed run:
+
+- On a Mac and on Linux the key is a file only you can read (created with mode 0600, like an SSH key; administrators of the computer can still read it): on a
+  Mac `~/Library/Application Support/Swipewalk/signing-key.p8` (not in the History folder, even if you moved
+  History), on Linux `~/.config/swipewalk/signing-key.p8` (or under `$XDG_CONFIG_HOME/swipewalk`). The command line
+  and the desktop app on the same computer use the same file, so you have one key. The file is not encrypted:
+  anyone who can read your user files or your backups can sign as you. If a restore, a copy or an archive tool left the file readable by
+  other users, Swipewalk sets it back to owner-only before it uses it and says so when you share; treat the key as exposed if others could read it.
+  If the file is damaged or can't be read, Swipewalk refuses to
+  share and says why; it never makes a new key over it. To start over, move or delete the file: you then get a new
+  key and people have to trust it. On Windows the key is protected for your user account with DPAPI. The Windows
+  and Linux key storage has not yet been tried on those systems.
+- Setting the `SWIPEWALK_HOME` environment variable to a folder keeps the signing key (on Windows still protected with DPAPI) and the
+  list of trusted keys in that folder instead. That is meant for build machines and containers.
+- A signature shows that the file has not changed since it was signed and which key signed it. It does not
+  show which person made the file: confirming the key's full fingerprint with you tells the other person the
+  key is yours, not who used it. If you lose the key or move to a new computer, you get a new key and people
+  have to trust it again.
+
+### Open a file someone sent you
+
+```bash
+swipewalk import Example-App-1-2-0-20260930.swipewalk    # check it, then add it to History
+swipewalk import file.swipewalk --dry-run                # only check it
+swipewalk import file.swipewalk --yes                    # open it without being asked (see below)
+```
+
+The file is checked before anything is added to History: its manifest, its version, every file against its
+listed size and SHA-256, the file names, and limits on size (the file size limit is 200 MB; `--max-size 500`
+raises it to 500 MB, and nothing goes above 2048 MB), on the number of files (5,000), and on files that expand
+far more than a normal run does. If anything is wrong, nothing is imported and the command says why. Nothing in the file is ever run, and the report you see is always drawn again by your copy of
+Swipewalk from the file's results, never taken from the sender's report. Text from the file (the app name, the
+"shared by" note, messages) is shown as plain text, with invisible and direction-changing characters removed. Before the run is added, its results are
+rewritten so that they hold nothing that points outside the run's folder: a screenshot path that is absolute or climbs out of the folder is removed (so an
+export of an imported run can never copy another file from your computer), the list of sources the results say they were checked against keeps only the ones this
+Swipewalk knows, with this Swipewalk's own links, and the counts History shows are worked out from the results rather than taken from the sender's record.
+`--dry-run` reads and checks every file in the archive, including every picture, without writing the pictures anywhere.
+
+Pictures are read the same way for every run, whether it came from a file or from your own scans: a picture is used only if it is a real PNG file of reasonable
+size inside the run's own folder (a link out of the folder is not followed; the VS Code extension also accepts JPEG). The one exception is described below. Swipewalk keeps each run's pictures there, listed relative to the folder; a scan replayed
+from a saved capture with `--from` copies the capture's pictures into the run's `pictures` folder, and nothing else is ever copied in while a run is being saved or continued. An older run, or a `--from` scan made by an earlier version, may list pictures outside its folder.
+The first time Swipewalk reads such a run from your own History folder (whenever it lists that History, as the desktop app's History, Dashboard and Compare and the command line's `history`, `compare` and `export --app` do, or when `swipewalk export`, `triage` or `share` or the desktop report page opens a run folder in it), if the folder can be written, it copies the pictures that look like Swipewalk screenshots
+(a PNG named `screenshot.png` beside a `tree.json` or `uiautomator.xml` file, as in a capture folder) into the run's `pictures` folder, rewrites the run's `results.json` to list them relative to the folder, and sets `picturesInFolder` in its `run.json`; the originals stay where they are. A listed picture that exists but isn't one of those is removed from the run's list;
+one that can't be found is left as listed, and the run is looked at again the next time Swipewalk starts (each time, only a limited number of outside paths are checked). Either way, Swipewalk no longer uses it in anything it draws or exports from then on (a report page saved earlier still shows what it showed when it was saved, until it is redrawn). When `swipewalk export` reads a run that hasn't been brought inside yet, it says how many pictures it left out; `swipewalk share` says how many it left out of the file. If the folder can't be written (a read-only volume, say), nothing is written, and those capture pictures are used where they are, until Swipewalk is closed.
+Your own History folder is the default one, or, in the desktop app, a folder you chose and said isn't shared; the command line counts only the default folder (a different folder given with `--history` doesn't count). Nothing is brought in from elsewhere, and no file is written, for a run opened from a shared file,
+for a folder whose `run.json` is missing, unreadable or marked as opened from a shared file, for a folder that isn't directly in your own History folder, for a History folder marked as shared in the desktop app, or for a different folder given with `--history`; such a run simply shows only the pictures inside its folder.
+Because of the older-run step, a results folder you received some other way (copied or emailed, unzipped by hand, committed to a repository) and then put into your own History folder by hand, with a `run.json`,
+could make Swipewalk copy a PNG picture named `screenshot.png` that sits beside a `tree.json` or `uiautomator.xml` file elsewhere on your computer (normally a screenshot from one of your own scans) into that run, and a later export or share would include it (never any other kind of file). Open received runs with `swipewalk import` instead. A link inside History or inside a run folder is not followed: History doesn't list a run reached through a linked folder, and a run's results, triage marks and pictures are read only when they are regular files inside the run's own folder, with no link on the way.
+A run opened from a shared file can't be continued.
+
+The command prints the run id, the app and version, when it was shared and what the sender wrote (if anything). It then prints one
+line about the signature. Exactly one of these appears. To see it before anything is added to History, run with `--dry-run` first:
+
+- "Signed by a key you trust."
+- "Signed by a key listed in your team keys file (the file's path). You didn't trust this key yourself." The signature matched and the key is only in an `accessibility/team-keys` file, not on your own list.
+- "Signed, but the key (fingerprint XXXX-XXXX) isn't trusted yet. The file matches its signature." For a key you don't trust yet, the command also
+  prints its full fingerprint in groups of four, to compare with the sender before running `swipewalk keys trust`.
+- "Not signed. Nothing shows which key made this file or whether it has changed since."
+- "The file doesn't match its signature, so it may have been changed after it was signed." (the signature doesn't match the file's listing, the signature file is damaged, or it claims a signature version or algorithm that a file from this version of Swipewalk could not have)
+- "Signed in a format this version of Swipewalk can't check. Treat it as not signed." (only when the file says a newer Swipewalk made it and its signature is in a format this version doesn't know; it can't be checked, so it counts as not signed)
+
+For the last three (not signed, doesn't match its signature, or a format this version can't check), nothing shows that the file is unchanged since its sender made it, so the command
+stops first: "Nothing shows this file is unchanged since its sender made it. … It was not imported." In a terminal it then asks "Import it anyway? The default is no."
+(`y` or `yes` imports it). When no one can answer, such as in a script or a CI job, it opens nothing and exits with 4; `--yes` imports it
+without asking. `--dry-run` never asks. A file signed by a key you haven't trusted yet opens without a question. The answer you give,
+and how the signature checked, are saved with the run: History and the report show the signature line and the signer's full fingerprint.
+
+Anyone can remove a signature (the file then shows "Not signed") or sign a changed file with their own key (it then
+shows as not trusted), so only "Signed by a key you trust" says the file is unchanged since a key you checked signed it.
+A key's fingerprint is the same every time that key signs, so anyone who receives several of your files can tell they were signed by the same key.
+
+An imported run is someone else's scan: it is never picked automatically as the earlier run a new scan of yours is compared with, its
+triage marks are never carried into your next scan, and the Dashboard's per-app cards and trends leave it out. You can still choose it by hand in Compare.
+
+Opening the same run again changes nothing and says "A run with this id is already in History, so this file was not opened again." (what History
+shows is the copy opened earlier, with that copy's own signature line). Exit code: 0 when the run was opened
+(or was already there, or `--dry-run` found nothing wrong), 2 when the file is not a valid Swipewalk file (this
+includes a file over the size limit), 4 when the file needs your confirmation and didn't get it (nothing was imported), and 3 when it was made with a newer Swipewalk that this one can't read; that
+message names the version needed, for
+example "This run needs Swipewalk 0.8.1 or newer. Update Swipewalk to open it." A file from a slightly newer
+Swipewalk that this one can read opens with one calm note: "Made with a newer Swipewalk (0.9). Some details may
+not show; update to see everything." A mistake in how the command was typed (for example a bad `--max-size`) exits with 1.
+
+### In the desktop app
+
+- **Share a run.** On a History row, or on the Report page, choose **Share run…**. A small sheet asks "Screenshots
+  show what was on screen. Include them?" with a switch (on by default), shows **Include triage marks** only when
+  the run has marks (on by default; switch it off to leave them out), and has a **Sign this file** switch (on by default; switch it off to share without a signature, as `--unsigned` does) and an optional **Shared by** field
+  (blank by default). A line above Share gives an upper estimate of the file's size ("Up to …"); the file is
+  compressed, so it is usually smaller. **Share** then asks where to save the file (the suggested name is the app, version
+  and date), and afterwards offers the macOS share sheet for the saved file (Mail, Messages, AirDrop and so on).
+  The sheet's last lines show **Your sharing key**: the full fingerprint of this computer's signing key in 16 groups of four (the same text `swipewalk keys show` prints), for reading to the people you share with; until you first share a signed run it says there is no key yet and that one is created then. Opening the sheet never creates the key.
+  A recording that is still going can't be shared; the sheet says so. If Swipewalk had to note something while
+  making the file (for example that it couldn't be signed), it shows that after you save, before the share sheet. Unless you switch **Sign this file** off, the file is signed like the command line's: the first
+  time you share a signed file, Swipewalk creates a signing key and keeps it as a file only you can read in `~/Library/Application Support/Swipewalk`, the same key the command line uses, as described above.
+- **Open a shared file.** Choose **File > Open…** (⌘O), double-click a `.swipewalk` file, drop one on the Dock icon,
+  or drag it onto the History page. (The automated tests open a file the way a double-click does; a real
+  double-click, a drop on the Dock icon, dragging onto History and opening a file from the keyboard through
+  File > Open… have not been tried end to end yet; the menu item is checked to be there.) For a file that isn't signed, doesn't match its signature or has a signature this version can't check, a native
+  alert asks first, "Import this file anyway?", with the reason, the app, what the sender wrote and the key's full fingerprint when the file names one; its buttons are
+  **Don't import** (the default, also chosen by Escape) and **Import anyway**. History then shows a notice with what was opened, the signature line (one of the
+  sentences above), any calm note about a newer Swipewalk, and, when the file is signed by a key you don't
+  trust yet, **Trust this key…**. That button shows the key's full fingerprint in 16 groups of four and asks
+  first; trust it only when the sender reads you the same fingerprint by another route. The opened run appears in
+  History with the tag **Imported**, a line under it with the date and what the sender wrote, if anything, such as
+  "Shared 2026-09-30. Sender wrote: Sam (QA)" (the sender's own text, not something Swipewalk checked), the signature line and the signer's full fingerprint. The same lines open the report (under its header); the row's spoken name includes the signature line (with the short key), and the full fingerprint is read from the report. A file that can't be opened shows one plain sentence, says nothing was imported and what to do; a file
+  over the 200 MB limit offers to open it anyway (up to 2 GB), and Swipewalk still checks everything in it first. Opening a file you already
+  have says "Already in History." and that this file wasn't opened again.
+- **Sharing keys.** Choose **File > Sharing Keys…** (⌘K), or the **Sharing keys…** link in the Share sheet, to open a page with your sharing key's full fingerprint and the keys you trust, as `swipewalk keys show`, `list`, `trust` and `untrust` do on the command line. Select a key in the list and choose **Stop trusting this key** to remove it; to trust a key you were told about, paste all 64 digits of its fingerprint (spaces and dashes are fine; the short form is refused) and choose **Trust this key**, but only after the sender has read you the same fingerprint by a call or another route you already trust. A key trusted from the opened-file notice is saved without a name; one trusted on this page can have a name you type. Keys from a team file are trusted too, and aren't listed here because the page can't remove them: the page says when a team file is in use, and if a key you stop trusting is also in that file, it says the key is still trusted through it (`swipewalk keys untrust` says the same).
+- **Team keys.** The desktop app also reads an `accessibility/team-keys` file in the History folder (it doesn't look in
+  folders above it). A file signed with one of those keys shows "Signed by a key listed in your team keys file (the file's path). You didn't trust this key yourself.", a state of its own, not
+  "Signed by a key you trust." Only use a team keys file in a folder whose writers you trust.
+- **Imported runs.** They have no Continue button. A recording or session that ended early still says **Ended early**, in History and in the row's spoken name, and the report still says it; it just can't be continued. Each time you open an imported run's report, Swipewalk draws it again from the run's results, so an update to Swipewalk or a change to its text shows up (if that fails, it shows the copy drawn when you opened the file), and it is always drawn the safe way described above (also after a triage change). **Delete** removes only your copy in History; the file you opened
+  isn't touched. In a History location marked as shared, the button is **Remove from list** instead (see
+  [Where runs are saved](#where-runs-are-saved)).
+
+### Imported runs
+
+An imported run appears in History next to your own, grouped by app and version, with the tag "Imported". Who
+sent it (if they said) and when is printed when you import it. It opens, compares and exports like any other run.
+It is marked as received: it can't be continued (there is no device and no recording to go back to; a
+recording that ended early still says so, in History and in the report), and
+deleting it removes only your copy. Triage marks that came with it stay with that run; they aren't merged into
+the marks of your other runs.
+
+### Keys
+
+```bash
+swipewalk keys show                                      # this computer's signing key fingerprint
+swipewalk keys list                                      # the keys you trust
+swipewalk keys trust file.swipewalk --label "Sam"        # trust the key that signed this file
+swipewalk keys trust <full fingerprint>                  # or trust a key by its full 64-digit fingerprint
+swipewalk keys trust file.swipewalk --yes                # without being asked (for scripts)
+swipewalk keys untrust <full fingerprint>
+```
+
+`keys trust` prints the full fingerprint and asks "Trust this key? [y/N]" (the default is no) before it adds anything. With no one to answer
+(no terminal) it trusts nothing unless you pass `--yes`.
+
+The short form `XXXX-XXXX` shown when a file is opened is only for recognising a key. Trusting is by the full
+fingerprint (or by the file itself), which `swipewalk keys show` prints. Compare it with the sender by another
+route, such as a call or a message, before you trust it. The desktop app signs with the same key and shows its full fingerprint, in the Share sheet and on File > Sharing Keys…. You can also
+trust the key that signed a file (`swipewalk keys trust file.swipewalk`, or **Trust this key…** in the desktop app) once the sender has read you the
+same full fingerprint by another route. A team can also commit a file named
+`accessibility/team-keys` in its project: one full fingerprint per line, an optional label after it, `#` for
+comments. `swipewalk import` and `swipewalk keys` look for it from the current folder up to the project's root (the folder that holds `.git`) and never above it; when the current folder isn't
+inside a project, only the current folder itself is looked in. `swipewalk import` also takes `--team-keys <file>`.
+
+Sharing a run you imported signs it with your own key; the file doesn't keep who sent it to you. A team can also
+commit `.swipewalk` files to its repository; each person opens them with `swipewalk import`.
+
+## 14. Seeing findings in VS Code
+
+The Swipewalk extension for VS Code shows a saved run inside your editor: each finding that Swipewalk
+matched to a source line is marked on that line, with a hover that has the problem, who is affected, the
+WCAG criterion (with a link), how sure the match is and the suggested fix. It is a preview and is not on
+the Marketplace yet; download the `.vsix` from the
+[releases page](https://github.com/swipewalk/swipewalk/releases) and install it with "Extensions: Install from VSIX…".
+The extension's own README, shown in VS Code's Extensions view, lists every command and setting.
+
+What it does and doesn't do:
+
+- **It only reads.** It reads a saved run (a `results.json` with the run's `run.json`, `triage.json` and
+  `report.html` next to it, or a `.swipewalk` file) and your trusted-keys lists. It never changes your code or a run, apart from unpacking a shared file into its own storage; it never starts a scan, never contacts a
+  device, makes no network calls and sends no telemetry.
+- **Source lines need `--source`.** Scan with `--source <your project folder>` (section 12; on the command
+  line's `scan` and `record`, or **App source folder** in the desktop app's New scan; `export --source` doesn't change the saved run, so
+  the extension doesn't see those lines) so findings have lines. A run
+  saved without it still opens, as a list, with no lines marked. Source lines are saved relative to that
+  folder, so a run made on one computer is designed to open in a workspace on another; newer runs (results
+  format 0.8) also record the folder's name, and if more than one workspace folder could be the project, or
+  none matches, you are asked once and the choice is remembered.
+- **Getting a run in.** Open your project folder, then run **Swipewalk: Open run…**. One list shows every run it
+  can find, grouped by app and version, newest first, each labelled with where it was found (Desktop history,
+  Workspace, Additional location or Opened file); nothing is chosen for you. It looks in Swipewalk's History
+  folder (the default one; if you changed the location in the desktop app, set `swipewalk.historyFolder` to it), in your project's `accessibility/runs` folder (a convention for teams that commit runs, as
+  `.swipewalk` files or unpacked run folders), and in any folders you list in the `swipewalk.additionalRunLocations`
+  setting. A run found in more than one place is listed once: the copy with screenshots, then the most recently
+  shared one. To open something the list does not show, choose "Choose a file or folder…" or run **Swipewalk:
+  Open run from a file or folder…** and pick a `.swipewalk` file, a `results.json` or a run folder. While the
+  `swipewalk.watchRun` setting is on (the default; a change applies the next time a run is opened), the open
+  run reloads when its results.json or triage.json changes, for example a scan written to the same `--out`
+  folder again, or a finding marked in the desktop app. A new scan saved to History is a new run: open it the
+  same way.
+- **Runs other people shared.** A `.swipewalk` file is checked before it is used: it is refused if it is larger
+  than the `swipewalk.maxRunFileSizeMb` limit (200 MB by default, never more than 2 GB), unzips to far more
+  than its size, has unsafe file names, or has any file that does not match the size and SHA-256 hash it
+  lists. A file made by a newer Swipewalk opens with one short note when it can still be read, and is refused
+  with the version you need when it cannot. It is unpacked into the extension's own storage, never into your
+  project, and nothing in it is run; the unpacked copy, including any screenshots, stays in VS Code's storage for
+  the extension until you run **Swipewalk: Remove opened copies of shared runs** (it asks first, and says how many
+  copies and how much space; a shared run that is open is closed); opening the same file again reuses its copy and says "Already opened", and a different file with the same run id is unpacked beside the earlier copy, never over it. A shared file carries no report (one with an .html entry is refused), and the saved report of a run found outside your Desktop history is not opened from the
+  extension (nor is the report of any run found outside your Desktop history); the findings list shows the same
+  findings, and the full report is in the desktop app. The Run view shows one signature notice:
+  "Signed by a key you trust", "Signed by a key listed in your project's team keys file", "Signed, but the key (fingerprint XXXX-XXXX) isn't trusted yet", "Not signed",
+  "Signed in a format this version can't check. Treat it as not signed" or "The file didn't match its signature". For a file that isn't signed, doesn't match its signature or is signed in a format the extension
+  can't check, a message asks first ("Import this file anyway?", with the key named in the file when there is one); **Don't import** (the first button), Escape, or closing the message opens nothing. A signature shows which key signed
+  the file and that it has not changed since, not who the person is; check the full fingerprint with its owner,
+  then trust it with `swipewalk keys trust`. Trusted keys are read from the per-user list that command keeps and
+  from your project's `accessibility/team-keys` file, read only when you have trusted the folder in VS Code (Workspace Trust) and only from the top of each workspace folder (anyone who can change that file can add a key, so review
+  changes to it like code); the extension only reads them. A key found only in the team file shows as its own notice, not as trusted by you. A screenshot in any run is shown only when it is a real picture file that sits inside the run's own folder; a path that points anywhere else is never shown. A run saved by an earlier version whose screenshots are still in their capture folders shows them once the desktop app or the command line has listed or opened it in your own History folder, if its folder can be written. Team marks in a shared file are shown read-only as
+  "in the shared file". The extension's checks so far are unit tests, including the shared test files made
+  by Swipewalk's engine; the integration tests in a real VS Code do not open shared files, and nobody has yet tried
+  opening one by hand.
+- **Markers say the kind of result, not how serious it is.** A possible WCAG issue at an exact line is a
+  warning; everything else with a line (a likely match, an item that needs a person to review, a platform
+  advisory) is information, so it is listed in the Problems panel too; nothing is an error. A *likely* match
+  says "Likely match". A finding narrowed only
+  to several *candidate* lines is not marked (none is known to be right); choose one from a list in the
+  Findings view or on the details page. In the hover, a code example appears only for an exact match; for a guess, the details page keeps it behind "Show an example", worded as not a change for that line.
+- **The Swipewalk view** has a Run section (which run, where it was found, when, for a shared file its signature notice and who shared it, and a reminder that Swipewalk only knows the
+  screens in that run) and a Findings section you can group by screen, check, source file or who is affected,
+  filter by kind, exact or likely match and team marks, and search by words. The details page shows the
+  screenshot with the element outlined, the predicted screen reader text, the source location and the
+  suggested fix, with Go to source and Copy ticket text (and Open in report for runs in your Desktop history).
+- **Laws and standards.** The hover, the details page and the copied ticket text say which laws and standards a
+  finding is relevant to, worked out from the list saved in the run, in the same words as the Swipewalk reports
+  (for example "Relevant to ADA Title II, Section 508, EN 301 549 and N more"). The details page expands to the full
+  list grouped by region with each official link, and lists the laws chosen when the run was saved ("Laws that matter
+  to me" in the desktop app, or `--my-laws`) first within each region; nothing is hidden. It uses the list of laws saved
+  in the run, as it was when the run was saved, so a report made later by a newer Swipewalk can show different counts. "Relevant to" means the finding's WCAG criterion is within the WCAG version and
+  level the law or standard references; it is reference information, not legal advice. A run saved before the laws list
+  existed shows no such line, and platform advisories and checks with no WCAG criterion have none. On the details
+  page, a finding from the light and dark or portrait and landscape rescans says which it was seen in.
+- **Team marks are read-only.** Marks made in Swipewalk (won't fix, false positive, accepted risk, with a
+  reason) are shown, on a run saved in results format 0.8 for every marked finding, and on an older run only
+  for findings that repeat across the run (the report and the desktop app show all of them); the extension
+  never makes or changes one. Use the desktop app or `swipewalk triage`.
+- **Remote windows.** The extension runs where your workspace runs. In a remote window, WSL or a dev
+  container it reads that machine's History folder, so use **Open run from a file or folder…** on a copied file, or
+  set `swipewalk.historyFolder`.
+- **Limits.** Line numbers can be out of date if your source changed after the scan. The extension has been
+  checked with automated tests only, on macOS: unit tests and nine integration tests in a real VS Code (version
+  1.140.0, 2026-10-01; see the extension's README for what they cover). It has not been run on Windows or Linux,
+  or tested with a screen reader, and no person has tried it in a VS Code window (see the
+  [accessibility statement](accessibility-statement.md)).

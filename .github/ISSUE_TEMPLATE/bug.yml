@@ -6,7 +6,7 @@ body:
     id: what
     attributes:
       label: What happened
-      description: Include the command you ran and the output. Remove device serials, paths and personal data.
+      description: Include the command you ran and the output. Remove device serials, paths and personal data; pasted output is not cleaned for you.
     validations:
       required: true
   - type: textarea
@@ -26,3 +26,10 @@ body:
     id: version
     attributes:
       label: Swipewalk version
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic report
+      description: |
+        Attach the file from Help > Save Diagnostic Report… in the desktop app, or from `swipewalk diagnostics`. Read it first and remove anything you don't want to share. It is made on your computer; device serials, device names, team IDs and your user name are removed by pattern, which can miss something, and the package or bundle id of each app you scanned is kept. Issues are public.
+      placeholder: Drag the .txt file here

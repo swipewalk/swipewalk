@@ -17,8 +17,8 @@ service, pass on changed copies, or take it apart to get at its source code.
 "Swipewalk" means the software we publish under this licence from version 0.4.2 on, in the form we
 publish it: the Mac desktop app, the `swipewalk` command-line tool and its NuGet package, the
 small helper apps and test harnesses Swipewalk installs on a
-device, and the documentation that comes with them. "We" and "Swipewalk" mean the organisation
-Swipewalk, the copyright holder.
+device, the sample app builds attached to releases, the Swipewalk extension for Visual Studio Code, and the documentation that comes with them. "We" and
+"Swipewalk" mean the organisation Swipewalk, the copyright holder.
 
 It does not cover:
 
@@ -36,7 +36,7 @@ We give you a non-exclusive, worldwide, royalty-free licence to:
 2. use it for any purpose, including commercial work: testing your own apps, your employer's apps,
    or your clients' apps, including as a paid consultant or auditor;
 3. read, print and share the documentation, and quote short parts of it with credit to Swipewalk;
-4. give unmodified copies of the installers and packages to other people, exactly as we publish
+4. give unmodified copies of the installers, packages and other downloads to other people, exactly as we publish
    them, with this licence and all notices kept with them, as long as you do not charge for the
    copy itself.
 
@@ -102,8 +102,8 @@ and puts them back afterwards. Use test devices where you can.
 
 Swipewalk includes software from others. Each part keeps its own licence, which applies to that part
 instead of this licence. Nothing here limits the rights those licences give you for those parts. The
-full list, with licence names and links, is in `THIRD-PARTY-NOTICES.md`, which is published with the documentation
-and included in the NuGet package. In summary:
+full list, with licence names and links, is in `THIRD-PARTY-NOTICES.md`, which is published with the documentation,
+included in the NuGet package and carried in the sample app downloads. In summary:
 
 - **axe-core** (Deque Systems), version 4.10.3, under the **Mozilla Public License 2.0**. It is
   included unmodified as `third-party/axe-core/axe.min.js`, with its own `LICENSE` file beside
@@ -115,6 +115,11 @@ and included in the NuGet package. In summary:
   **Eclipse Public License 1.0** (JUnit's source code is available from its authors at
   <https://github.com/junit-team/junit4>); Hamcrest and Protocol Buffers under **BSD 3-Clause**; `jsr305` under BSD 3-Clause per the JSR-305 project (its Maven metadata says Apache 2.0);
   jsoup and the Checker Framework qualifiers under the **MIT** licence.
+- **The sample app's Android libraries** (AndroidX, Material, Kotlin, Gson and related libraries, 93 packages
+  listed in `THIRD-PARTY-NOTICES.md`), each a Microsoft .NET binding under the **MIT** licence around a library
+  under its own licence: the **Apache License 2.0** for most; Glide under **BSD 2-Clause** (its disk cache under
+  Apache 2.0, its GIF decoder under MIT); `jsr305` under BSD 3-Clause per the JSR-305 project (its package
+  metadata says Apache 2.0).
 - **Open Sans** and the **Noto Sans** fonts (Devanagari, Arabic, JP) under the **SIL Open Font
   License 1.1**. The fonts stay free to use and share under that licence; this licence does not
   restrict them.

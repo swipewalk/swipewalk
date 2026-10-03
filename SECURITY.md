@@ -18,6 +18,7 @@ and devices. Issues of particular interest:
 
 - command or argument injection through app IDs, device names, file paths or `swipewalk.json`;
 - script injection into the HTML report from text or labels shown by a scanned app;
+- opening a hostile `.swipewalk` file, run folder or `results.json` (unpacking outside the run's folder, reading files that don't belong to the run, a forged or downgraded signature, an oversized archive);
 - personal data leaking into reports despite the status-bar blanking;
 - the iOS harness or its signing handling exposing credentials.
 

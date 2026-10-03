@@ -12,7 +12,9 @@ so there is no way to send a pull request or code; reports and suggestions go th
 
 ## Most useful right now
 
-- **Bugs and crashes.** Use the "Bug" issue form and include the Swipewalk version and the output of `swipewalk doctor --platform android|ios`.
+- **Bugs and crashes.** Use the "Bug" issue form and attach a diagnostic report (Help > Save Diagnostic Report… in the
+  desktop app, or `swipewalk diagnostics`). Read it first: it removes serials, device names, team IDs and your user
+  name by pattern, which can miss something, and keeps the ids of the apps you scanned.
 - **Wrong findings.** A false positive, a missed issue or a wrong WCAG mapping, with a screenshot
   and the app's framework. Use the "Wrong or missing finding" issue form.
 - **Real-device reports.** Which devices and OS versions work, and which don't.
