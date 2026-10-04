@@ -13,7 +13,7 @@ and Roslyn, and PDFsharp's licence file, ship unchanged in the `third-party` fol
 bundle's Resources) and of the NuGet package; the sample app downloads carry the ones the sample contains.
 `third-party/SOURCES.txt` lists where each file came from and its SHA-256.
 
-The Swipewalk extension for Visual Studio Code (the `.vsix` download) has no runtime dependencies: it is built from Swipewalk's
+The Swipewalk extension for Visual Studio Code (the `.vsix` download and the Visual Studio Marketplace package) has no runtime dependencies: it is built from Swipewalk's
 own code and uses only what VS Code itself provides (Node's built-in compression (zlib) and cryptography modules at run time). The tools it is built
 with (TypeScript, esbuild and the test tools) are not part of the download.
 
