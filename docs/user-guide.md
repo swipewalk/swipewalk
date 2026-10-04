@@ -2912,9 +2912,10 @@ commit `.swipewalk` files to its repository; each person opens them with `swipew
 
 The Swipewalk extension for VS Code shows a saved run inside your editor: each finding that Swipewalk
 matched to a source line is marked on that line, with a hover that has the problem, who is affected, the
-WCAG criterion (with a link), how sure the match is and the suggested fix. It is a preview and is not on
-the Marketplace yet; download the `.vsix` from the
-[releases page](https://github.com/swipewalk/swipewalk/releases) and install it with "Extensions: Install from VSIX…".
+WCAG criterion (with a link), how sure the match is and the suggested fix. It is a preview. Install it from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=swipewalk.swipewalk-vscode) (search "Swipewalk" in VS Code's Extensions view, or run
+`code --install-extension swipewalk.swipewalk-vscode`). The `.vsix` is also attached to each
+[release](https://github.com/swipewalk/swipewalk/releases); install it with "Extensions: Install from VSIX…".
 The extension's own README, shown in VS Code's Extensions view, lists every command and setting.
 
 What it does and doesn't do:

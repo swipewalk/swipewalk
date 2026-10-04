@@ -11,7 +11,7 @@ are welcome: open an issue.
   to someone else as one `.swipewalk` file, signed by default and checked before anything is added; `swipewalk keys` manages the
   keys you trust. Files are not encrypted, and a signature shows which key signed a file, not who the person is.
   The desktop app's History can read a folder you choose, such as one a team shares.
-- A VS Code extension (a preview; not on the Marketplace yet) marks each finding on the source line
+- A VS Code extension (a preview, on the Visual Studio Marketplace) marks each finding on the source line
   it likely comes from, read from a saved run; read-only, with no network calls or telemetry. Checked on macOS only.
 - `swipewalk helpers remove` (and Remove Swipewalk helpers… on the Devices page) removes Swipewalk's own helper
   apps from a device, after asking; tried on an Android emulator and an iOS Simulator only.
