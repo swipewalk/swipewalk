@@ -2,13 +2,17 @@
 
 # Swipewalk
 
-Free accessibility scanner for **Android and iOS** apps (Windows planned), with first-class support for **.NET MAUI**.
+Free accessibility scanner for **any Android or iOS app** (Windows planned), with extra help for **.NET MAUI**.
+
+Swipewalk reads a running app through the operating system's accessibility layer, so it can scan an app whatever it was built with, although what it can see differs between frameworks (see [how it was tested](docs/testing.md#frameworks-covered)). It has been tried on native Android (Views and Jetpack Compose) and native iOS (UIKit and SwiftUI) sample apps and on .NET MAUI apps; an app built with another framework should scan too if the framework exposes its screens to the accessibility layer, but that hasn't been tried. For .NET MAUI there is extra help: on the iOS Simulator a finding can name the app's MAUI version and the MAUI release that fixes a known framework issue, the known MAUI quirks are listed in the limitations, and source-line pointing reads XAML, code-behind and .resx resources. Fix examples also exist for native Android and iOS, React Native, Flutter and hybrid web (Ionic, Capacitor, Cordova), and source-line pointing for native Android and iOS, React Native and Flutter. The fix examples are written from documentation and so far tested only on sample projects; source-line pointing was measured on seven real Android and iOS apps, and for React Native and Flutter only on made-up projects (see [how it was tested](docs/testing.md#source-mapping-on-real-apps) and [known limitations](docs/limitations.md)).
 
 Swipewalk inspects a **running app** through each platform's accessibility layer, applies a [shared set of rules](docs/checks.md), and maps every WCAG finding to **WCAG 2.2** success criteria. Platform-guideline advisories (Apple's default control size of 44×44 pt and stated minimum of 28×28 pt, Android's 48×48 dp touch targets) are reported separately and are not WCAG failures. Output is a machine-readable JSON file plus a human-readable HTML report with the screenshot, a predicted screen-reader transcript and contrast measured from the rendered pixels.
 
 ![An HTML report for the sample app on the iPhone Simulator at normal text size: 6 WCAG issues, 4 items needing review and 2 platform advisories, plus a summary of WCAG 2.2 A/AA coverage, with the screenshot marked up and each finding linked to its WCAG criterion](docs/images/report-ios.png)
 
 > **Status:** early development. Android (emulator or phone) and iOS (Simulator or iPhone) can be scanned one screen at a time, or recorded across screens while you use the app. See [known limitations](docs/limitations.md).
+
+**How it was tested:** [How Swipewalk is tested](docs/testing.md) lists the devices, sample apps, frameworks and real apps used, what was found and missed, and what has not been tested.
 
 **New here?** The [user guide](docs/user-guide.md) walks through install, device setup, your first scan, reading a report and CI in about 10-15 minutes. The [case study](docs/case-study.md) shows what Swipewalk finds in sample apps, on emulators, simulators and real phones, and what it misses.
 
@@ -29,11 +33,11 @@ It does **not** certify compliance. Automated checks catch only part of what WCA
 - **Record mode:** you move through the app and scan the screens you choose.
 - **Screen reader evidence (`--screen-reader`; off by default on the command line, on by default for Android in the desktop app):** TalkBack on Android and Xcode's Accessibility Inspector on iOS, with differences from the predicted announcement listed for you to check by hand.
 - **Reports:** a "What to fix" view for developers and a "Full audit detail" view with the full WCAG 2.2 coverage table. Findings say who is affected, and findings that look like the same cause are grouped. Findings can be marked as triaged by your team.
-- **Exports:** Markdown tickets, CSV, a single HTML file, a tagged PDF and a draft accessibility conformance report for a person to review.
+- **Exports:** Markdown tickets, CSV, a single HTML file, a tagged PDF and a per-criterion evidence report (what was checked, what was found and what was not tested, for each WCAG 2.2 A/AA criterion).
 - **Laws and standards:** each issue lists the laws and standards it is relevant to, for reference only and not legal advice. In the desktop app you can find one by typing part of its name or a place, and list the ones you care about first. See [laws and standards](docs/standards.md).
-- **App source (optional, `--source`):** points a finding at a likely source line in a project folder on your computer. The folder is read locally and never uploaded. So far this has been tested only on Swipewalk's sample apps.
+- **App source (optional, `--source`):** points a finding at a likely source line in a project folder on your computer. The folder is read locally and never uploaded. For native Android and iOS it was measured on seven real apps with published source (often a short list of places rather than one line); for .NET MAUI only on Swipewalk's sample app, and for React Native and Flutter only on small made-up projects. See [the measurement](docs/testing.md#source-mapping-on-real-apps).
 - **Sharing:** `swipewalk share` saves one run as a single `.swipewalk` file (screenshots and triage marks optional; not encrypted; signed by default with a key kept on your computer) that someone else opens with `swipewalk import` or the desktop app, after the file has been checked. A signature shows that the file has not changed since it was signed and which key signed it, not who made it. See [Sharing a run](docs/user-guide.md#13-sharing-a-run).
-- **VS Code extension (preview):** reads a saved run and marks each finding on the source line it likely comes from. It is read-only, makes no network calls and sends no telemetry, and has been tested on macOS only, by automated tests (nobody has tried it by hand on Windows or Linux yet). Install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=swipewalk.swipewalk-vscode) (search "Swipewalk" in the Extensions view, or run `code --install-extension swipewalk.swipewalk-vscode`); the `.vsix` is also attached to each [release](https://github.com/swipewalk/swipewalk/releases). See [Seeing findings in VS Code](docs/user-guide.md#14-seeing-findings-in-vs-code).
+- **VS Code extension (preview):** reads a saved run and marks each finding on the source line it likely comes from. It is read-only, makes no network calls and sends no telemetry, and has been tested on macOS only, by automated tests (nobody has tried it by hand on Windows or Linux yet, and it has not yet been tried with a screen reader). Install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=swipewalk.swipewalk-vscode) (search "Swipewalk" in the Extensions view, or run `code --install-extension swipewalk.swipewalk-vscode`); the `.vsix` is also attached to each [release](https://github.com/swipewalk/swipewalk/releases). See [Seeing findings in VS Code](docs/user-guide.md#14-seeing-findings-in-vs-code).
 - **Helpers and diagnostics:** `swipewalk helpers remove` removes the helper apps Swipewalk leaves on a device, after asking, and `swipewalk diagnostics` saves a diagnostic report from a short local log for a bug report, with serial numbers, device names, team IDs and your user name removed by pattern (which can miss something), so read it before attaching it. Nothing is sent anywhere.
 
 Automated checks find only part of what WCAG asks for; manual testing is still required. The [user guide](docs/user-guide.md) describes each option.
@@ -59,15 +63,15 @@ Releases up to 0.4.1 are under the Apache License 2.0; the Swipewalk License app
 
 ### Command line
 
-The command-line tool needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) and runs on macOS, Windows and Linux; what you can scan depends on your computer:
+Installing the command-line tool needs the [.NET 10 SDK](https://dotnet.microsoft.com/download). Swipewalk has so far been run only on Macs: there the tool installs as a native program that needs no .NET to run (Apple silicon and Intel; the Intel build was run under Rosetta, not on an Intel Mac). On Windows and Linux the same command installs the regular .NET version, which needs the .NET 10 runtime and has not been tried there. What you can scan depends on your computer:
 
 | Your computer | Apps you can scan |
 |---|---|
 | macOS | iOS and Android |
-| Windows | Android (Windows apps: planned, not yet available) |
-| Linux | Android |
+| Windows | Android (not tested; Windows apps: planned, not yet available) |
+| Linux | Android (not tested) |
 
-Android scanning from Windows and Linux is new and hasn't yet been verified on a real Windows or Linux machine; `swipewalk doctor --platform android` shows where it looked for `adb`.
+Android scanning from Windows and Linux has not been tried on a real Windows or Linux machine; `swipewalk doctor --platform android` shows where it looked for `adb`.
 
 ```bash
 dotnet tool install -g Swipewalk
@@ -96,11 +100,11 @@ Output: `report/report.html` and `report/results.json`. Every command and option
 
 ## Desktop app (macOS)
 
-The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare any two runs (what is new, what is no longer found, what is still found, and what was not checked again; "no longer found" does not mean fixed), mark findings as already looked at, share a run as one file, remove Swipewalk's helper apps from a device, and export tickets, a CSV, a shareable report, a tagged PDF or a draft Accessibility Conformance Report.
+The Mac app does the same scans with a window instead of a terminal: check devices, start a scan or recording, read the report, compare any two runs (what is new, what is no longer found, what is still found, and what was not checked again; "no longer found" does not mean fixed), mark findings as already looked at, share a run as one file, remove Swipewalk's helper apps from a device, and export tickets, a CSV, a shareable report, a tagged PDF or a per-criterion evidence report.
 
 ![The Swipewalk dashboard: 2 runs saved of 1 app, 7 WCAG issues and 6 items to review in the latest run, "since the previous run: 1 new, 1 no longer found", and a bar chart of WCAG issues per run](docs/images/desktop-dashboard.png)
 
-Download `Swipewalk-<version>.dmg` from the [releases page](https://github.com/swipewalk/swipewalk/releases) and drag it to Applications. It is signed and notarized with a Developer ID; the first launch still asks you to confirm, as it does for anything downloaded. It needs macOS 12 or later, runs on Apple silicon and Intel, and uses the same platform tools as the command-line tool. The app's own accessibility, what we test and the known issues are in its [accessibility statement](docs/accessibility-statement.md).
+Download `Swipewalk-<version>.dmg` from the [releases page](https://github.com/swipewalk/swipewalk/releases) and drag it to Applications. It is signed and notarized with a Developer ID; the first launch still asks you to confirm, as it does for anything downloaded. It is built for macOS 12 or later on Apple silicon and Intel (tested on macOS 27, one Mac, Apple silicon only), and uses the same platform tools as the command-line tool. The app's own accessibility, what we test and the known issues are in its [accessibility statement](docs/accessibility-statement.md). Version 0.6 improved its keyboard and VoiceOver handling, checked with real key presses and a scripted VoiceOver but not yet by a person; some gaps remain and are listed there, including that on macOS 27 the report shown inside the app was not read by a scripted VoiceOver (its first button, Open in browser, opens the same report in your browser).
 
 ## Help and feedback
 

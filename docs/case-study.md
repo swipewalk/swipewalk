@@ -42,13 +42,13 @@ described next.
 
 Counts come from recomputing saved captures against the ruleset current at the time, so a later
 ruleset may find a slightly different count; the docs sweep before each release recomputes them. The iOS
-column was last recomputed for the 0.5.0 release against ruleset 2026.09.43, by re-scanning the saved iOS
+column was last recomputed for the 0.6.0 release against ruleset 2026.09.44 (the same counts as for 0.5.0), by re-scanning the saved iOS
 capture with `scan --from`: it has no AX3 rescan, so it gives 6, 4 and 2, and the fifth needs-review item
 in the table needs the rescan, as noted above.
 
 The Android column and the screenshot below are from a scan, on 2026-10-02 against ruleset 2026.09.43, of
 the Release build that is attached to each release as the sample app download, run on a 1080×2424
-Android 16 emulator at normal size and at 200% text: 6, 9 and 4, with the same coverage line as before. One
+Android 16 emulator at normal size and at 200% text: 6, 9 and 4, with the same coverage line as before. The saved capture was re-scanned for the 0.6.0 release against ruleset 2026.09.44 with `scan --from` and gave the same 6, 9 and 4 and the same coverage line. One
 of the 9 items for review is a content-lost-at-large-text item (WCAG 1.4.4) naming "Help center", the last
 button on the screen. The button was added to the app after the first saved Android capture was taken; that
 capture, taken before the button existed, gives 6, 8 and 4. At 200% the button is missing from the
@@ -67,7 +67,7 @@ Test Framework, the page-titled check and the offscreen-unreachable rule are eac
 platform. Android's coverage line currently reads "WCAG 2.2 A/AA: 13 criteria partly checked by
 automation, 36 need a manual check, 4 usually out of scope, 2 not tested in this run"; the iOS report
 reads "10 criteria partly checked by automation, 39 need a manual check, 4 usually out of scope, 2
-not tested in this run" (recomputed from the same saved captures against ruleset 2026.09.39; on both
+not tested in this run" (recomputed from the same saved captures against ruleset 2026.09.44; on both
 platforms the "not tested" pair is 1.3.4 Orientation and 2.2.2 Pause, Stop, Hide, since this scan
 didn't use `--orientation both` or `--auto-update-content` (both added later) -- not a platform gap).
 
@@ -579,7 +579,7 @@ catches things the other doesn't, which is the case for wrapping both rather tha
 The Swipewalk desktop app is tested with the same principle: drive it only through the
 accessibility interface, the way assistive technology does. The UI tests find every control by its
 accessible name, navigate every page by sidebar and keyboard, enlarge text to 200% and run a full
-scan. The HTML reports are checked with axe-core in light and dark mode, and the app's color palette
+scan. The HTML reports were checked with axe-core by hand (most recently on 2026-10-08, light mode; see the accessibility statement), and the app's color palette
 is checked by a contrast test.
 
 This found and led to fixes such as:
@@ -636,10 +636,36 @@ live scan, rather than writing an answer key from reading the rules alone.
 
 ### Framework differences
 
-- **Android's `labelFor` doesn't reach `uiautomator dump` the way TalkBack is documented to read
-  it (not tested with TalkBack here).** A Views field labelled the standard Android way
-  (`android:labelFor`) is reported exactly like a genuinely unlabelled one, because uiautomator's
-  XML has no attribute for that relationship. New limitation: `android-labelfor`.
+- **Android's `labelFor` doesn't reach `uiautomator dump`, but the scanning helper reads it.** A
+  Views field labelled the standard Android way (`android:labelFor`) looked exactly like a
+  genuinely unlabelled one in uiautomator's XML, which has no attribute for that relationship.
+  The scanning helper reads `getLabeledBy()`, so the field is no longer reported. Checked
+  2026-10-04 on NativeAndroid's Views screen (Android 16 emulator, TalkBack 16.0.0): TalkBack
+  speaks "Edit box for Ticket number" for the labelled field and "Edit box" for the unlabelled
+  one. Without the helper the false positive remains: limitation `android-labelfor`.
+- **Compose controls named by several children: what TalkBack speaks (2026-10-04).** NativeAndroid's
+  `ComposeNamesActivity` has eight controls whose name comes from more than one child (S8, added later, was captured on the emulator only). On an Android 16
+  emulator (TalkBack 16.0.0) and an Android 13 phone (TalkBack 17.0.1) TalkBack spoke every named part, in
+  tree order, then the role: two Texts ("Pay, $, 25.00, Button": TalkBack read the amount in two parts), an Icon description plus a Text
+  ("Envelope, Email receipt, Button"), two Icon descriptions ("Phone, Information, Button"), a clickable
+  Row with two Texts, a Button's own description plus an Icon description plus a Text ("Pay ticket, Card,
+  Pay, Button"), and a decorative Icon plus two Texts (the Icon is skipped). A child `Text("Pay")` with its
+  own description "Submit", next to `Text("now")`, is spoken "Submit, now, Button": the description replaces
+  that node's own text. Swipewalk now builds the control's name the same way, so only that last control is
+  listed as a WCAG issue (label-in-name: the visible "Pay" is not in the name, and "Submit" shares no word
+  with it). A second control, `Text("$25")` described "twenty five dollars" next to `Text("due")`, is
+  spoken "twenty five dollars, due, Button" (Android 16 emulator, TalkBack 16.0.0; not run on the phone) and
+  is listed under needs review instead, because the description may be meant to change how the text is spoken. Before, only the icon-plus-text control was
+  merged; label-in-name could not compare the others from the tree alone. Not checked: how Voice Access matches them.
+- **The same Views screen gets a pane title on one Android version and none on another (2026-10-04).** The
+  same NativeAndroid build, scanned with the helper on an Android 13 phone and an Android 16 emulator: the
+  classic-Views screen's root carried the activity's title as its pane title on Android 13 and nothing on
+  Android 16 (so page-titled reported only on the emulator). The Compose screens, BuggyApp and
+  WeatherTwentyOne had none on either. Cause not traced; see limitation `android-page-title`.
+- **A Compose button cut off at the bottom of a scrolling screen measured too small (2026-10-04).** On the
+  shorter Android 13 phone screen the last Compose button, 48 dp tall, was exposed with only its visible
+  41 dp, so target-size reported a size it does not have; on the taller emulator it measured 48 dp. Target
+  size now leaves out the dimension a scroll edge clips; see limitation `target-size-exceptions`.
 - **Jetpack Compose's merged semantics can put a name on a different `uiautomator dump` node than
   the one it reports as clickable.** Several Compose buttons' accessible names (set via
   `contentDescription` on a child `Icon()`, or `Modifier.semantics {}` on the button) landed on a
@@ -666,11 +692,7 @@ live scan, rather than writing an answer key from reading the rules alone.
   `identifier-name`'s role fix does not extend to this shape: the content-desc descendant's own
   `Label` is deliberately left in place, so a developer-identifier name there would still be caught
   with the pre-existing wrong (non-clickable) role, rather than silenced -- untested on a real
-  screen, since neither "Submit" nor "Pay" looks like one. Still left unmerged, deliberately: a
-  several-named-descendants shape with more than one `contentDescription` candidate, or more than
-  one visible-text candidate -- what a screen reader actually announces for those isn't
-  established, so `identifier-name` would still report the wrong role for a developer-identifier
-  name built that way. `target-size` was never affected by any
+  screen, since neither "Submit" nor "Pay" looks like one. Every several-named-descendants shape (except where a descendant is separately focusable or clickable) is now merged, following what TalkBack spoke for the eight shapes captured (S8 on the emulator only; see the ComposeNamesActivity bullet above); because descriptions stay on the descendants, `identifier-name` would still report the non-clickable role for a developer-identifier description on any merged button. `target-size` was never affected by any
   of this; it reads the clickable node's own bounds regardless of naming. Limitation
   `android-compose-merged-name` narrowed accordingly.
 - **A common SF Symbol can already have a name on iOS; Android's equivalent never does.** A
@@ -686,7 +708,7 @@ live scan, rather than writing an answer key from reading the rules alone.
   same "Pay"/"Submit" mismatch is caught by `label-in-name` on UIKit (which keeps the button's title
   as a separate child node) but not on SwiftUI, where `.accessibilityLabel()` leaves no trace of the
   original text anywhere in the captured tree for the rule to compare against. New limitation:
-  `ios-swiftui-accessibility-label-hides-text`.
+  `ios-swiftui-accessibility-label-hides-text`. Re-checked 2026-10-04 on an iOS 26.5 Simulator by dumping every attribute XCUITest exposes for the button: only the label holds text, so this stays a limitation (`ios-swiftui-accessibility-label-hides-text`); not re-checked on a physical iPhone.
 - **SwiftUI's built-in text styles scale with Dynamic Type automatically; UIKit's don't.** On a
   normal scan (no rescan needed), Apple's own audit named 3 elements with unsupported Dynamic Type
   on the UIKit screen -- including a `UITextField` whose font was never set explicitly -- but only 1

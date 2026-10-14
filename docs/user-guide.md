@@ -1,8 +1,8 @@
 # User guide
 
 This guide walks you through installing Swipewalk, scanning your first screen, reading a report,
-and running scans in CI. It's for developers and QA on .NET MAUI and native Android/iOS teams. It
-takes about 10-15 minutes to read.
+and running scans in CI. It's for developers and QA working on Android or iOS apps built with any framework,
+with extra help for .NET MAUI teams. It takes about 10-15 minutes to read.
 
 Two things to keep in mind throughout: Swipewalk's automated checks find only some accessibility
 issues, and a report — even a report with no findings — never means an app is "compliant",
@@ -102,27 +102,26 @@ the full detail on each platform.
 
 ## 1. Install
 
-The command-line tool needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) and runs on
-macOS, Windows and Linux (the desktop app is macOS only for now — see
-[section 7](#7-the-desktop-app)), but which apps you can scan depends on which computer you run it
-from:
+Swipewalk has so far been run only on Mac computers (it scans Android and iOS apps from there). On a Mac, the command-line tool installs as a native program (Apple silicon and Intel) that needs no .NET to run; it has been run on macOS 27, natively on Apple silicon and the Intel build under Rosetta (not yet on an Intel Mac). On Windows and Linux the same install command gives you the regular .NET version of the tool, which needs the .NET 10 runtime (if you installed the tool with a later SDK, install the .NET 10 runtime too) and has not been tried on those systems. The desktop app is macOS only for now — see [section 7](#7-the-desktop-app). Which apps you can scan depends on which
+computer you run it from:
 
 | Your computer | Apps you can scan |
 |---|---|
 | macOS | iOS and Android |
-| Windows | Android (Windows apps: planned, not yet available) |
-| Linux | Android |
+| Windows | Android (not tested; Windows apps: planned, not yet available) |
+| Linux | Android (not tested) |
 
-iOS scanning needs Xcode, which only runs on a Mac. Windows and Linux support for Android is new
-in 0.4: Swipewalk looks for the Android SDK and `adb` in each OS's own well-known default
-location, as it does on macOS, but this hasn't been verified on a real Windows or Linux machine
-yet. `swipewalk doctor --platform android` tells you exactly where it looked if it can't find
-`adb`.
+iOS scanning needs Xcode, which only runs on a Mac. Scanning Android from Windows or Linux has not
+been tested: Swipewalk looks for the Android SDK and `adb` in each OS's own well-known default
+location, as it does on macOS, but nobody has tried it on a real Windows or Linux machine yet.
+`swipewalk doctor --platform android` tells you exactly where it looked if it can't find `adb`.
 
 ```bash
 dotnet tool install -g Swipewalk
 swipewalk --version
 ```
+
+Installing and updating use the `dotnet tool` command, so they need the [.NET 10 SDK](https://dotnet.microsoft.com/download) (older SDKs can't install it; a later one can, but the regular version then also needs the .NET 10 runtime). `dotnet tool install` picks the native program (`Swipewalk.osx-arm64` or `Swipewalk.osx-x64`) on a Mac and the regular .NET version (`Swipewalk.any`) on every other system, including Windows and Linux; the native build exists for macOS only. The native `swipewalk` on a Mac runs without .NET; the regular version needs the .NET 10 runtime. Because Swipewalk has so far been run only on Macs, Windows and Linux installs are expected to work but are untested: if something doesn't, please [open an issue](https://github.com/swipewalk/swipewalk/issues).
 
 If the install fails because your NuGet configuration lists a private feed that can't be reached or
 needs a sign-in, add `--ignore-failed-sources` to the same command.
@@ -165,6 +164,8 @@ An emulator works with no setup beyond the Android SDK. For a physical phone:
    check everything else (screen unlocked, app installed). `swipewalk apps --platform android` lists the
    apps installed on it, so you can copy the package name for `--package`. The app doesn't need to be in front:
    Swipewalk brings it forward itself, or starts it if it isn't running, right before scanning.
+   With more than one device or emulator connected and ready (shown as `device` in `adb devices`), `doctor` (like `scan` and `record`) needs `--device <serial>`;
+   without it, the check reports "More than one Android device is connected" and lists their serials.
 
 ### iOS: Simulator or iPhone
 
@@ -224,7 +225,7 @@ use a test device. Nothing else is installed, apart from a build of your own app
 
 | Device | Helper | Why it is there | When it is installed and removed |
 |---|---|---|---|
-| Android phone or emulator | Scanning helper, package `org.swipewalk.harness.test` | Reads the accessibility tree and runs Google's Accessibility Test Framework checks on the app in front, and moves TalkBack's focus for a TalkBack capture or session. | Installed by the first scan, recording or session (or by a settings repair, such as `swipewalk doctor`), and replaced when Swipewalk updates it. Stays until you remove it. |
+| Android phone or emulator | Scanning helper, package `org.swipewalk.harness.test` | Reads the accessibility tree (including which element labels a field through `android:labelFor`) and runs Google's Accessibility Test Framework checks on the app in front, and moves TalkBack's focus for a TalkBack capture or session. | Installed by the first scan, recording or session (or by a settings repair, such as `swipewalk doctor`), and replaced when Swipewalk updates it. Stays until you remove it. |
 | Android phone or emulator | Text-to-speech helper, package `org.swipewalk.harness.ttsengine`, listed as "Swipewalk (testing only)" in the text-to-speech settings | Only for `--screen-reader` and the screen reader session: it receives what TalkBack says. | Installed for a TalkBack capture and removed again once every changed setting reads back as restored. It is left only when that could not be confirmed. |
 | iPhone | Scanning helper app, bundle id `org.swipewalk.harness.runner`, and its test runner app, `org.swipewalk.harness.uitests.xctrunner` | Run Apple's accessibility audit and read the screen; on a physical iPhone they also drive the Settings app for the large-text check. | Installed by the first scan or recording (signed with your Apple development team) and stay until you remove them. If you signed them with `--harness-bundle-prefix`, the ids start with your prefix instead. |
 | iOS Simulator | The test runner app, with the standard id (in testing the scanning helper app was not found installed on the Simulator; it is removed too if present) | The same, apart from the Settings app. | The same. |
@@ -574,7 +575,7 @@ Also in "Full audit detail" only:
   descendant's), it checks whether the name TalkBack actually said contains that text, and reports
   it for review — never as a confirmed failure by itself, since this shows what TalkBack said, not
   whether speech-input software such as Voice Access would match on it — when it doesn't. This can
-  catch a control whose visible text sits only on a child node (a shape the tree-only Label in Name
+  catch a control whose visible text sits only on its one child node (a shape the tree-only Label in Name
   check can't see at all) when TalkBack's announcement leaves that text out. Controls that Label in
   Name already reports from the tree (their own text and a different name) aren't reported a second
   time. A real capture of a Jetpack Compose button in NativeAndroid (visible text and an
@@ -1130,7 +1131,7 @@ swipewalk session --platform android --package <app package> [--device <id>] [--
 
 `--package` is required (the app to record against, already in front on the device); `--device` picks
 the Android device or emulator when more than one is connected; `--app-name`/`--app-version` label the
-saved run the same way they label an ACR export (see [section 10](#10-exporting-findings)); `--history
+saved run in History and in its report; `--history
 <dir>` saves the run elsewhere instead of your real History (useful for testing). On a physical phone,
 Swipewalk asks to confirm before installing its helper app and changing accessibility settings for the
 session, the same way `scan --screen-reader`/`record --screen-reader` do — `--confirm` skips the
@@ -1405,18 +1406,10 @@ The pages:
   (also beside the same choice in the export dialogs), opens a sheet for finding one by typing part of its
   name or a place, such as "Texas" or "Germany". The sheet shows the same entries under the same headings,
   with how many match; clicking an entry chooses it and closes the sheet, and Return in the
-  search field chooses it when only one matches. Escape in the search field clears what you typed; Escape with the field empty, or **Cancel**, closes the sheet without changing anything. The search box is a system search field, as in **Laws that matter to me** and the app picker; nobody has yet checked how it looks; with VoiceOver it reads the match count and each entry, but has the gaps below.
-  The entry that is chosen now is marked, and choosing one sets exactly what the menu would. **Known gap
-  in this release:** from the keyboard, Space and Return on a list entry do not choose it, and with VoiceOver
-  neither does VO+Space; after typing, Tab stays in the search field instead of reaching the list or Cancel;
-  and with VoiceOver, focus starts on the first list entry and VO-arrow navigation stays in the list.
-  Instead, type the name and press Return when exactly one law matches, press Escape or choose **Cancel** to
-  close the sheet, or, with the pointer, choose from the **Law or standard** menu itself, which lists every mapped state and
-  country. This was found in a hands-on check on 2026-10-03 (macOS 27, keyboard navigation on, VoiceOver); a
-  fix is planned for a later release (see the [accessibility statement](accessibility-statement.md)). The command line takes the
+  search field chooses it when only one matches. Escape with text in the search field empties it; Escape with the field empty, or **Cancel**, closes the sheet without changing anything. The Up and Down arrow keys move a highlight through the entries while focus stays in the search field, and Return chooses the highlighted entry. The search box is a plain text field, as in **Laws that matter to me** and the app picker. From the keyboard, focus starts in the search field when the sheet opens; Tab moves from it to each entry in turn (each entry is a button) and then to **Cancel**; Space or Return on an entry chooses it. With VoiceOver on, VoiceOver starts on the search field, reads how many entries match, then each entry (with ", selected" for the one that is chosen now), then **Cancel**, and VoiceOver's activate command (checked through its AppleScript interface, not the VO+Space keys) on an entry chooses it. These were checked with real key presses and a scripted VoiceOver on 2026-10-06 (one Mac, macOS 27, keyboard navigation on); with macOS keyboard navigation off, Tab does not stop on buttons (so the sheet itself cannot be opened from the keyboard); turn that setting on, or use the pointer. After the sheet closes, no control shows keyboard focus; press Tab once and focus goes to **Search…** (see the [accessibility statement](accessibility-statement.md)). The entry that is chosen now is marked, and choosing one sets exactly what the menu would. The command line takes the
   same ids as `--standard <id>`; `swipewalk standards` lists them.
   **Laws that matter to me…** (also on the Laws and standards page) opens a searchable list of the same laws and standards, grouped the
-  same way, with a check mark beside each chosen law; each law's accessible name ends with "checked" or "not checked", and Escape clears the filter, or closes the list when it is empty. Choosing a law with Space or VO+Space has not been checked by hand and likely does not work, the same gap as in the Search sheet above; use the pointer, or `--my-laws <ids>` on the command line; a choice is saved as you make it (on this Mac, for every scan
+  same way, with a check mark beside each chosen law; each law's accessible name ends with "checked" or "not checked", and press **Done** or Escape to close the list (Escape with text in the filter empties it first). The Up and Down arrow keys highlight a law while focus stays in the filter, and Return ticks or unticks the highlighted law. Tab moves from the filter to each law and then to **Choose none** and **Done**, and Space (or VoiceOver's activate command, checked through its AppleScript interface) ticks or unticks the focused law (checked with real key presses and a scripted VoiceOver on 2026-10-06, one Mac); with keyboard navigation off Tab cannot open the list, so use the pointer, or `--my-laws <ids>` on the command line; a choice is saved as you make it (on this Mac, for every scan
   and export from the app) and **Choose none** puts everything back. It changes only which laws a
   report and its exports list first, never what they include, and a specific "Law or standard" above
   still means that one only (the line next to the button then says the choice isn't used for that scan). Each scan keeps the choice it was made with, so a later export follows
@@ -1520,15 +1513,9 @@ The pages:
   the run uses, read-only). Version 0.4.0 uses the window setup macOS 27 requires, which is what makes
   this possible; 0.3.0 was stopped by macOS 27 as it launched. One known gap, seen once by a person with
   VoiceOver: after the window is reopened while a run is going, Tab did not reach the last button in the
-  Progress panel (whether Full Keyboard Access was on wasn't recorded); a fix was not confirmed, so reach it with VoiceOver navigation or the pointer. **Known keyboard
-  and VoiceOver gaps (found in a hands-on check on 2026-10-03, macOS 27; fixes planned for a later release):**
-  with macOS keyboard navigation on, Tab and Shift-Tab move only between controls that are visible in the
-  window, so make the window taller or scroll with the mouse or trackpad to reach the others; in an open
-  pop-up menu (checked on **What to scan**) the arrow keys move the highlight but Return does not choose it (press Space to open the menu, type the first letters of
-  the item, then click to choose); the Search sheet described above has the gaps listed there; and the same
-  row-choosing gap likely affects **Laws that matter to me**, the app picker and History rows with VoiceOver (not
-  checked on each; in the app picker, type the app id in the field instead; on History, the row's buttons work with the
-  pointer; with VoiceOver they haven't been tried). The [accessibility statement](accessibility-statement.md) lists each with its checks. The
+  Progress panel (whether Full Keyboard Access was on wasn't recorded); a fix was not confirmed, so reach it with VoiceOver navigation or the pointer. **Keyboard and VoiceOver
+  (0.6)** (checked with real key presses and a scripted VoiceOver on one Mac, not yet by a person on 0.6)**:** with macOS keyboard navigation on, Tab and Shift-Tab now reach controls you would have to scroll to, such as the lower
+  half of New scan in a short window (the page scrolls to show the control that takes focus); in an open pop-up menu Return chooses the highlighted item (nothing was changed; the earlier report was most likely the first Down arrow re-highlighting the current item; checked with real key presses on **What to scan**; the other menus are drawn the same way but were not checked separately); and the Search sheet and **Laws that matter to me** work from the keyboard and VoiceOver as described above, and the app picker from the keyboard (checked with real keys on an Android emulator) and with a scripted VoiceOver (2026-10-07, same emulator, one app entry shown: VoiceOver started on the filter box and reached "Show system apps", the app entry and Cancel, and VoiceOver's activate command on the entry chose it; the VO+Space keys were not pressed; it read the explanatory line after the entries and an empty group once, and moving back onto the entry gave a general hint instead of the app's id; no person has tried it). Escape and the arrow keys work in the filter boxes. Still open: focus is not returned to the button that opened a sheet (Tab once reaches it), and with keyboard navigation off Tab cannot reach buttons at all, as in other Mac apps. The [accessibility statement](accessibility-statement.md) lists each with its checks. The
   Dock's own Quit, logging out and shutting down can't be asked about first — that's a Mac Catalyst
   limitation, not a choice Swipewalk makes — but for those, Swipewalk still requests a cancellation as
   the app closes, using the same restore code Cancel uses, though the app may close before that restore
@@ -1671,7 +1658,7 @@ The pages:
   (`--harness-bundle-prefix`).
 - **History** — every saved run, grouped by app and then by that app's own version, with a count at
   each level (a run's version is grouped under "version not recorded" when it wasn't known — see
-  [section 6](#6-ci-and-history)); open a run's report from its own row, or use Compare runs… at the top to compare any two runs. A recording
+  [section 6](#6-ci-and-history)); open a run's report by clicking its row, or with its **Open report** button (the way in from the keyboard; its use with VoiceOver has not been checked), or use Compare runs… at the top to compare any two runs. A recording
   that's still going (here, or in another window) shows "In progress"; one that stopped before Finish
   -- including Swipewalk itself being closed or crashing -- shows "Ended early" with a Continue button
   to resume it. A screen reader session works the same way: one still running shows "In progress", and
@@ -1692,7 +1679,7 @@ The pages:
   captured the same way the CLI does (see below) — the desktop app's counterpart of
   `swipewalk export --app <id> --app-version <v> --run <id>...` (see [Combining several runs into one report](#combining-several-runs-into-one-report));
   shown only for an app with a known id, since there's otherwise no id to combine runs by.
-- **Report** — the same HTML report you'd get from the CLI, in a window, with a native findings list
+- **Report** — the same HTML report you'd get from the CLI, in a window, with **Open in browser** as its first button and **Show in Finder** (opens the run's folder) below it, and a native findings list
   and Export… button for turning it into tickets, a CSV, a shareable copy of the report or a PDF (see
   [section 10](#10-exporting-findings)). Each row in the findings list also has a **Triage…** button:
   choose false positive, won't fix or accepted risk, type a required reason, and optionally who and
@@ -1708,6 +1695,11 @@ The pages:
   report (a W3C Understanding page, ada.gov, a standards source, an archive.org copy) opens it in your
   default browser instead of navigating the report itself away — so the report stays open and the Report
   page's own Back button still returns where you came from.
+  On macOS 27 (the only version checked; one Mac, 2026-10-08), a scripted VoiceOver could not read the report
+  inside the window, and Tab (with keyboard navigation on) could not move into it; the same report opened in Safari
+  was read by a scripted VoiceOver (not yet checked by a person; other browsers not checked). While VoiceOver, or
+  another accessibility tool the system reports the same way, is running, the page shows a sentence about this
+  under **Open in browser**. See the [accessibility statement](accessibility-statement.md#known-issues).
 - **Compare runs** — pick any two saved runs and see new, no longer found, not checked again, and
   still-found findings, with the same "no longer found isn't fixed" caveat as `swipewalk compare` (it
   uses the same comparison). Two pickers, **Earlier run** and **Later run**, list every saved run
@@ -1794,8 +1786,7 @@ that run's own restore, and says so. The common ones:
   (Another app being in front isn't a failure — Swipewalk brings the app under test forward, or
   starts it if it isn't running, before scanning.)
 - **Scanning iOS apps needs a Mac with Xcode.** Shown on Windows or Linux — iOS scanning only works
-  from a Mac; Android scanning is supported from all three, though Windows and Linux support is new
-  and not yet verified on real hardware (see [section 1](#1-install)).
+  from a Mac; Android scanning from Windows or Linux is available but has not been tested (see [section 1](#1-install)).
 - **Xcode is not installed (only the Command Line Tools are).** Install Xcode from the App Store,
   then open it once. `xcode-select --install` on its own only installs the Command Line Tools, which
   is not enough to scan iOS apps.
@@ -1988,7 +1979,7 @@ swipewalk export <run> --format md --out tickets           # one Markdown ticket
 swipewalk export <run> --format csv --out findings.csv     # one row per finding, for bulk import
 swipewalk export <run> --format html --out shared.html     # the whole report as one file, for email
 swipewalk export <run> --format pdf --out report.pdf       # a tagged PDF (PDF/UA-1), for printing or sharing
-swipewalk export <run> --format acr --out acr-draft        # a draft Accessibility Conformance Report, for a buyer
+swipewalk export <run> --format evidence --out evidence.html  # per-criterion evidence: what was checked, found, not tested
 ```
 
 `<run>` is a run folder or a `results.json` file (a run folder from `swipewalk history`, or whatever
@@ -2051,59 +2042,44 @@ that fits where the findings are going:
   note at the end of the PDF, rather than silently dropped. Arabic text is shown right-to-left for a
   sighted reader, but a screen reader gets the correct reading order too (see the accessibility
   statement). Works the same way on macOS, Windows and Linux.
-- **`--format acr`** writes a DRAFT Accessibility Conformance Report — for a buyer evaluating the
-  app, unlike the other four formats above, which are for developers — as two files in a folder
-  (default `./swipewalk-acr`; the run needs at least one finding, like every other format): `openacr.yaml`, in
-  the [OpenACR](https://github.com/GSA/openacr) format (checked against its `2.5-edition-wcag-2.2-en`
-  WCAG catalog with OpenACR's own validator), and `acr-draft.html`, a readable copy of the same content
-  clearly marked **"Draft: for human review"**. Both files carry the same statement, at the top of
-  `acr-draft.html` and at the start of `openacr.yaml`'s `notes` field:
+- **`--format evidence`** writes a per-criterion evidence report: one readable HTML page (default
+  `./evidence-report.html`; it works for a run with no findings too) that shows, for each WCAG 2.2
+  Level A and AA success criterion, what Swipewalk checked, what it found and what was not tested in
+  this run. Unlike the other formats, which are for developers fixing findings, it is for a person who
+  needs to see the evidence criterion by criterion. The page opens with this statement:
 
-  > This is a draft for you to review and complete. Swipewalk sets a conformance level only where automated checks confirmed a WCAG issue ("Partially Supports"); every other criterion, including ones where automated checks found nothing or only flagged items for review, is marked "Not Evaluated". Whoever publishes the report is responsible for its statements.
+  > This page shows the evidence Swipewalk collected for each WCAG 2.2 Level A and AA success criterion: what was checked automatically, what was found, and what was not tested. It is not a conformance report (ACR/VPAT); completing one needs a person to evaluate each criterion and stand behind the result.
 
-  One row per WCAG 2.2 Level A/AA success criterion (55
-  rows; Level AAA isn't evaluated and isn't listed; Section 508's and EN 301 549's own requirements
-  beyond WCAG aren't included either — see the "Beyond WCAG" section, shown in the full report when it
-  includes Section 508 or EN 301 549, for what Swipewalk currently tracks about a few of them). Every
-  row's conformance level is decided the same way as everywhere else in Swipewalk — never a verdict of
-  "compliant" or "passes". This release doesn't record manual test results (that's a separate, later
-  feature), so today every row reads either **Partially Supports** (a confirmed automated WCAG issue)
-  or **Not Evaluated**; the rules below for **Supports** and **Not Applicable** describe what a
-  recorded manual result would do once that exists:
-  - **Supports** only ever comes from a person recording a pass, with evidence, for every scanned
-    screen the criterion applies to (this release doesn't record manual results, so no row reads
-    Supports yet).
-  - A confirmed WCAG issue (or a person recording a failure) gives **Partially Supports**, with the
-    finding id(s) named in the remark; a person finishing the report may lower this to **Does Not
-    Support** if the problem turns out to be widespread, but Swipewalk itself never assigns that level
-    automatically (automated checks can't tell how much of the app's functionality is affected, only
-    that some is).
-  - Automated checks flagging something for review, without confirming a failure, give **Not
-    Evaluated**, not Partially Supports (an item flagged for review isn't a confirmed issue).
-  - Automated checks running and finding nothing also give **Not Evaluated**, with a remark saying so
-    explicitly — a 0 count is never shown as "met" (see the coverage section above). This draft
-    deliberately uses "Not Evaluated" for Level A and AA rows, not only AAA (the usual convention),
-    because no person has evaluated these criteria and automated checks cover only part of each one;
-    this is called out in the draft's own notes, not left for a reader to notice.
-  - **Not Applicable** only ever comes from a person confirming, for every scanned screen, that the
-    criterion doesn't apply, with no confirmed WCAG issue contradicting it — Swipewalk's own "usually
-    not applicable" (WCAG2ICT) reasoning is a general note, not a per-app confirmation, so a criterion
-    like this reads Not Evaluated by default.
-  - A finding the team marked false positive is excluded from the count behind a level, but the row's
-    remark says so and names it; a finding marked won't fix or accepted risk still counts (it's still a
-    real, open issue), with the same "this does not mean the issue meets WCAG" caveat as everywhere
-    else.
+  The page has, in order: the app, platforms, date and method; the screens covered (only the
+  screens in the scan or scans used, and a statement that screens not in them were not checked); the
+  laws and standards that reference WCAG (with the WCAG version each references, and the not-legal-advice line; `--standard` narrows the
+  list to one); then one table for Level A and one for Level AA with every criterion once (55
+  rows; Level AAA isn't covered, and Section 508's and EN 301 549's own requirements beyond WCAG aren't
+  included — the "Beyond WCAG" section of the full report says what Swipewalk tracks about a few of
+  them). Each criterion shows one of four statuses, the same ones the report's WCAG coverage list uses:
+  - **Partly checked by automation** — at least one automated check ran for it. The page lists the WCAG
+    issues and the items flagged for review that cite this criterion (with their finding ids, the same
+    ones the CSV and tickets use), or says 0 automated findings, which never means the criterion is
+    met: automated checks test only part of it. A manual check is still needed.
+  - **Needs a manual check** — no automated check covers it here; the row says how to check it by hand.
+  - **Usually out of scope for a single app** — the criterion usually does not apply to one app (the
+    row gives the reason, from WCAG2ICT); confirm that it does not apply to yours.
+  - **Not tested in this run** — a check for it exists but did not run (for example the rotation
+    rescan was not requested); the row says which check and why.
 
-Options:
-
+  Findings your team marked false positive are not listed but are named in the row; won't-fix and
+  accepted-risk findings stay listed with the same note every other export carries. A
+  platform advisory (a result found only beyond a WCAG threshold) is not shown under a criterion.
+  The page never says a criterion is met. There is no separate machine-readable file: for a single
+  run, `results.json` already holds every finding and the same per-criterion coverage list.
 - **`--finding <id>`** exports only that finding (md/csv only); repeat it for several. Without it,
   every finding in the run is exported. An id you gave that doesn't match anything prints the list of
   ids actually in this run, so you can copy the right one; ids also appear in each exported ticket's
   Provenance section and the CSV's `FindingId` column. `--finding` has no effect with `--format html`,
-  `pdf` or `acr` (there's no single-finding shape for any of them) and is rejected if given together
+  `pdf` or `evidence` (there's no single-finding shape for any of them) and is rejected if given together
   with one of those formats.
 - **`--no-screenshots`** leaves screenshots out (`md`: no `images/` folder; `html`/`pdf`: nothing
-  embedded; `csv` and `acr` never include them regardless). There's no privacy warning here — like the
+  embedded; `csv` and `evidence` never include them regardless). There's no privacy warning here — like the
   rest of Swipewalk, a test device is assumed — this option exists only to make a smaller export.
 - **`--standard <id>`** shows one law or standard only, in the html, pdf, csv and md exports: a
   default standard's id (`ada-title-ii`, `section-508`, `en-301-549`, `en-301-549-v4`,
@@ -2116,24 +2092,15 @@ Options:
   start (with its source and date checked) and each issue names the first few and how many more and
   points there, because repeating the whole list under every issue would run to pages; a Markdown ticket
   carries the same short line with a link to docs/standards.md; the csv's relevant-standards column
-  holds the ids. `--format acr` ignores `--standard`: an ACR is written per WCAG criterion, not per law.
+  holds the ids. In the evidence report `--standard` narrows the list of laws and standards.
 - **`--my-laws <ids>`** lists the laws and standards that matter to you first, in the html, pdf, csv and
   md exports: comma-separated ids, the same ones `--standard` takes (for example
   `--my-laws ada-title-ii,us-tx`). Each issue names your laws it is relevant to, then "and N more"
   for the rest (in the html export, opening an issue's line shows the full list, yours first); the laws table lists yours first
   and folds the others behind "Other laws and standards"; the pdf and csv put yours first. Nothing is
   left out. Without it, an export keeps the choice the run was scanned with (`--my-laws` on `scan` or
-  `record` saves it in the run), if any; with `--standard` only that one law is shown. `--format acr`
+  `record` saves it in the run), if any; with `--standard` only that one law is shown. `--format evidence`
   ignores it.
-- **`--app-name <name>`** (`acr` only) sets the product name shown in the report; without it, the
-  scanned app's own package/bundle id is used, or "Scanned app" if even that isn't known.
-- **`--author-email <email>`** (`acr` only) sets the contact email OpenACR's own format requires for
-  the report's author. Without it, an obviously fake placeholder is used and the draft's notes say it
-  must be filled in before the report is shared — Swipewalk never fills this in automatically from your
-  git config, OS user name or any other local identity, since this file is meant to leave the machine
-  that generated it.
-- **`--author-name <name>`** (`acr` only) sets a contact name alongside `--author-email` (optional in
-  the OpenACR format itself).
 
 Every finding gets a stable id (`SW-` followed by a short fingerprint of the app, screen, rule,
 element and kind it was found as) that stays the same across a rescan of an unchanged screen, so
@@ -2147,7 +2114,7 @@ evidence items (where what TalkBack said differs from what Swipewalk predicted, 
 control's visible text) appear as findings in the tickets and the CSV. Those items carry their own
 caveat instead of the one above — evidence from a session a tester drove, compared by Swipewalk, not an
 automated check and not a confirmed failure — and a screen the session reached but Swipewalk never scanned
-says so plainly. The draft Accessibility Conformance Report is built from the automated checks only, so
+says so plainly. The evidence report is built from the automated checks only, so
 it doesn't include a session's evidence items.
 
 ### Combining several runs into one report
@@ -2159,8 +2126,8 @@ report covering every screen across several saved runs of the same app **version
 
 ```bash
 swipewalk history                                            # find the app id, version(s) and run ids
-swipewalk export --format acr --app com.example.app --app-version "1.2.0 (42)" \
-  --run 20260901-090000-com.example.app --run 20260902-090000-com.example.app --out acr-draft
+swipewalk export --format evidence --app com.example.app --app-version "1.2.0 (42)" \
+  --run 20260901-090000-com.example.app --run 20260902-090000-com.example.app --out evidence.html
 ```
 
 **You choose exactly which scans go in — nothing is combined by default.** `--run` is required and can
@@ -2191,7 +2158,7 @@ Triage marks from every combined run's own `triage.json` are carried in too (a f
 keeps the same id across runs of an unchanged screen, so the most recent decision for it wins regardless
 of which run recorded it).
 
-All five formats (`md`, `csv`, `html`, `pdf`, `acr`) work with combined runs — each screen's screenshots
+All five formats (`md`, `csv`, `html`, `pdf`, `evidence`) work with combined runs — each screen's screenshots
 are resolved against its own originating run's folder, so there's no single shared folder problem to
 work around. `--finding` and `--source` aren't available in this mode: a combined export always covers
 the whole report. The desktop app has the same combined export from History's own version-header row
@@ -2202,24 +2169,22 @@ the whole report. The desktop app has the same combined export from History's ow
 The desktop app exports the same five formats using the same code, from the two places that export a
 whole run (Report page → Export… and History → Export…); the Findings list's per-finding export stays
 CSV/tickets only, same as before (see below — a chosen subset of findings has no per-criterion shape
-for an ACR). Choosing the ACR format shows three optional fields, the desktop counterparts of
-`--app-name`, `--author-name` and `--author-email`, on both the single-run export and a version's own
-export: **App name**, **Author name** and **Author email**. Leave one empty and the draft falls back as the
-CLI's does (the app's id for a single run, or its name as shown in History for a version's export; no author name, and a placeholder contact the draft's notes say to fill
-in). Nothing is taken from your Mac and nothing is remembered between exports, as with the CLI. The
-draft is still a draft for you to review and complete; whoever publishes the report is responsible for its
-statements.
+for the evidence report). Choosing **Evidence report, per WCAG criterion (HTML)** writes the same page as
+`--format evidence`, from the same code, on both the single-run export and a version's own export; there
+are no extra fields to fill in. The single-run export saves it through the system's save panel; a
+version's own export writes it into a subfolder of the folder you choose. The page says what it is and is
+not: it is not a conformance report, and it covers only the screens in the scans used.
 
 **Laws that matter to me.** An export lists the laws saved with the run first (or yours, when the run saved none). When the
 run's saved choice differs from the one you have now, the export page also shows **Use my current laws and
 standards instead of the saved choice**, with a line explaining it; tick it to list your current laws first instead, the
 desktop counterpart of `swipewalk export --my-laws`. A version's own combined export has the same choice when any of its scans
-saved a different choice. The saved run is never changed, and the draft ACR ignores the choice, as it ignores the law or standard.
+saved a different choice. The saved run is never changed, and the evidence report ignores the choice of laws that matter to me, as `--format evidence` does.
 
 - **Report page → Export…** exports every finding in the run you're viewing: choose a format
-  (report as HTML, report as PDF, CSV, tickets, or a draft Accessibility Conformance Report),
+  (report as HTML, report as PDF, CSV, tickets, or the per-criterion evidence report),
   optionally leave out screenshots, then choose where to save. A report (HTML or PDF) or CSV goes
-  through the system's own save panel; tickets and the ACR draft's two files go into a folder you
+  through the system's own save panel (the evidence report is one HTML page too); tickets go into a folder you
   choose, under a subfolder named after the run — exporting the same run's tickets into the same
   folder again reuses that subfolder and updates any ticket whose finding id is unchanged, rather
   than creating a second copy (the same "re-exporting reuses the same id" behavior as the CLI,
@@ -2230,14 +2195,13 @@ saved a different choice. The saved run is never changed, and the draft ACR igno
   its newest run was scanned with, the same as `swipewalk export --app`). If the run was scanned with a law
   or standard that this version no longer lists, the menu shows All standards and a line says so. Choosing another works out
   again which laws and standards each issue is relevant to from its WCAG criteria, so nothing is scanned again and the saved run is unchanged. It applies to the report (HTML or
-  PDF), CSV and ticket exports. The draft Accessibility Conformance Report is written per WCAG criterion, so
-  for it the choice is disabled, with the reason below it.
+  PDF), CSV and ticket exports, and to the list of laws and standards in the evidence report.
 - **Optional team triage file (Report page → Export…, History → Export… and the Findings list's export)** — the desktop counterpart of
   `swipewalk export --triage <file>`: the marks in this file are used INSTEAD of the run's own `triage.json`
   (the two are never merged), for every format. Left empty, the run's own marks are used, as before. Marks you save from the Report page while a team file is chosen are written into that file, not into the run's own `triage.json`.
 - **Optional app source folder (Report page → Export…, History → Export… and the Findings list's export)** — the same field as
   New scan's, the desktop counterpart of `swipewalk export --source`: choose the project folder and the
-  export (report, CSV or tickets; not the ACR draft, which has no per-finding lines) fills in a likely
+  export (report, CSV or tickets; not the evidence report, which has no per-finding lines) fills in a likely
   source line for findings that don't already have one, without rescanning. The saved run itself is
   never changed. If the folder can't be read, the export stops and says so (the command line instead warns and exports without source lines). Combining several scans into one report (History's version rows) has no source folder
   field, the same as `--source` not being available with `--app`.
@@ -2272,10 +2236,10 @@ saved a different choice. The saved run is never changed, and the draft ACR igno
 A run with no findings still exports: automated checks found nothing, and manual testing is still
 required, the same as for any other run — the exported report (HTML or PDF) shows its normal
 headline stating that automated checks found 0 WCAG issues, the CSV has its column headers with no
-data rows, and the ACR draft is still a full 55-row report (mostly "Not Evaluated"), never an empty
+data rows, and the evidence report is still the full 55-criterion list (mostly "Needs a manual check"), never an empty
 file. There's nothing to write as tickets in that case, so choosing tickets shows a note and the
 Export button stays disabled, rather than writing an empty folder. A run's CLI export
-(`swipewalk export`) matches this for `--format html`, `--format pdf` and `--format acr` — all three
+(`swipewalk export`) matches this for `--format html`, `--format pdf` and `--format evidence` — all three
 always write the whole report, findings or not — but refuses for the per-finding formats,
 `--format md` and `--format csv`, when the run has no findings (or `--finding` matched none of the
 ids given): there's nothing to put in a ticket or a CSV data row.
@@ -2456,11 +2420,11 @@ Everything under the given path is read **locally only** — nothing is uploaded
 written back to it, and no project is built, installed or run (no MSBuild, no Gradle, no `dotnet build`/
 `restore`, no npm, no `pub get`). For a **.NET MAUI** project it only reads `.xaml`, `.cs` and `.resx`
 files (skipping `bin`/`obj`); for a **native Android** project it only reads layout `.xml` under a
-`layout`/`layout-*` folder, the default `res/values/strings.xml`, `.kt`/`.java` files, and
-`build.gradle`/`build.gradle.kts` (only to read the app's `applicationId` or `namespace`, for the
+`layout`/`layout-*` or `menu`/`menu-*` folder, the default `res/values/strings.xml` and `res/values/ids.xml`, `.kt`/`.java` files
+(not test source sets or benchmark modules), and `build.gradle`/`build.gradle.kts` (only to read the app's `applicationId` or `namespace`, for the
 identifier check below — skipping Gradle's `build`/`.gradle` output otherwise); for a **native iOS** project it reads `.storyboard`, `.xib`, `.swift`,
 `.m`, `.strings` and `.xcstrings` files, skipping build output and dependency folders such as
-`DerivedData`, `Pods`, `build`, `.build`, `.git`, `.swiftpm`, `xcuserdata` and `Carthage`; **React Native**
+`DerivedData`, `Pods`, `build`, `.build`, `.git`, `.swiftpm`, `xcuserdata` and `Carthage`, and test folders (names ending in `Tests`, and `Test Plans`); **React Native**
 reads `.js`/`.jsx`/`.ts`/`.tsx` and every `.json` file under the folder except `package.json`,
 `package-lock.json`, `tsconfig.json` and `app.json` (see the React Native "Text" step below for why this
 is looser than it sounds); **Flutter** reads `.dart` and `.arb` translation files. All of these skip
@@ -2481,11 +2445,18 @@ first two, the element's own identifier settles it:
 - a literal in code that also appears as a localized string value (strings.xml, string catalog, translation
   file), since the element may be using either;
 - on Android, an identifier found in more than one place (an `android:id` in more than one layout, written `@+id/x` or `@id/x`, or a Compose `testTag` literal used more than once) is always listed as candidates, even though it is the element's own identifier;
-- on iOS, text that is also design-time text in a storyboard or XIB (a likely match, with the reason).
+- on iOS, text that is also design-time text in a storyboard or XIB (a likely match, with the reason);
+- text that is also a plain string somewhere else in the code. A tab bar and a picker can both say "Settings", and
+  only one of them is a `Text("Settings")` Swipewalk recognises, so a single recognised place is not proof: every
+  place is listed instead. A text that appears nowhere else stays exact, unless another case in this list applies;
+- text found only as a plain string outside any call that shows text (a list in a data file, a title passed to the
+  app's own view), and, for a name written in capitals, the same words in other capitalisation (a bottom-bar label
+  drawn as "HOME" from the string "Home"). The same goes for a string defined in `strings.xml` or a string catalog that
+  nothing in the source uses: it is listed, not picked.
 
 On iOS, a string defined as a `Type.member` accessor (for example `static let title = NSLocalizedString(...)`)
 is followed to the code that uses it as `Type.member`; when no such use is found (other ways of referring to it
-are not followed), the result says it points at the definition. A candidate list from a text or identifier
+are not followed), the definition is listed as a candidate and the result says so. A candidate list from a text or identifier
 match shows at most 10 places and says how many matched. When the same React Native or Flutter translation key
 is in several language files, the text from a file whose name marks it as English (for example `en.json`,
 `app_en.arb`) is used for the key; English in a folder name (`en/translation.json`) isn't recognized. Flutter
@@ -2545,8 +2516,10 @@ different source shapes underneath:
    asserting it. When the runtime name is empty instead (a `missing-name` finding), nothing overrode the
    clearing, so the id match stays "exact" as usual — the layout line really is where to add one.
 2. **Text** — the element's accessible name/label, found as a literal in the source (`android:text`/
-   `android:contentDescription`/`android:hint` in layout XML, or `text`/`contentDescription`/`hint`
-   assignments and Compose `Text("...")` calls in Kotlin/Java), or via a `strings.xml` value — the
+   `android:contentDescription`/`android:hint` in layout XML, `android:title` in `res/menu` XML (toolbar and
+   overflow actions), or `text`/`contentDescription`/`hint` assignments and Compose `Text("...")` calls in
+   Kotlin/Java), or via a `strings.xml` value (also when the code reaches the string as `string.some_key`
+   through an imported module resource class, as long as `some_key` is one of the project's strings) — the
    resource's own value matches the label, and the place that *uses* that resource key is reported, not
    just the resource file itself, unless no use of it could be found. A layout attribute explicitly
    cleared (`android:contentDescription="@null"`) is not treated as a name: if Kotlin/Java code sets a
@@ -2560,10 +2533,19 @@ different source shapes underneath:
    "candidates" (when more than one template shares that same longest prefix), never "exact". Tried after
    text matching, not alongside identifier matching, so a unique literal label can still resolve "exact"
    even when the identifier also happens to start with some template's prefix.
-4. **Structural** — only for an element with no name at all (a `missing-name` finding): matched by its
+4. **Structural** — only for an element with no name and no id at all (a `missing-name` finding): matched by its
    declared size (`android:layout_width`/`_height`, or a Compose `Modifier.size(...)`/`.width(...)`/
    `.height(...)`), or an adjacent label next to an unlabeled field (a preceding `<TextView>`, or the
-   nearest preceding Compose `Text(...)` call before a bare `TextField(...)`).
+   nearest preceding Compose `Text(...)` call before a bare `TextField(...)`). An unnamed element that has an
+   id the source never declares is a library's or the system's control (for example a Material bottom-bar icon),
+   so it is not matched by size to the app's own views.
+5. **Plain strings and ids built in code** — tried last, and only ever candidates: any plain string literal in the
+   Kotlin/Java code (a data class, a list, a title given to the app's own composable) that equals the element's
+   name, and an id declared in `res/values/ids.xml` (the declaration and every `R.id.<name>` use are listed).
+
+Swipewalk does not read test source sets (`src/test`, `src/androidTest`), top-level benchmark and
+baseline-profile modules, or files named `...PreviewParameterProvider` or `...TestData`: their strings are never
+what the shipped screen shows, but they used to appear as matches.
 
 ### How a match is made, and how sure it is (native iOS)
 
@@ -2591,15 +2573,23 @@ Matching tries, in order:
    screen it can point at a *different* screen's element (see `swipewalk limitations`,
    `ios-source-mapping-scope`, which shows this happening for real in NativeiOS). SwiftUI has no
    equivalent here at all, since its views are rarely named local variables — an unnamed SwiftUI element
-   is "not found" (item 6 below needs a label to go on, so it never applies to an unnamed element).
-6. **A merged SwiftUI group** — tried only for a finding whose label looks combined from several views
+   is "not found" (items 6 and 7 below need a label to go on, so they never apply to an unnamed element).
+6. **Plain strings** — any plain string in the Swift/Objective-C code that equals the element's name (a
+   model, a title given to the app's own view such as `sectionTab(title: "Settings")`), listed as candidates only. An
+   icon whose identifier is a system symbol's name (`gear`, `magnifyingglass`) lists the places that write
+   that name, for example `Image(systemName:)`.
+7. **A merged SwiftUI group** — tried only for a finding whose label looks combined from several views
    (contains ", "), on a screen that's SwiftUI or has an undetected framework (never one confirmed UIKit
    or MAUI, since this technique is SwiftUI-specific): if the given source has exactly one SwiftUI
-   `.accessibilityElement(children: .combine/.contain)` grouping, it's offered as "likely" the place the
-   name may be assembled. This is not a proposed literal, and not necessarily this screen's own grouping
-   — there may be no single line that produces the exact announced text, for example when it's built from
-   several pieces plus live data. With more than one such grouping in the source, the result is "not
-   found" rather than a guess between them.
+   `.accessibilityElement(children: .combine/.contain)` grouping and that same file also contains a piece of
+   the name, it's offered as a single candidate. This is not a proposed literal, and not necessarily this
+   screen's own grouping — there may be no single line that produces the exact announced text, for example
+   when it's built from several pieces plus live data. With more than one such grouping in the source, or no
+   piece of the name in that file, the result is "not found" rather than a guess.
+
+Names the system supplies itself (an iOS scroll bar's "Vertical scroll bar, 3 pages", the tab bar) are
+reported as "not found" with that reason. Folders whose names end in `Tests`, and Xcode's `Test Plans`, are not
+read. Swift and Objective-C Unicode escapes (`\u{201c}`) are decoded so the text matches what the app shows.
 
 ### How a match is made, and how sure it is (React Native and Flutter)
 
@@ -2671,7 +2661,9 @@ location rather than folded into a single "found it" indicator:
   template), never from the literal runtime text. Worth checking before you change anything there.
 - **Candidates** — more than one line is plausible and none stood out (the same text appears in two
   files with no file standing out, the winning file still has the text on more than one line, or
-  several unlabeled elements of the same kind exist); every candidate is listed, none is picked for you.
+  several unlabeled elements of the same kind exist), or a single place Swipewalk can't confirm the element uses (a
+  plain string outside any call that shows text, a string resource or catalog entry nothing uses, a definition with
+  no use found, or the one SwiftUI grouping); every candidate is listed, none is picked for you.
 - **Not found** — no line in the given project could be identified. Common causes: the element's name
   comes entirely from bound/computed data with no literal anywhere nearby (including a value that only
   the running app computed), it's built from a third-party control or a framework-injected element (for
@@ -2679,26 +2671,21 @@ location rather than folded into a single "found it" indicator:
   description) that has no line in *your* project at all, a Compose app that never carries a runtime
   identifier because it doesn't set `testTagsAsResourceId`, or `--source` points at the wrong folder.
 
-**On a real, unmodified app, expect "likely"/"candidates"/"not found" often, not rarely — especially for
-MAUI and for Jetpack Compose.** A hand review of real .NET MAUI sample apps' source (not written for
-scanning) found none used `AutomationId` at all; a list or grid bound to data (a very ordinary screen
-shape) usually has no literal text to match, so its findings come back "not found" unless the element has
-no name at all, in which case size/label/template matching gives "likely" or "candidates" instead. Native
-Android Views apps usually give an `android:id` to every view their code touches (`findViewById` and view
-binding both need one to reach it), so identifier matching is expected to fire more often than for MAUI or
-Jetpack Compose — this hasn't been measured on a real app either, only reasoned from what compiling
-against a view requires. Jetpack Compose is the opposite case — identifier matching only works at all when
-the app opts into `testTagsAsResourceId`, and even then a shared tag with no per-item value still lands on
-one line for many elements. The Kotlin/Java side of Android matching is careful lexical scanning of specific
-patterns, not a full parser, so it's conservative by design. On native iOS, a hand review of several real,
-unrelated apps found a storyboard/XIB's own design-time text is frequently a decoy — the shipped
-text is assigned in code via the outlet's own property — and every SwiftUI app reviewed had at least one
-label whose text comes from data at runtime, with no literal anywhere in the source to point at.
-Text/resource matching is expected to handle a static screen's toolbar, settings and form fields well on
-any of these frameworks — but that, and each mapper as a whole, has so far only been tested against
-Swipewalk's own sample apps (`BuggyApp` for MAUI, `NativeAndroid` for Views/Compose,
-`NativeiOS` for UIKit/SwiftUI), not a real third-party app; Compose `testTag` matching hasn't been
-tested on a real capture at all yet (the sample doesn't set `testTagsAsResourceId`). See
+**On a real, unmodified app, expect "likely"/"candidates"/"not found" often, not rarely.** On 2026-10-04
+Swipewalk's native mappers were run on seven real apps with published source (two Android Views, two Jetpack Compose, one
+UIKit, two SwiftUI; 42 screens, 1,040 named or identified elements, on the Android emulator and the iOS Simulator).
+Of those elements 190 were an exact match, 11 likely, 495 candidates and 344 not found. By framework, exact matches
+were 121 of 291 for Android Views (mostly by `android:id`), 60 of 274 for Jetpack Compose, 5 of 143 for UIKit and 4 of
+332 for SwiftUI: a SwiftUI or UIKit app usually writes the same words in several places, so the honest answer is a short list
+of places, not one line. A large share of the not-found elements was text the app gets while it runs (a web service, system
+text, a shared library module); for one SwiftUI app that was 122 of 128. Of the 201 exact or likely results, 137 matched by identifier (spot-checked), 62 by text and 2 by
+structure or Interface Builder markup. Reading all 64 that did not match by identifier at their source line found none wrong,
+apart from one Interface Builder match that could not be confirmed either way (an earlier version had 22 wrong, which this release fixed). That is a sample: a few
+screens per app, English, light mode, no physical iPhone. Compose `testTag` matching works only when the app opts into
+`testTagsAsResourceId`; a hand review of real .NET MAUI sample apps (not written for scanning) found none used
+`AutomationId` at all, and a list or grid bound to data usually has no literal text to match. On native iOS, a storyboard/XIB's
+own design-time text is frequently a decoy — the shipped text is assigned in code via the outlet's own property.
+React Native and Flutter mapping has so far been tried only on small, made-up projects. See
 `swipewalk limitations` for the full picture (`maui-source-mapping-scope`, `android-source-mapping-scope`,
 `ios-source-mapping-scope`; `reactnative-flutter-source-mapping-scope` for React Native and Flutter).
 

@@ -5,6 +5,28 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.6
+
+- Swipewalk is now described as a scanner for any Android or iOS app, with extra help for .NET MAUI, with what has been tried stated. A new page,
+  [How Swipewalk is tested](docs/testing.md), lists the devices, frameworks, sample apps and real apps used, what was found and
+  missed, and what has not been tested.
+- Native Android results are closer to what TalkBack speaks: a field named with `android:labelFor` is no longer reported as
+  unnamed, a button named by several children gets the name TalkBack speaks, and a button cut off at an edge of a scrolling
+  area (Android) is no longer measured at its visible size.
+- Source-line pointing for native Android and iOS apps was measured on seven real apps with published source and made more careful:
+  no confident wrong result was found afterwards, and many more elements get a list of candidates. Expect a list rather than one
+  line for UIKit and SwiftUI apps. Results for React Native and Flutter were not measured on real apps.
+- On a Mac, the command-line tool installs as a native program that needs no .NET to run (the .NET SDK is still needed to install
+  it). Windows and Linux get the regular .NET version, untested there.
+- The desktop app's keyboard and VoiceOver handling was improved and checked with real key presses and a scripted VoiceOver, not by
+  a person: Tab reaches controls below the fold of a scrolling page, the law Search sheet and Laws that matter to me work
+  from the keyboard and VoiceOver, and the app picker from the keyboard (with VoiceOver it was checked only by a scripted VoiceOver, which found reading-order problems still to fix), Escape and the arrow keys work in their filter boxes (Escape clears what you typed, then closes the sheet; choices already made in Laws that matter to me are kept), and History rows have an Open report button.
+  Still open: keyboard focus is not put back on the button that opened a sheet. See the
+  [accessibility statement](docs/accessibility-statement.md).
+- The draft per-criterion export is replaced by an evidence report (`swipewalk export --format evidence`, and Export in the desktop app): one readable page showing, for each WCAG 2.2 Level A and AA criterion, what Swipewalk checked, what it found and what was not tested. It is not a conformance report.
+- `swipewalk doctor` with two Android devices attached and no `--device` now names them instead of crashing.
+- The NuGet package README now uses absolute links, so its images and links no longer break on nuget.org (checked once this version is published).
+
 ### New in 0.5
 
 - `swipewalk share` and `swipewalk import` (and Share run… and File > Open… in the desktop app) send a saved run
@@ -21,8 +43,6 @@ are welcome: open an issue.
 - A Search… button beside the desktop app's Law or standard menu, for finding one by typing part of its name or a place.
 - results.json format 0.8 (a stable id, "who is affected" and a report link on every finding; see
   docs/results-schema.md).
-- The desktop app's three search boxes (the law Search sheet, Laws that matter to me and the app picker) are system
-  search fields: Escape clears what you typed, then closes the sheet (choices already made in Laws that matter to me are kept).
 - Each release carries two downloads of a made-up sample app (an Android .apk and an iOS Simulator .zip) to scan before
   trying your own app, with the full third-party notices and licence texts for what they carry.
 - The Screen reader session page uses only the device you choose, checks it before changing anything and has a New session
@@ -34,7 +54,7 @@ are welcome: open an issue.
 
 ### New in 0.4.2
 
-- The desktop app offers more of the command line's choices: a More checks section on New scan (dark/light, rotation, changing-content and web content checks, an app framework menu), iPhone signing, a check that an app is installed on the Devices page, comparing any two runs, a team triage file, ACR author fields, and "Use my current laws and standards" when exporting.
+- The desktop app offers more of the command line's choices: a More checks section on New scan (dark/light, rotation, changing-content and web content checks, an app framework menu), iPhone signing, a check that an app is installed on the Devices page, comparing any two runs, a team triage file, and "Use my current laws and standards" when exporting.
 - Help pages in the desktop app listing every automated check and known limitation.
 - `swipewalk session --platform ios`, `swipewalk apps`, `swipewalk history --delete`, `swipewalk compare --app` and `--carry-triage`.
 - The command line and the desktop app now offer nearly the same things (choosing another History folder in the desktop app came in 0.5), apart from a short list of exceptions that each have a stated reason (for example options meant for scripts).
@@ -76,7 +96,7 @@ are welcome: open an issue.
   (the full WCAG/beyond-WCAG coverage and limitations); findings that likely share one root cause are
   grouped, every finding states who it affects, and every report records the scanned app's own version.
 - `swipewalk export` turns a saved run into a Markdown ticket per finding, a CSV, a self-contained HTML report,
-  a tagged PDF, or a draft Accessibility Conformance Report for a person to review.
+  a tagged PDF, or a draft per-criterion export for a person to complete (replaced in 0.6 by the evidence report).
 - `swipewalk triage` marks a finding as already looked at (false positive, won't fix or accepted risk, with a
   required reason), stored apart from the run's own results.json so a rescan's raw findings are never touched;
   the desktop app carries a mark forward into the app's next run when it is clearly the same finding.
@@ -85,8 +105,8 @@ are welcome: open an issue.
   they are written from each framework's documentation and haven't yet been applied in a real app of that
   framework and rescanned.
 - `--source <path>` points findings at a likely source line in a local .NET MAUI, native Android, native iOS,
-  React Native or Flutter project, stating exact / likely / candidates / not found for each; tested only on
-  Swipewalk's sample apps and small made-up projects.
+  React Native or Flutter project, stating exact / likely / candidates / not found for each; measured on seven real native
+  Android and iOS apps in 0.6; .NET MAUI only on Swipewalk's sample app; React Native and Flutter only on small made-up projects.
 - Web content inside apps is scanned on the Android emulator (verified there only; not by default on a physical
   phone); `scan --web-audit` (Android debug builds) adds axe-core.
 - `swipewalk session` and the desktop app's Screen reader session page: use TalkBack yourself while Swipewalk
