@@ -696,12 +696,12 @@ Also in "Full audit detail" only:
   sector regulations) plus every mapped US state and country in [docs/standards.md](standards.md).
   The table opens with one short line: this is reference information, not legal advice.
   Each issue then carries one line that names the first few, for example "Relevant to ADA
-  Title II, Section 508, EN 301 549 and 37 more", and opens (a plain expandable section, reachable
+  Title II, Section 508, EN 301 549 and 38 more", and opens (a plain expandable section, reachable
   by keyboard and screen reader) to the full list with a link to each official source and, in words,
   whether it is within that law or standard's WCAG basis; a small "About these mappings" link goes to
   the table. Some criteria fall within fewer of them: a criterion added in WCAG 2.2, such as 2.5.8
   Target Size (Minimum), says so on the issue, for example "Relevant to EN 301 549 v4, UK public
-  sector, New York and 3 more that reference WCAG 2.2; not to the 34 that reference an earlier
+  sector, New York and 3 more that reference WCAG 2.2; not to the 35 that reference an earlier
   version", and the expanded list shows which are and aren't. "Relevant" means the finding's WCAG
   criterion is within the WCAG version and level the law or standard references; it is never a
   statement that the app complies with, or violates, it. Pass `--standard <id>` (a default standard's id, or a US state or country's id from
@@ -1382,7 +1382,7 @@ The pages:
   After Swipewalk closed unexpectedly, a notice at the top offers to save a diagnostic report (see
   [section 8](#saving-a-diagnostic-report-for-a-bug-report)).
 - **Laws and standards** — every law and standard Swipewalk tracks, grouped as US federal, US states,
-  EU and member states, UK, and other countries, with a search and a count. Each row shows the name,
+  EU and member states, UK, and other countries, with a search box (a plain text field with a magnifier icon and, while you type, the standard clear button, which the app names "Clear text"; this page's box has not yet been checked with the keyboard or VoiceOver, see the [accessibility statement](accessibility-statement.md#known-issues)) and a count. Each row shows the name,
   whether it is mapped (or not mapped, with a one-line reason) and what it references. For a mapped
   entry, choose the name to see the rest: which WCAG version and level it references, any criteria it
   doesn't apply to apps (non-web software), by number and name, who it applies to, links to the
@@ -1515,7 +1515,7 @@ The pages:
   VoiceOver: after the window is reopened while a run is going, Tab did not reach the last button in the
   Progress panel (whether Full Keyboard Access was on wasn't recorded); a fix was not confirmed, so reach it with VoiceOver navigation or the pointer. **Keyboard and VoiceOver
   (0.6)** (checked with real key presses and a scripted VoiceOver on one Mac, not yet by a person on 0.6)**:** with macOS keyboard navigation on, Tab and Shift-Tab now reach controls you would have to scroll to, such as the lower
-  half of New scan in a short window (the page scrolls to show the control that takes focus); in an open pop-up menu Return chooses the highlighted item (nothing was changed; the earlier report was most likely the first Down arrow re-highlighting the current item; checked with real key presses on **What to scan**; the other menus are drawn the same way but were not checked separately); and the Search sheet and **Laws that matter to me** work from the keyboard and VoiceOver as described above, and the app picker from the keyboard (checked with real keys on an Android emulator) and with a scripted VoiceOver (2026-10-07, same emulator, one app entry shown: VoiceOver started on the filter box and reached "Show system apps", the app entry and Cancel, and VoiceOver's activate command on the entry chose it; the VO+Space keys were not pressed; it read the explanatory line after the entries and an empty group once, and moving back onto the entry gave a general hint instead of the app's id; no person has tried it). Escape and the arrow keys work in the filter boxes. Still open: focus is not returned to the button that opened a sheet (Tab once reaches it), and with keyboard navigation off Tab cannot reach buttons at all, as in other Mac apps. The [accessibility statement](accessibility-statement.md) lists each with its checks. The
+  half of New scan in a short window (the page scrolls to show the control that takes focus); in an open pop-up menu Return chooses the highlighted item (nothing was changed; the earlier report was most likely the first Down arrow re-highlighting the current item; checked with real key presses on **What to scan**; the other menus are drawn the same way but were not checked separately); and the Search sheet and **Laws that matter to me** work from the keyboard and VoiceOver as described above, and the app picker from the keyboard (checked with real keys on an Android emulator) and with a scripted VoiceOver (2026-10-07, same emulator, one app entry shown: VoiceOver started on the filter box and reached "Show system apps", the app entry and Cancel, and VoiceOver's activate command on the entry chose it; the VO+Space keys were not pressed; it read the explanatory line after the entries and an empty group once, and moving back onto the entry gave a general hint instead of the app's id; no person has tried it). Escape and the arrow keys work in the filter boxes of the Search sheet, Laws that matter to me and the app picker. Still open: focus is not returned to the button that opened a sheet (Tab once reaches it), and with keyboard navigation off Tab cannot reach buttons at all, as in other Mac apps. The [accessibility statement](accessibility-statement.md) lists each with its checks. The
   Dock's own Quit, logging out and shutting down can't be asked about first — that's a Mac Catalyst
   limitation, not a choice Swipewalk makes — but for those, Swipewalk still requests a cancellation as
   the app closes, using the same restore code Cancel uses, though the app may close before that restore
@@ -1993,7 +1993,7 @@ that fits where the findings are going:
   small enough to paste as-is. Each ticket has: a title naming the element and the problem; whether
   it's a WCAG issue, needs review, or a platform advisory (never a pass/fail verdict); the WCAG
   criterion, level and W3C link, and a "Laws and standards" line naming the first few the finding is relevant to and how many more
-  (for example "Relevant to ADA Title II, Section 508, EN 301 549 and 37 more", with a link to
+  (for example "Relevant to ADA Title II, Section 508, EN 301 549 and 38 more", with a link to
   docs/standards.md), or with `--standard`
   "Relevant to: <standard>" or "Not within the WCAG basis of <standard>" — always stated as relevance,
   never as a claim that the app complies; where it was found (app id and version, platform, device, screen — the app version is

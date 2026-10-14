@@ -5,6 +5,17 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.6.1
+
+- Fixed: since 0.5, a device named just "iPad" could rewrite another device's model name ("iPad Air (5th generation)") in shared
+  run files and diagnostic logs. Personal names such as "iPhone de Dana" are still replaced.
+- Laws and standards re-checked again (ruleset 2026.09.46): Vermont is now mapped (WCAG 2.1 AA through the federal rule that the State's standard
+  contract provisions require); New Jersey, Alabama and Puerto Rico are listed as websites only; the District of Columbia shows
+  "official text not confirmed yet"; Arkansas is listed as not referencing WCAG 2.x; Ontario links to the e-Laws page; Hawaii's
+  archived copy is back; "checked on" dates were moved for the entries whose text was read again.
+- The Laws and standards page's search box now uses the same filter-box style as the other filter boxes (a magnifier and a clear button).
+  It has not yet been checked with real keys or VoiceOver. See the [accessibility statement](docs/accessibility-statement.md).
+
 ### New in 0.6
 
 - Swipewalk is now described as a scanner for any Android or iOS app, with extra help for .NET MAUI, with what has been tried stated. A new page,
