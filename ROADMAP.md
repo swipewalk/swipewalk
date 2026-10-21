@@ -5,6 +5,15 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.6.2
+
+- Fix advice for a .NET MAUI text field without a name now follows Microsoft's guidance: add a Placeholder (on Android, SemanticProperties.Hint also works) and keep the visible Label, instead of putting SemanticProperties.Description on an Entry or Editor.
+- The AutomationId limitation and the fix advice say it is a test identifier, not an accessible name, and report what one TalkBack study (BuggyApp on an Android emulator) announced for it, instead of saying it is never announced.
+- New in the user guide and README: how Swipewalk relates to Apple's accessibility audit and Google's Accessibility Test Framework, and that it has not been compared with them check by check.
+- Laws and standards re-read again (ruleset 2026.09.47): New Hampshire's policy text and Idaho's standard were read again (New Hampshire's mapping and Idaho's websites-only listing unchanged), Google Play's pre-launch report note now quotes only what Google's page states, and "checked on" dates moved for those entries.
+- Report screenshots in the documentation were re-rendered from a recent build (their header shows 0.6.1).
+- Fixed: an iOS device name that only starts with an Apple model word, such as "iPhone Dana", is no longer kept in saved and shared runs when the model is unknown; it is saved as "iOS device". Names that are a whole Apple model name (such as "iPad" or "iPhone 15 Pro") are kept as before.
+
 ### New in 0.6.1
 
 - Fixed: since 0.5, a device named just "iPad" could rewrite another device's model name ("iPad Air (5th generation)") in shared

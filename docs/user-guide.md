@@ -88,6 +88,7 @@ the full detail on each platform.
 2. [Set up a device](#2-set-up-a-device)
 3. [First scan](#3-first-scan)
    - [Try Swipewalk on the sample app](#try-swipewalk-on-the-sample-app)
+   - [How Swipewalk relates to Apple's and Google's tools](#how-swipewalk-relates-to-apples-and-googles-tools)
 4. [Reading a report](#4-reading-a-report)
 5. [Record mode and the large-text check](#5-record-mode-and-the-large-text-check)
 6. [CI and history](#6-ci-and-history)
@@ -386,6 +387,47 @@ physical phone too — but, like them, it's scan only for now; record and the de
 it yet.
 
 When it finishes, open `report/report.html` in a browser.
+
+### How Swipewalk relates to Apple's and Google's tools
+
+Apple and Google both ship free accessibility tools, and Swipewalk builds on them rather than
+replacing them:
+
+- **iOS: Apple's accessibility audit.** Every iOS scan runs Apple's XCTest accessibility audit
+  (`performAccessibilityAudit`) through a small helper and includes its issues, next to Swipewalk's
+  own checks. With `--screen-reader`, Swipewalk also drives Xcode's Accessibility Inspector to
+  record the label, value and traits of each element the Inspector reaches, after asking for the
+  macOS Accessibility permission it needs and a one-time setup step by you (choosing the device and
+  clicking the first element; see section 4). The Inspector is Apple's tool, and Swipewalk only
+  operates it.
+- **Android: Google's Accessibility Test Framework.** Google's documentation says its
+  Accessibility Scanner app "uses the Accessibility Test Framework". On each Android scan,
+  Swipewalk installs a small helper on the device that runs that framework (version 4.1.1) against
+  your app and adds its findings; if the helper can't install or run, the scan continues and the
+  report says Google's checks didn't run and why. Google doesn't say which version or checks the
+  Scanner app uses, so results may differ. Swipewalk does not run the Accessibility Scanner app
+  itself.
+
+What Swipewalk adds on top:
+
+- findings are mapped to WCAG 2.2 success criteria (or marked as platform advisories), with who is
+  affected and the laws and standards they are relevant to where Swipewalk knows them;
+- optional rescans (`--large-text`, `--appearance both`, `--orientation both`) at a larger text size, in the other dark/light appearance and in the other orientation
+  (see [the large-text check](#5-record-mode-and-the-large-text-check) and the scan options above);
+- on Android, the text TalkBack produced for each element it focused (`--screen-reader`), next to
+  the predicted announcement;
+- fix examples for .NET MAUI and other frameworks, and the likely source line for a finding when
+  you give it your project folder (see [section 12](#12-finding-the-likely-source-line-net-maui-native-android-native-ios-react-native-flutter));
+- scans are saved in History on your computer (unless you pass `--no-history`), so you can come back to them later, compare two
+  runs, export findings (see [section 10](#10-exporting-findings)), share a run
+  (see [section 13](#13-sharing-a-run)) and mark findings as already looked at
+  (see [section 11](#11-triage-mark-a-finding-as-already-looked-at)).
+
+Swipewalk has not been compared with Apple's or Google's tools
+check by check, so don't assume it finds everything they find, or the other way round. Use their
+tools too (Xcode's Accessibility Inspector, including its Audit, and Google's Accessibility Scanner), and
+remember that automated checks find only part of what WCAG asks for. None of them replaces testing
+with a screen reader (VoiceOver or TalkBack) and, ideally, with disabled people.
 
 ## 4. Reading a report
 

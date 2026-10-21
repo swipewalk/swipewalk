@@ -485,7 +485,7 @@ Swipewalk finds some accessibility issues automatically. This page lists what it
 
 - **What:** A MAUI Label (or other view) with a TapGestureRecognizer is not marked clickable in Android's accessibility tree, so the scanner doesn't see it as a control.
 - **Impact:** Target size and naming checks are skipped for such elements. Their button role is not exposed (4.1.2 Name, Role, Value), and TalkBack users may not be able to activate them.
-- **Check manually:** With TalkBack on, double-tap every tappable text or image and check it works. Prefer Button or ImageButton; SemanticProperties.Description adds a name but not a button role or activation.
+- **Check manually:** With TalkBack on, double-tap every tappable text or image and check it works. Prefer Button or ImageButton; a name alone doesn't add a button role or activation.
 
 ## iOS · Other / native
 
@@ -499,13 +499,13 @@ Swipewalk finds some accessibility issues automatically. This page lists what it
 
 ## All platforms · .NET MAUI
 
-### MAUI AutomationId is never announced
+### MAUI AutomationId is not an accessible name
 
 `maui-automationid-not-announced` · Framework note · ScreenReader
 
-- **What:** AutomationId becomes the Android resource id and the iOS accessibilityIdentifier. Screen readers do not read it, so a control with only an AutomationId has no name.
-- **Impact:** Controls that rely on AutomationId are reported as missing a name.
-- **Check manually:** Use SemanticProperties.Description for the spoken name and keep AutomationId for tests.
+- **What:** AutomationId becomes the Android resource id and the iOS accessibilityIdentifier. It is meant for tests, not an accessible name, so a control with only an AutomationId has no name in the accessibility tree. In one TalkBack study (BuggyApp on an Android emulator, five system languages), a button with only an AutomationId was announced as its AutomationId ("btnCancelPayment"); where TalkBack took that text from was not determined.
+- **Impact:** Controls that rely on AutomationId are reported as missing a name. Where a screen reader falls back to the raw identifier, people hear developer text instead of a name.
+- **Check manually:** Give the control a real accessible name (a Button's Text; SemanticProperties.Description on an image button; Placeholder on an Entry (on Android, SemanticProperties.Hint on an Entry also works)) and keep AutomationId for tests. Microsoft advises against SemanticProperties.Description on a Label, on an Entry or Editor on Android, and, on iOS, on any control with children.
 
 ### How .NET MAUI apps apply text-size changes
 
