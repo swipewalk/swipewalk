@@ -41,7 +41,7 @@ device or system version.
 
 | Framework | Tested how | Result in short |
 |---|---|---|
-| .NET MAUI | BuggyApp (planted bugs), four Microsoft MAUI samples | 10 of 11 planted bugs reported on Android (one missed) and 10 of 11 on iOS (the other one is not a problem there); see below |
+| .NET MAUI | BuggyApp (planted bugs), four Microsoft MAUI samples | 11 of 12 planted bugs reported on Android (one missed) and 10 of 12 on iOS (two are not problems there); see below |
 | Native Android: Views | NativeAndroid sample, emulator and Pixel 4a | All 8 planted bug classes found; see the table below |
 | Native Android: Jetpack Compose | NativeAndroid sample, emulator and Pixel 4a | Three bug classes not found and one not reproducible as planted (all in the table below) |
 | Native iOS: UIKit | NativeiOS sample, Simulator and iPhone | Most bug classes found; the unlabeled icon button was not reproduced |
@@ -55,11 +55,11 @@ Counts come from [case study section 1](case-study.md#1-buggyapp-a-sample-net-ma
 [section 5](case-study.md#5-native-samples-the-same-bugs-four-ui-toolkits-no-net-maui); the case study is
 recomputed before each release.
 
-### BuggyApp (.NET MAUI), 11 planted bugs
+### BuggyApp (.NET MAUI), 12 planted bugs
 
-- Android: 10 of 11 reported. **Missed: B10**, a tiny "Terms" tap link, because MAUI doesn't mark tap-gesture
+- Android: 11 of 12 reported. **Missed: B10**, a tiny "Terms" tap link, because MAUI doesn't mark tap-gesture
   labels as clickable, so Android doesn't expose it as a target.
-- iOS: 10 of 11 reported; B5 (a 20x20 icon) is not a problem there because MAUI enlarges the touch area to 44 pt.
+- iOS: 10 of 12 reported; B5 (a 20x20 icon) is not a problem there because MAUI enlarges the touch area to 44 pt, and B14 (a description on an entry) is not flagged on iOS, where the same property is the field's accessibility label.
 - B11 (fixed-height text that clips when text is enlarged) is found only by the large-text rescan.
 - Found without being planted: a low-contrast page title from the default MAUI template styles (both
   platforms), and, on Android, no pane title exposed to screen readers (for review).

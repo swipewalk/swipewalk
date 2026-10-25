@@ -18,8 +18,8 @@ and manual testing with assistive technology is still required.
 ## 1. BuggyApp: a sample .NET MAUI app with planted bugs
 
 `BuggyApp` is a one-screen "Pay a parking ticket" app for the
-fictional City of Exampleville, written the way many real MAUI apps are. It has 11 planted
-accessibility bugs (B1–B11) and some correctly built controls for comparison. The answer key lists
+fictional City of Exampleville, written the way many real MAUI apps are. It has 12 planted
+accessibility bugs (B1–B11 and B14) and some correctly built controls for comparison. The answer key lists
 them, and an automated test fails if a scan of the saved Android and iOS captures finds anything more or less
 than the key lists. The only saved large-text capture is the Android one, so the iOS large-text expectations
 in the answer key are written down for reference but not yet enforced by a test. The [README](../README.md)'s
@@ -42,13 +42,13 @@ described next.
 
 Counts come from recomputing saved captures against the ruleset current at the time, so a later
 ruleset may find a slightly different count; the docs sweep before each release recomputes them. The iOS
-column was last recomputed for the 0.6.0 release against ruleset 2026.09.44 (the same counts as for 0.5.0), by re-scanning the saved iOS
+column was last recomputed for the 0.6.0 release against ruleset 2026.09.44 (the same counts as for 0.5.0) and again against ruleset 2026.09.48 with the same counts, by re-scanning the saved iOS
 capture with `scan --from`: it has no AX3 rescan, so it gives 6, 4 and 2, and the fifth needs-review item
 in the table needs the rescan, as noted above.
 
 The Android column and the screenshot below are from a scan, on 2026-10-02 against ruleset 2026.09.43, of
 the Release build that is attached to each release as the sample app download, run on a 1080×2424
-Android 16 emulator at normal size and at 200% text: 6, 9 and 4, with the same coverage line as before. The saved capture was re-scanned for the 0.6.0 release against ruleset 2026.09.44 with `scan --from` and gave the same 6, 9 and 4 and the same coverage line. One
+Android 16 emulator at normal size and at 200% text: 6, 9 and 4, with the same coverage line as before. The saved capture was re-scanned for the 0.6.0 release against ruleset 2026.09.44 with `scan --from` and gave the same 6, 9 and 4 and the same coverage line. It was re-scanned again against ruleset 2026.09.48, which adds the editable-content-description rule, and gave the same 6, 9 and 4 and the same coverage line: Google's `EditableContentDescCheck` item for the "Ticket number" field is now merged into the new item, so the count of items for review does not change. One
 of the 9 items for review is a content-lost-at-large-text item (WCAG 1.4.4) naming "Help center", the last
 button on the screen. The button was added to the app after the first saved Android capture was taken; that
 capture, taken before the button existed, gives 6, 8 and 4. At 200% the button is missing from the
@@ -68,8 +68,10 @@ platform. Android's coverage line currently reads "WCAG 2.2 A/AA: 13 criteria pa
 automation, 36 need a manual check, 4 usually out of scope, 2 not tested in this run"; the iOS report
 reads "10 criteria partly checked by automation, 39 need a manual check, 4 usually out of scope, 2
 not tested in this run" (recomputed from the same saved captures against ruleset 2026.09.44; on both
-platforms the "not tested" pair is 1.3.4 Orientation and 2.2.2 Pause, Stop, Hide, since this scan
-didn't use `--orientation both` or `--auto-update-content` (both added later) -- not a platform gap).
+platforms the "not tested" ones are 1.3.4 Orientation and 2.2.2 Pause, Stop, Hide, since this scan
+didn't use `--orientation both` or `--auto-update-content` (both added later) -- not a platform gap. On
+Android, 2.1.1 Keyboard and 2.1.2 No Keyboard Trap read "need a manual check", since the optional keyboard
+walk (`--keyboard`, Android only) wasn't requested; that wording applies to the current ruleset).
 
 For four criteria, every automated check Swipewalk has is Android only (Google's ATF, or for 2.4.2 the
 page-titled check; both need the Android instrumentation harness): 1.3.2 Meaningful Sequence, 2.4.2
@@ -114,8 +116,9 @@ offscreen-unreachable finds nothing.
 | B9 36-tall "Save for later" button | Platform advisory | Platform advisory |
 | B10 Tiny "Terms" tap link | **Missed**: MAUI doesn't mark tap-gesture labels as clickable, so Android doesn't expose it as a target | Platform advisory (not reported under 2.5.8: the spacing exception applies) |
 | B11 Fixed-height text that clips when text is enlarged | Needs review (1.4.4), found in the 200% text-size rescan | Needs review (1.4.4), found in the AX3 text-size rescan |
+| B14 Ticket number entry with a description set (`SemanticProperties.Description`) | Needs review (4.1.2): an editable field with a content description, which Android's guidance and Microsoft's .NET MAUI documentation advise against; Google's EditableContentDescCheck flags the same field and is merged into this item | Not reported: on iOS the same property becomes the field's accessibility label, which is the normal way to name a text field |
 
-On Android, 10 of the 11 planted bugs were reported; on iOS, 10 of 11 (B5 is not a problem there).
+On Android, 11 of the 12 planted bugs were reported; on iOS, 10 of 12 (B5 and B14 are not problems there).
 B10 is the only miss. B11 is found only by the large-text rescan (record mode or `scan --large-text`).
 
 B11 also shows how much the app's framework version changes what a scan can see. On iOS, with the MAUI
@@ -124,6 +127,17 @@ the app was running, so one screen-wide finding covered everything and B11 could
 there. On 10.0.110, which includes the fix described in section 2, the rest of the text grows and B11
 stands out as its own finding, naming the text and its measured height. Android already reported it
 that way, because the fix is an iOS one. The bug never changed; the scanner's view of it did.
+
+B14 is reported on Android only:
+
+- **The "Ticket number" field's content description (B14, 4.1.2 Name, Role, Value, needs review).**
+  The entry sets `SemanticProperties.Description`, which .NET MAUI maps to an Android content
+  description. Android's guidance says a content description should not be used as the label of an
+  editable field, and Microsoft's .NET MAUI documentation warns against setting Description on an Entry or
+  Editor on Android because doing so will stop TalkBack actions functioning, and recommends Placeholder or Hint instead. The
+  editable-content-description rule reports the field for review; the scan saw that the description is
+  set and did not test TalkBack's actions on it. Google's Accessibility Test Framework's
+  `EditableContentDescCheck` flags the same field and is shown as part of that item.
 
 ### Found without being planted
 
@@ -141,18 +155,15 @@ that way, because the fix is an iOS one. The bug never changed; the scanner's vi
   accessibility audit, which Swipewalk runs and merges with its own findings.
 - **The ticket-number entry renders 44 dp tall on Android**: a platform advisory (Android's guideline
   is 48 dp; it is above the 24×24 WCAG minimum, so it is not reported as a WCAG issue).
-- **Google's Accessibility Test Framework, wrapped on Android, adds three more items for review on
-  this screen** that Swipewalk's own rules don't cover: `EditableContentDescCheck` on the "Ticket
-  number" field (4.1.2 Name, Role, Value) — the content description that fixed the field's name,
-  described below, can also stop TalkBack announcing what was actually typed into the field, so it
-  needs a check — and `ImageContrastCheck` on the decorative divider and `DuplicateSpeakableTextCheck`
-  on the same field, both described next.
+- **Google's Accessibility Test Framework, wrapped on Android, adds two more items for review on
+  this screen** that Swipewalk's own rules don't cover: `ImageContrastCheck` on the decorative divider
+  and `DuplicateSpeakableTextCheck` on the "Ticket number" field, both described next.
 - **"Help center" may be cut off at 200% text** (WCAG 1.4.4, needs review; seen on Android: the iOS runs
   either predate the button or had no large-text rescan): the large-text-lost-content rule. At 200%,
   "Help center" is missing from the accessibility tree on the 1080×2424 emulator and nothing on the screen
   reports itself as scrollable; the scan reports that a control present at normal size is missing at the
   larger size and asks a person to check whether it can still be reached. Whether it appears depends on the
-  screen height, and it is not one of the 11 planted bugs.
+  screen height, and it is not one of the 12 planted bugs.
 
 ### False positives, past and present
 
@@ -557,7 +568,8 @@ those findings rather than listed twice. The other 8 were new:
   own text label, so whether this counts as a 1.4.11 Non-text Contrast (AA) issue is a judgement
   call; Swipewalk lists these for review rather than as WCAG issues.
 - **EditableContentDescCheck** flagged BuggyApp's "Ticket number" field (an editable field exposing a
-  content description) — which Swipewalk's own rules did not report.
+  content description) — which Swipewalk's own rules did not report at the time. The editable-content-description
+  rule (ruleset 2026.09.48) now reports the same field, and ATF's result is merged into it.
 - **DuplicateSpeakableTextCheck** flagged one element; on inspection this looks like noise rather
   than a real issue.
 - ATF also flagged a decorative divider, the same kind of false positive described under "Decorative

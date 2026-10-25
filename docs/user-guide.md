@@ -55,6 +55,13 @@ phone someone relies on every day. What happens:
   Control Center's rotation lock state; a test on iOS 27.0 found the interface still rotated with
   the lock on, but that isn't confirmed on every iOS version — if a screen looks restricted, check
   with the lock off before concluding it's a real restriction.
+- **`scan --small-screen`** (Android only) temporarily shrinks the device's display to a small phone,
+  360 × 640 dp (`adb shell wm size 720x1280` and `wm density 320`), captures the screen again, and puts
+  the size and density back exactly as it read them first: an override you had set comes back as that
+  override, otherwise `wm size reset` and `wm density reset` run. On a physical phone the whole display
+  changes size while it runs, so use a test device. The same interrupted-run recovery applies: if
+  Swipewalk is killed, the next scan or `swipewalk doctor` restores the display (or run
+  `adb shell wm size reset` and `adb shell wm density reset` yourself).
 - **On Android, `--screen-reader` (TalkBack capture; off by default on the command line, on by
   default in the desktop app's "Listen with TalkBack" option)** turns TalkBack on and
   temporarily changes the phone's accessibility settings (which service is enabled, touch
@@ -78,6 +85,17 @@ phone someone relies on every day. What happens:
   both`/`--orientation both` it works on a physical phone too; use `--auto-update-interval
   <seconds>` to change how long it waits before the first extra capture (default 3s, on top of
   however long the capture itself takes — later gaps target about 1.6x the one before).
+
+- **`scan --keyboard` (Android only)** presses Tab through the screen over adb, as a connected
+  keyboard would, and reads which control holds keyboard focus after each press. It changes no
+  device setting, so it works on a physical phone too. It sends the Tab key, and after a complete walk Shift+Tab up to twice (Android 12 or newer) to check the reverse direction. It
+  never sends Enter, Space, an arrow key or a character, so it never presses or activates a control the way Enter or Space would. It does
+  two things only to undo what the walk itself caused. In a multi-line Jetpack Compose text field, Tab
+  types a tab character instead of moving focus; Swipewalk then presses Delete once for each character
+  it typed, checks the text is back as it was (and discards the walk if it is not), and flags the field
+  for review as a possible place Tab cannot leave. If a Tab press brings up the on-screen keyboard, it is
+  closed again with Back, and only when Swipewalk's own check shows the keyboard was not open before.
+  If the screen is not the same afterwards, the whole walk is discarded and the report says why.
 
 See [section 2](#2-set-up-a-device) and [section 5](#5-record-mode-and-the-large-text-check) for
 the full detail on each platform.
@@ -354,6 +372,38 @@ Center's rotation lock state; a test on iOS 27.0 found the interface still rotat
 but that isn't confirmed on every iOS version, so if a screen doesn't visibly rotate, check with
 the lock off before concluding it's restricted. Off by default.
 
+With `--orientation both`, Swipewalk also rotates the device back and captures once more in the
+original orientation, to check the app is still on the same screen. If it isn't (typically it went
+back to its first screen), the screen gets an "orientation-navigation" finding: a platform advisory on
+Android and iOS, never a WCAG failure, because no WCAG criterion asks an app to keep its
+place when the device is rotated. The comparison matches the screen's title and element names, so it
+is a heuristic; the extra capture adds a few seconds on Android and a harness run on iOS.
+
+Pass `--large-text-beyond` (together with `--large-text`, Android only) to also capture the screen at a
+text size above the 200% WCAG 1.4.4 asks for — Android font scale 2.25 (225%) by default, or give a scale from
+2.1 to 3.0 (`--large-text-beyond 2.5`). What shows up only at that size (text newly overlapping other
+text, or content gone with nothing to scroll it into view) is reported as a platform advisory that states
+the size tested and that WCAG asks for 200%; it is never reported as a WCAG issue. The text size is put
+back afterwards, including on an error or Ctrl-C. The check runs only when the text changes size while the
+app keeps running; if the app needed a restart to show 200%, the check is skipped and the report says why.
+Above 200%, Android scales text in proportion to the setting again, so large text can jump in size
+compared with 200%; Android's own Settings stop at 200% from Android 14. The desktop app has it under More checks on New scan ("Also check the text size beyond
+200%"); in `swipewalk.json` it is `largeTextBeyond`. Off by default.
+
+Pass `--small-screen` (Android only) to also capture the screen on a smaller phone: Swipewalk shrinks the
+display to 360 × 640 dp, captures the screen at normal text size and — when the large-text check worked on
+the normal screen — at the large-text size too, then puts the display back exactly as it was. The report
+lists controls or text that are present on the normal screen but missing from the small screen's
+accessibility tree with nothing on that screen scrollable, and text or controls that overlap there but not
+on the normal screen, as "Needs review" findings: WCAG 1.4.10 Reflow for what happens at normal text size,
+WCAG 1.4.4 Resize Text for what is lost only when large text and the small screen are combined (WCAG 1.4.4 sets no screen size, so this one matters if your app is meant to work on phones that small). Every message
+names the screen size tested; a result says nothing about other phone sizes, densities or shapes, so it
+doesn't replace trying the smallest phone you support. The check is skipped, with the reason in the report,
+on iOS (there is no safe display override on a physical iPhone, and Swipewalk never creates or erases
+Simulator devices: scan on a smaller Simulator device or iPhone instead), on a screen that is already that
+small, when the app is no longer in front after the display changes size, and when the app shows a different screen after the display changes size. For the large-text capture on the small screen it is skipped when the text didn't grow and a restart wasn't agreed to. Scan only; a recording
+doesn't offer it yet. Off by default.
+
 Pass `--auto-update-content` to take a few further captures of the screen, spaced unevenly with no
 input (each gap deliberately longer than the last — see below), and report ANY gap between captures
 where content changed on its own — WCAG 2.2.2 Pause, Stop, Hide. A single observed change is
@@ -386,6 +436,44 @@ Unlike `--appearance both`/`--orientation both`, it never changes the device, so
 physical phone too — but, like them, it's scan only for now; record and the desktop app don't offer
 it yet.
 
+Pass `--keyboard` (Android only) to press Tab through the screen over adb, as a connected keyboard
+would, and record which control holds keyboard focus after each press. It reports, always for
+review and never as a confirmed failure:
+
+- **Controls Tab never reached** (WCAG 2.1.1 Keyboard) — a control with something to press
+  (clickable, long-clickable, checkable or a slider; enabled, on screen, not inside a WebView) that
+  Tab went past while it went once round the screen. Only reported when the walk is complete, that
+  is, when focus came back to the first control it had stopped on; otherwise the list of stops is
+  not the whole Tab cycle and nothing is said about what it missed.
+- **A focus trap** (2.1.2 No Keyboard Trap) — focus stayed on one control for several Tab presses
+  after it had been moving, or came back to a control other than the first one it had stopped on,
+  so Tab keeps going round a smaller group. An open dialog or sheet that keeps Tab inside it until it
+  is closed looks the same from here and is a normal pattern, as long as it can be closed with the keyboard; check it.
+- **A Tab order that jumps back up the screen** (2.4.3 Focus Order) — focus moved up the screen,
+  by more than the height of the control it left, at least twice (not counting the wrap from the
+  last control back to the first). Android's default Tab order follows the order controls appear in
+  the layout, which usually but not always runs down the screen, so repeated jumps can come from side-by-side groups of
+  controls or from an order set by hand; whether the order still preserves meaning is for a person to judge. One jump is ordinary and never reported.
+
+The report lists the Tab sequence in a "Keyboard (Tab order)" tab of Full audit detail, with what was
+pressed, how the walk ended and what Shift+Tab did, and the three WCAG coverage rows (2.1.1, 2.1.2
+and the Tab part of 2.4.3) read "Partly checked by automation" when the walk gave a usable result for them (2.1.1 and the Tab part of 2.4.3 only when Tab went round the whole screen; 2.1.2 also when focus got stuck or went round a smaller group). When `--keyboard` wasn't requested (or on iOS),
+2.1.1 and 2.1.2 read "Needs a manual check"; when it was requested but the walk was discarded, or ended without a usable result for a criterion, that criterion reads
+"Not tested in this run" with the reason. 2.4.3 may still be partly checked by Google's Accessibility Test Framework.
+
+What it does **not** do: it uses Tab to move focus, so a control it lists as not reached may be
+reachable another way (for example another key, a keyboard navigation cluster, or another control that
+does the same thing), and it cannot tell that a control it reached can be operated with Enter or Space,
+that focus is visible (2.4.7) or that focus is not entirely hidden (2.4.11 Focus Not Obscured (Minimum)). It stops after 60 Tab presses, so a very long or
+growing list may not finish, and then it reports no unreached control or order finding. Web content
+inside a WebView is left to the web audit. Hardware-keyboard focus rules differ between Android
+versions, so the report names the Android version the sequence belongs to. It costs about a second
+per control. It is scan only for now (record and a `swipewalk run` in record mode refuse it), and on
+iOS it is skipped with a reason: keyboard focus on iOS moves only with Full Keyboard Access, and
+Swipewalk has no safe way to turn it on or send keys to the phone. See
+[docs/limitations.md](limitations.md) "keyboard-walk-heuristic". In a `swipewalk.json` run, set
+`"keyboard": true`.
+
 When it finishes, open `report/report.html` in a browser.
 
 ### How Swipewalk relates to Apple's and Google's tools
@@ -412,7 +500,7 @@ What Swipewalk adds on top:
 
 - findings are mapped to WCAG 2.2 success criteria (or marked as platform advisories), with who is
   affected and the laws and standards they are relevant to where Swipewalk knows them;
-- optional rescans (`--large-text`, `--appearance both`, `--orientation both`) at a larger text size, in the other dark/light appearance and in the other orientation
+- optional rescans (`--large-text`, `--appearance both`, `--orientation both`, and on Android `--small-screen`) at a larger text size, in the other dark/light appearance, in the other orientation and on a smaller screen
   (see [the large-text check](#5-record-mode-and-the-large-text-check) and the scan options above);
 - on Android, the text TalkBack produced for each element it focused (`--screen-reader`), next to
   the predicted announcement;
@@ -810,6 +898,18 @@ Also in "Full audit detail" only:
   lacks usable evidence (no screenshot and no usable bounds), the check is reported as not done
   rather than guessed. Large-text and captured-screen-reader findings are never
   labeled by orientation either, since the second capture doesn't repeat those checks.
+- **The smaller screen** (with `--small-screen`, Android) — the report adds a figure with the screenshot from the
+  360 × 640 dp display (and, when it was captured, the one with large text), and adds
+  "Needs review" findings for controls or text lost or newly overlapping there: WCAG 1.4.10 Reflow at
+  normal text size, WCAG 1.4.4 Resize Text when it appears only with large text on the small screen. Each
+  names the screen size tested. When the check could not be done (iOS, a screen already that small, the
+  app was no longer in front or showed a different screen after the display changed), the screen says why instead.
+- **Keyboard (Tab) findings** (with `--keyboard`, Android only) — each control Tab went past gets
+  its own "Needs review" finding citing WCAG 2.1.1 Keyboard; a focus trap gets one citing 2.1.2 No
+  Keyboard Trap on the control where focus stopped; a Tab order that jumps back up the screen gets one
+  for the screen citing 2.4.3 Focus Order. The wording states only what was observed (Tab was
+  pressed N times and focus went here), says focus was moved with Tab only, and asks for a check with
+  a hardware keyboard. The full sequence is in the "Keyboard (Tab order)" tab of Full audit detail.
 - **Content that changed on its own** (with `--auto-update-content`) — when ANY gap between
   captures showed a change, the report adds one "Needs review" finding for the screen, citing WCAG
   2.2.2 Pause, Stop, Hide, naming what changed (a few examples, not everything that did), which
@@ -840,8 +940,8 @@ Also in "Full audit detail" only:
   Accessibility Inspector usually still lists an element positioned past the
   screen edge, and a screen reader may still reach it by swiping, so a screen-reader-only check can
   miss that a sighted or touch user cannot reach it at all. Reported for review against WCAG 1.4.10
-  Reflow when the screen is at least as large as 1.4.10's own 320×256 reference size (every phone
-  screen is), or as a platform advisory on a smaller screen; either way, never as a confirmed
+  Reflow when the screen is at least as large as 1.4.10's own reference sizes (320 CSS px wide for vertically scrolling content, 256 tall for horizontally scrolling content; every iPhone
+  screen is at least that large), or as a platform advisory on a smaller screen; either way, never as a confirmed
   failure — it can't rule out the element being reachable another way. Not yet run on Android:
   Android's own accessibility dump clips a node's reported position to the visible screen, so there
   is nothing off-screen left to measure there (see the "Off-screen content is not detected on
@@ -929,7 +1029,10 @@ this run did about that criterion, not whether the app meets it:
 - **Not tested in this run** — a check exists for this criterion and could have run on the
   platform(s) this run scanned, but didn't run this time (for example, `--orientation both` wasn't
   used, so the orientation rescan for 1.3.4 Orientation couldn't run; or an Android run's
-  instrumentation harness didn't produce a result, so the page-titled check couldn't run). Shown
+  instrumentation harness didn't produce a result, so the page-titled check couldn't run). The
+  exceptions are optional add-ons that are a criterion's only check on the platform: when `--keyboard`
+  wasn't requested, 2.1.1 and 2.1.2 read "Needs a manual check" instead, and so does 1.4.10 on Android
+  when `--small-screen` wasn't requested. Shown
   first, since it's the gap most worth fixing by rescanning.
 - **Partly checked by automation** — at least one rule ran on at least one scanned screen and
   reports the issues and items needing review it found (or "0 automated findings" if it found
@@ -937,9 +1040,11 @@ this run did about that criterion, not whether the app meets it:
   criterion is met).
 - **Needs a manual check** — no Swipewalk rule checks this criterion on the platform(s) this
   run scanned, so the table gives a concrete step for checking it with TalkBack or VoiceOver. This
-  covers criteria no rule maps to at all, and criteria whose only automated check runs on a
+  covers criteria no rule maps to at all, criteria whose only automated check is an optional add-on this
+  run didn't ask for (the keyboard walk, `--keyboard`, for 2.1.1 and 2.1.2; the `--small-screen` rescan
+  for 1.4.10 on Android), and criteria whose only automated check runs on a
   different platform (for example, on an iOS run, 2.4.2 Page Titled, whose only check needs the
-  Android instrumentation harness; on an Android run, 1.4.10 Reflow, whose only check runs on iOS).
+  Android instrumentation harness).
   The status never lists such a check as a gap in this run; the how-to text may still say what it
   does on the other platform.
 - **Usually out of scope for a single app** — WCAG2ICT applies this criterion to non-web software
@@ -1000,6 +1105,19 @@ swipewalk record --platform ios --bundle-id com.example.app --device <udid> --vo
 
 `--expect "Login,Home,Settings"` names the screens you meant to cover; any that weren't scanned are
 listed in the report as missing, so you know what to test by hand.
+
+**Test with long, real-world text by hand.** Swipewalk can't change an app's data, so it can't try your
+screens with a long name, a note typed into a name ("Helen (bellringer)"), or a long translation, and
+text that fits in a test account's short values may not fit a real person's. Put long values in the
+app yourself, then check that nothing is cut off, overlaps or pushes a control out of reach, with the
+text size set to 200% and on the smallest phone you support, and scan that screen again.
+
+**Check the on-screen keyboard by hand.** Swipewalk does not type into apps, so it cannot see the keyboard
+that opens or what it covers. On Android it compares the wording of text fields that clearly ask for a phone number, email address, web
+address or number such as a PIN (for example "Phone number") with the input type the field declares (the
+keyboard-type check, a platform advisory); other fields, and every field on iOS, are not checked. Open each field yourself and check that the keyboard fits what it asks for
+(digits for a number, an email keyboard for an email address), and that error messages and hints stay visible
+when the on-screen keyboard is open.
 
 On a physical iPhone, iOS shows its own "Automation Running" banner while Swipewalk controls the
 app. By default (manual capture) Swipewalk starts automation only for each step, such as a capture
@@ -1313,6 +1431,10 @@ For a repeatable, scriptable run, describe it once in a `swipewalk.json` file an
                                     // (the CLI's --appearance both; here it's a plain boolean)
   "orientation": false,            // scan only for now; true = also check the other orientation
                                     // (the CLI's --orientation both; here it's a plain boolean)
+  "smallScreen": false,            // scan only for now, Android only; true = also check on a 360 x 640 dp
+                                    // display (the CLI's --small-screen)
+  "keyboard": false,               // scan only for now, Android only; true = also press Tab through the screen
+                                    // and report controls keyboard focus never reached (the CLI's --keyboard)
   "screenReaderCapture": false,    // Android only for now; true = also drive TalkBack and capture what it
                                     // says (the CLI's --screen-reader) -- see section 4
   "screenReaderConfirm": false,    // required alongside screenReaderCapture on a physical Android phone
@@ -1469,16 +1591,18 @@ The pages:
   **More checks** (a button that opens a collapsed section, closed until you ask for it) holds the
   extra checks and options the command line has, each off by default like the command line:
   "Also check in the other dark or light appearance" (`--appearance both`), "Also check the other
-  orientation (portrait or landscape)" (`--orientation both`), "Also check for content that changes by
+  orientation (portrait or landscape)" (`--orientation both`), "Also check on a smaller screen (360 x 640 dp)"
+  (`--small-screen`; Android only), "Also check for content that changes by
   itself" (`--auto-update-content`, with "Seconds before the first extra capture" for
-  `--auto-update-interval`, default 3; a number greater than 0) and "Also check web content inside the
-  app" (`--web-audit`; Android only, needs a debug build of the app). These four go through the same scan code as the command-line options. The first
-  three are for a single-screen scan only, so they're hidden while you choose Record (the command line
+  `--auto-update-interval`, default 3; a number greater than 0), "Also check keyboard
+  navigation (Tab)" (`--keyboard`; Android only) and "Also check web content inside the
+  app" (`--web-audit`; Android only, needs a debug build of the app). These checks go through the same scan code as the command-line options. The first
+  five (the smaller-screen and keyboard ones on Android only, and hidden for an iOS Simulator or iPhone) are for a single-screen scan only, so they're hidden while you choose Record (the command line
   refuses them there too); the web content check works in both. "App framework" is a menu: Detect automatically (the default), .NET MAUI, Android Views, Jetpack
   Compose, UIKit, SwiftUI, Flutter, React Native, or web content in an app — the same choices as
   `--framework`, used for fix examples and source matching. While you choose Record, "Screens you plan to
   cover" (comma-separated, for example Login, Home) is the same as `--expect`: the report lists the ones
-  you didn't scan. The optional **Team triage file** described above is in this section too, for both scans and recordings. On a physical phone, the dark/light and orientation checks change the phone's settings and put them back; a line under them says so when you tick one (the scan prints the same notice). The dark/light check is skipped, with the reason in the report, when an iPhone's appearance is set to Automatic. On Android the setting is put back as it was (on, off, sunset to sunrise, bedtime, or a custom schedule with its start and end times (the reading and restoring are checked in unit tests against sample `cmd uimode` output; restoring a schedule has not yet been tried on a phone)); if it or the rotation settings can't be read, the check is skipped with the reason. Use a test device.
+  you didn't scan. The optional **Team triage file** described above is in this section too, for both scans and recordings. On a physical phone, the dark/light, orientation and smaller-screen checks change the phone's settings and put them back; a line under them says so when you tick one (the scan prints the same notice). The dark/light check is skipped, with the reason in the report, when an iPhone's appearance is set to Automatic. On Android the setting is put back as it was (on, off, sunset to sunrise, bedtime, or a custom schedule with its start and end times (the reading and restoring are checked in unit tests against sample `cmd uimode` output; restoring a schedule has not yet been tried on a phone)); if it or the rotation settings can't be read, the check is skipped with the reason. Use a test device.
 
   No device is chosen by default; Start (and Choose app…) stay disabled, with a short
   reason shown, until you pick one. "Scan automatically when the screen changes" only appears once
@@ -1687,7 +1811,7 @@ The pages:
   `swipewalk doctor --package` or `--bundle-id`. A device already being scanned elsewhere skips its Check with the same
   message, rather than risk both racing to change and restore its settings at once. A banner at the
   top (also on New scan) names any device Swipewalk still owes a restore to — an interrupted scan left
-  its text size, orientation, appearance or (Android) screen-reader settings changed and never put it
+  its text size, orientation, appearance, (Android) screen size or (Android) screen-reader settings changed and never put it
   back (a crash, a force-quit, or one of the quit paths above that can't ask first). If that device is
   connected, the banner offers Restore now, which runs the same check as the Devices page's own Check
   button or `swipewalk doctor`; if it isn't, the banner says to connect it, then choose Restore now
@@ -2022,10 +2146,11 @@ swipewalk export <run> --format csv --out findings.csv     # one row per finding
 swipewalk export <run> --format html --out shared.html     # the whole report as one file, for email
 swipewalk export <run> --format pdf --out report.pdf       # a tagged PDF (PDF/UA-1), for printing or sharing
 swipewalk export <run> --format evidence --out evidence.html  # per-criterion evidence: what was checked, found, not tested
+swipewalk export <run> --format transcript --out transcript.txt  # screen-reader transcript as plain text
 ```
 
 `<run>` is a run folder or a `results.json` file (a run folder from `swipewalk history`, or whatever
-you passed to `--out` for a one-off scan). All five formats read the same saved data; pick the one
+you passed to `--out` for a one-off scan). All six formats read the same saved data; pick the one
 that fits where the findings are going:
 
 - **`--format md`** writes one self-contained Markdown file per finding — pasteable directly into a
@@ -2114,14 +2239,28 @@ that fits where the findings are going:
   platform advisory (a result found only beyond a WCAG threshold) is not shown under a criterion.
   The page never says a criterion is met. There is no separate machine-readable file: for a single
   run, `results.json` already holds every finding and the same per-criterion coverage list.
+- **`--format transcript`** writes the run's screen-reader transcript as one plain text file (default
+  `./screen-reader-transcript.txt`; it works for a run with no screen-reader capture too). For every
+  screen it lists, in reading order, what Swipewalk **predicts** a screen reader would announce, built
+  from the accessibility tree, and then, where the run captured it (`--screen-reader` on `scan` or `record`, `--voiceover-captions` on
+  `record`, or a screen reader session), what was **captured**: the exact words TalkBack spoke on
+  Android, the label, value and traits the Accessibility Inspector reported on iOS (which is not
+  speech), or the caption text Swipewalk read from VoiceOver's Caption Panel (which can be missed or
+  misread). "Unlabeled" in a predicted line is Swipewalk's marker for an element with no accessible
+  name, not a word a screen reader says. Each captured line is followed by the prediction for the same
+  element, and a line that does not match is marked `[DIFFERS]` with the kind of difference. A screen with
+  no capture says so. It is text for a person to read, which can show things the automated checks miss:
+  it is not a pass or fail, and manual testing with a screen reader is still required. It names no
+  device, only the platform. `--standard`, `--my-laws`, `--triage`, `--no-screenshots` and `--source` have no effect on it,
+  and `--finding` is refused, as for `html`, `pdf` and `evidence`.
 - **`--finding <id>`** exports only that finding (md/csv only); repeat it for several. Without it,
   every finding in the run is exported. An id you gave that doesn't match anything prints the list of
   ids actually in this run, so you can copy the right one; ids also appear in each exported ticket's
   Provenance section and the CSV's `FindingId` column. `--finding` has no effect with `--format html`,
-  `pdf` or `evidence` (there's no single-finding shape for any of them) and is rejected if given together
+  `pdf`, `evidence` or `transcript` (there's no single-finding shape for any of them) and is rejected if given together
   with one of those formats.
 - **`--no-screenshots`** leaves screenshots out (`md`: no `images/` folder; `html`/`pdf`: nothing
-  embedded; `csv` and `evidence` never include them regardless). There's no privacy warning here — like the
+  embedded; `csv`, `evidence` and `transcript` never include them regardless). There's no privacy warning here — like the
   rest of Swipewalk, a test device is assumed — this option exists only to make a smaller export.
 - **`--standard <id>`** shows one law or standard only, in the html, pdf, csv and md exports: a
   default standard's id (`ada-title-ii`, `section-508`, `en-301-549`, `en-301-549-v4`,
@@ -2200,7 +2339,7 @@ Triage marks from every combined run's own `triage.json` are carried in too (a f
 keeps the same id across runs of an unchanged screen, so the most recent decision for it wins regardless
 of which run recorded it).
 
-All five formats (`md`, `csv`, `html`, `pdf`, `evidence`) work with combined runs — each screen's screenshots
+All six formats (`md`, `csv`, `html`, `pdf`, `evidence`, `transcript`) work with combined runs — each screen's screenshots
 are resolved against its own originating run's folder, so there's no single shared folder problem to
 work around. `--finding` and `--source` aren't available in this mode: a combined export always covers
 the whole report. The desktop app has the same combined export from History's own version-header row
@@ -2208,12 +2347,13 @@ the whole report. The desktop app has the same combined export from History's ow
 
 ### Exporting from the desktop app
 
-The desktop app exports the same five formats using the same code, from the two places that export a
+The desktop app exports the same six formats using the same code, from the two places that export a
 whole run (Report page → Export… and History → Export…); the Findings list's per-finding export stays
 CSV/tickets only, same as before (see below — a chosen subset of findings has no per-criterion shape
 for the evidence report). Choosing **Evidence report, per WCAG criterion (HTML)** writes the same page as
 `--format evidence`, from the same code, on both the single-run export and a version's own export; there
-are no extra fields to fill in. The single-run export saves it through the system's save panel; a
+are no extra fields to fill in. Choosing **Screen-reader transcript (plain text)** writes the same text file as
+`--format transcript`, the same way. The single-run export saves it through the system's save panel; a
 version's own export writes it into a subfolder of the folder you choose. The page says what it is and is
 not: it is not a conformance report, and it covers only the screens in the scans used.
 

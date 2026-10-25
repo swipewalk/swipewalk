@@ -5,6 +5,18 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.6.3
+
+- New check (Android): a text field that has a content description is listed for review (WCAG 4.1.2), with advice that follows Microsoft's guidance for .NET MAUI (use Placeholder, not SemanticProperties.Description). Google's own result for the same case is merged into it.
+- New check (Android and iOS): when rotating the device shows a different screen (typically the first) afterwards, the screen gets a platform advisory that the person's place was lost.
+- New option, `--large-text-beyond` (Android; desktop: More checks on New scan): also capture the screen above 200% text size. Anything found there is a platform advisory that states the size tested and that WCAG 1.4.4 asks for 200%.
+- New option, `--small-screen` (Android; desktop: More checks on New scan): also capture the screen on a smaller phone, with the display put back exactly as it was. Findings are for review and name the screen size tested.
+- New check (Android): a text field whose wording clearly asks for a phone number, email address, web address or number but whose input type does not fit is listed as a platform advisory.
+- New option, `--keyboard` (Android; desktop: More checks on New scan): press Tab through the screen over adb and list, for review, controls keyboard focus never reached (WCAG 2.1.1), a possible focus trap (2.1.2) and a Tab order that keeps jumping back up the screen (2.4.3). Besides Tab and Shift+Tab (the reverse check needs Android 12 or newer) it sends only Back (to close an on-screen keyboard it opened) and Delete (to remove a tab character Tab typed); never Enter, Space, an arrow key or a character.
+- New export, `swipewalk export --format transcript` (desktop: Export): the screen-reader transcript for each screen as one plain text file, with predicted and captured speech labelled apart.
+- User guide: tips to test long real-world text and the on-screen keyboard by hand.
+- Fixed: after rotating a device, the app's launcher could be opened over the screen being scanned, so a rotated capture sometimes showed the wrong screen.
+
 ### New in 0.6.2
 
 - Fix advice for a .NET MAUI text field without a name now follows Microsoft's guidance: add a Placeholder (on Android, SemanticProperties.Hint also works) and keep the visible Label, instead of putting SemanticProperties.Description on an Entry or Editor.

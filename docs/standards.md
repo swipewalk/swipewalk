@@ -16,7 +16,7 @@ Every mapping below links to its official source, so you can check how it applie
 | EN 301 549 v4.1.1 (`en-301-549-v4`) — European Union (and EEA) | [WCAG 2.2 AA](https://www.w3.org/TR/WCAG22/) | ICT products and services, including mobile apps (clause 11: non-web software); WCAG 2.2-aligned edition. | [source](https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf) | [archived copy](https://web.archive.org/web/20260923142717/https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf) | 2026-10-09 |
 | Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018 (`uk-public-sector`) — United Kingdom | [WCAG 2.2 AA](https://www.w3.org/TR/WCAG22/) | Public sector websites and mobile apps developed for use by the public. The regulations name no WCAG version; GOV.UK guidance sets WCAG 2.2 AA. | [source](https://www.gov.uk/guidance/accessibility-requirements-for-public-sector-websites-and-apps) | [archived copy](https://web.archive.org/web/20260920020711/https://www.gov.uk/guidance/accessibility-requirements-for-public-sector-websites-and-apps) | 2026-10-09 |
 
-## Rule sources (ruleset 2026.09.47)
+## Rule sources (ruleset 2026.09.52)
 
 Reports record these versions. Later changes to WCAG, laws or platform guidelines are not reflected until Swipewalk is updated; the HTML report warns when a mapping was last reviewed more than a year earlier.
 
@@ -26,10 +26,12 @@ Reports record these versions. Later changes to WCAG, laws or platform guideline
 | [WCAG2ICT: Guidance on Applying WCAG 2 to Non-Web Information and Communications Technologies](https://www.w3.org/TR/wcag2ict-22/) | W3C Group Note, 11 December 2025 (WCAG 2.2) | 2026-09 |
 | [Apple Human Interface Guidelines: accessibility (default control size 44×44 pt, stated minimum 28×28 pt)](https://developer.apple.com/design/human-interface-guidelines/accessibility) | current web edition | 2026-09 |
 | [Apple Human Interface Guidelines: buttons ("a hit region of at least 44x44 pt")](https://developer.apple.com/design/human-interface-guidelines/buttons) | current web edition | 2026-09 |
+| [Android developer documentation: support keyboard navigation (Tab order follows the layout; test with the Tab and arrow keys)](https://developer.android.com/develop/ui/views/touch-and-input/keyboard-input/navigation) | current web edition | 2026-10 |
 | [Android accessibility guidance (48×48 dp touch targets)](https://support.google.com/accessibility/android/answer/7101858) | current web edition | 2026-09 |
 | [Apple Human Interface Guidelines: typography (support Dynamic Type, including accessibility sizes)](https://developer.apple.com/design/human-interface-guidelines/typography) | current web edition | 2026-09 |
 | [Android developer documentation: activity element configChanges (including fontScale)](https://developer.android.com/guide/topics/manifest/activity-element#config) | current web edition | 2026-09 |
 | [Android developer documentation: handle configuration changes](https://developer.android.com/guide/topics/resources/runtime-changes) | current web edition | 2026-09 |
+| [Android developer documentation: Specify the input method type](https://developer.android.com/develop/ui/views/touch-and-input/keyboard-input/style) | current web edition | 2026-10 |
 | [dotnet/maui PR #34445: iOS fix for font autoscaling not updating in realtime](https://github.com/dotnet/maui/pull/34445) | merged 2026-06-23; released in Microsoft.Maui.Controls 10.0.100 (.NET 10 SR10) | 2026-09 |
 | [ADA Title II (DOJ 2024 rule)](https://www.ada.gov/resources/2024-03-08-web-rule/) | WCAG 2.1 AA | 2026-10-09 |
 | [Section 508 (Revised 508 Standards)](https://www.access-board.gov/ict/) | WCAG 2.0 AA | 2026-10-09 |
@@ -241,6 +243,8 @@ Researched, but not mapped as a standard, each with one short reason. Only "no r
 | 1.4.3 Contrast (Minimum) (AA) | WCAG 2.0 | yes | yes | yes | yes | yes |
 | 1.4.4 Resize Text (AA) | WCAG 2.0 | yes | yes | yes | yes | yes |
 | 1.4.11 Non-text Contrast (AA) | WCAG 2.1 | yes | — | yes | yes | yes |
+| 2.1.1 Keyboard (A) | WCAG 2.0 | yes | yes | yes | yes | yes |
+| 2.1.2 No Keyboard Trap (A) | WCAG 2.0 | yes | yes | yes | yes | yes |
 | 2.4.3 Focus Order (A) | WCAG 2.0 | yes | yes | yes | yes | yes |
 | 2.4.6 Headings and Labels (AA) | WCAG 2.0 | yes | yes | yes | yes | yes |
 | 2.5.3 Label in Name (A) | WCAG 2.1 | yes | — | yes | yes | yes |
