@@ -10,6 +10,25 @@ Swipewalk inspects a **running app** through each platform's accessibility layer
 
 ![An HTML report for the sample app on the iPhone Simulator at normal text size: 6 WCAG issues, 4 items needing review and 2 platform advisories, plus a summary of WCAG 2.2 A/AA coverage, with the screenshot marked up and each finding linked to its WCAG criterion](docs/images/report-ios.png)
 
+
+<details>
+<summary>Watch an 18-second demo: scanning the sample app to one finding and the advice for fixing it (animated, plays once)</summary>
+
+![Animated demo of six pictures, three seconds each, from a scan of the sample app to one finding and its fix advice.](docs/images/demo-scan-to-finding.gif)
+
+The six pictures, in order:
+
+1. The desktop app's New scan page, with an Android emulator chosen and the sample app's package name entered.
+2. The scan running: "Capturing the current screen over adb" and "Capturing what TalkBack says".
+3. The top of the report: "Automated checks found 6 WCAG issues", with 6 WCAG issues, 8 needing review and 4 platform advisories.
+4. One finding: an icon button (a magnifier) with no accessible name, its screenshot, who is affected, and the WCAG criteria it maps to (1.1.1 and 4.1.2).
+5. The "How to fix" advice for that finding.
+6. What TalkBack said for each focusable element next to what Swipewalk predicted. A different control, the X button below Pay, was spoken as "btnCancelPayment" where Swipewalk predicted "Unlabeled, Button"; the report lists it under "Differences from Swipewalk's prediction" for you to check by hand.
+
+A scan of the sample app (made-up, with planted accessibility bugs) on an Android emulator, with TalkBack capture on (`--screen-reader` on the command line; the desktop app's "Listen with TalkBack" option). The first two pictures are the Mac app's window. The last four show the report the scan saved, drawn from its HTML file outside the app, switched to its captured screen-reader tab and with the "How to fix" and "Differences" sections opened for the demo; they are not a recording of the app's own window.
+
+</details>
+
 > **Status:** early development. Android (emulator or phone) and iOS (Simulator or iPhone) can be scanned one screen at a time, or recorded across screens while you use the app. See [known limitations](docs/limitations.md).
 
 **How it was tested:** [How Swipewalk is tested](docs/testing.md) lists the devices, sample apps, frameworks and real apps used, what was found and missed, and what has not been tested.
