@@ -4,19 +4,14 @@
 
 Free accessibility scanner for **any Android or iOS app** (Windows planned), with extra help for **.NET MAUI**.
 
-Swipewalk reads a running app through the operating system's accessibility layer, so it can scan an app whatever it was built with, although what it can see differs between frameworks (see [how it was tested](docs/testing.md#frameworks-covered)). It has been tried on native Android (Views and Jetpack Compose) and native iOS (UIKit and SwiftUI) sample apps and on .NET MAUI apps; an app built with another framework should scan too if the framework exposes its screens to the accessibility layer, but that hasn't been tried. For .NET MAUI there is extra help: on the iOS Simulator a finding can name the app's MAUI version and the MAUI release that fixes a known framework issue, the known MAUI quirks are listed in the limitations, and source-line pointing reads XAML, code-behind and .resx resources. Fix examples also exist for native Android and iOS, React Native, Flutter and hybrid web (Ionic, Capacitor, Cordova), and source-line pointing for native Android and iOS, React Native and Flutter. The fix examples are written from documentation and so far tested only on sample projects; source-line pointing was measured on seven real Android and iOS apps, and for React Native and Flutter only on made-up projects (see [how it was tested](docs/testing.md#source-mapping-on-real-apps) and [known limitations](docs/limitations.md)).
+[![Play the 18-second demo (animated). The still shows the sample app's report from a scan on an Android emulator, on its captured screen-reader tab. It lists what TalkBack said for each focusable or interactive element next to what Swipewalk predicted, and one difference: the X button below Pay was spoken as "btnCancelPayment" where "Unlabeled, Button" was predicted.](docs/images/demo-poster.png)](docs/images/demo-scan-to-finding.gif)
 
-Swipewalk inspects a **running app** through each platform's accessibility layer, applies a [shared set of rules](docs/checks.md), and maps every WCAG finding to **WCAG 2.2** success criteria. Platform-guideline advisories (Apple's default control size of 44×44 pt and stated minimum of 28×28 pt, Android's 48×48 dp touch targets) are reported separately and are not WCAG failures. Output is a machine-readable JSON file plus a human-readable HTML report with the screenshot, a predicted screen-reader transcript and contrast measured from the rendered pixels.
-
-![An HTML report for the sample app on the iPhone Simulator at normal text size: 6 WCAG issues, 4 items needing review and 2 platform advisories, plus a summary of WCAG 2.2 A/AA coverage, with the screenshot marked up and each finding linked to its WCAG criterion](docs/images/report-ios.png)
-
+[▶ Watch the 18-second demo (animated, plays once)](docs/images/demo-scan-to-finding.gif)
 
 <details>
-<summary>Watch an 18-second demo: scanning the sample app to one finding and the advice for fixing it (animated, plays once)</summary>
+<summary>What the demo shows, step by step</summary>
 
-![Animated demo of six pictures, three seconds each, from a scan of the sample app to one finding and its fix advice.](docs/images/demo-scan-to-finding.gif)
-
-The six pictures, in order:
+The demo is six pictures, three seconds each, in order:
 
 1. The desktop app's New scan page, with an Android emulator chosen and the sample app's package name entered.
 2. The scan running: "Capturing the current screen over adb" and "Capturing what TalkBack says".
@@ -28,6 +23,12 @@ The six pictures, in order:
 A scan of the sample app (made-up, with planted accessibility bugs) on an Android emulator, with TalkBack capture on (`--screen-reader` on the command line; the desktop app's "Listen with TalkBack" option). The first two pictures are the Mac app's window. The last four show the report the scan saved, drawn from its HTML file outside the app, switched to its captured screen-reader tab and with the "How to fix" and "Differences" sections opened for the demo; they are not a recording of the app's own window.
 
 </details>
+
+Swipewalk reads a running app through the operating system's accessibility layer, so it can scan an app whatever it was built with, although what it can see differs between frameworks (see [how it was tested](docs/testing.md#frameworks-covered)). It has been tried on native Android (Views and Jetpack Compose) and native iOS (UIKit and SwiftUI) sample apps and on .NET MAUI apps; an app built with another framework should scan too if the framework exposes its screens to the accessibility layer, but that hasn't been tried. For .NET MAUI there is extra help: on the iOS Simulator a finding can name the app's MAUI version and the MAUI release that fixes a known framework issue, the known MAUI quirks are listed in the limitations, and source-line pointing reads XAML, code-behind and .resx resources. Fix examples also exist for native Android and iOS, React Native, Flutter and hybrid web (Ionic, Capacitor, Cordova), and source-line pointing for native Android and iOS, React Native and Flutter. The fix examples are written from documentation and so far tested only on sample projects; source-line pointing was measured on seven real Android and iOS apps, and for React Native and Flutter only on made-up projects (see [how it was tested](docs/testing.md#source-mapping-on-real-apps) and [known limitations](docs/limitations.md)).
+
+Swipewalk inspects a **running app** through each platform's accessibility layer, applies a [shared set of rules](docs/checks.md), and maps every WCAG finding to **WCAG 2.2** success criteria. Platform-guideline advisories (Apple's default control size of 44×44 pt and stated minimum of 28×28 pt, Android's 48×48 dp touch targets) are reported separately and are not WCAG failures. Output is a machine-readable JSON file plus a human-readable HTML report with the screenshot, a predicted screen-reader transcript and contrast measured from the rendered pixels.
+
+![An HTML report for the sample app on the iPhone Simulator at normal text size: 6 WCAG issues, 4 items needing review and 2 platform advisories, plus a summary of WCAG 2.2 A/AA coverage, with the screenshot marked up and each finding linked to its WCAG criterion](docs/images/report-ios.png)
 
 > **Status:** early development. Android (emulator or phone) and iOS (Simulator or iPhone) can be scanned one screen at a time, or recorded across screens while you use the app. See [known limitations](docs/limitations.md).
 
