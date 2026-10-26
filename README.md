@@ -4,29 +4,24 @@
 
 Free accessibility scanner for **any Android or iOS app** (Windows planned), with extra help for **.NET MAUI**.
 
-[![Play the 18-second demo (animated). The still shows the sample app's report from a scan on an Android emulator, on its captured screen-reader tab. It lists what TalkBack said for each focusable or interactive element next to what Swipewalk predicted, and one difference: the X button below Pay was spoken as "btnCancelPayment" where "Unlabeled, Button" was predicted.](docs/images/demo-poster.png)](docs/images/demo-scan-to-finding.gif)
+[![Play the 1-minute demo video on the Swipewalk website (no sound). The still shows the sample app's report from a scan on an Android emulator, on its captured screen-reader tab. It lists what TalkBack said for each focusable or interactive element next to what Swipewalk predicted, and one difference: the X button below Pay was spoken as "btnCancelPayment" where "Unlabeled, Button" was predicted.](docs/images/demo-poster.png)](https://swipewalk.github.io/demo.html)
 
-[▶ Watch the 18-second demo (animated, plays once)](docs/images/demo-scan-to-finding.gif)
+[▶ Watch the 1-minute demo video (no sound)](https://swipewalk.github.io/demo.html)
 
 <details>
 <summary>What the demo shows, step by step</summary>
 
-The demo is six pictures, three seconds each, in order:
+1. The desktop app's New scan page, with an Android emulator chosen and the sample app's package name entered, then the scan started.
+2. The Android emulator during a real scan with `--screen-reader --large-text --orientation both`: Swipewalk reads the screen, moves TalkBack's focus to each control and captures what TalkBack says (silent while this runs; nothing is tapped or typed), sets the text size to 200%, then rotates to landscape and back, capturing each time.
+3. The report: "Automated checks found 6 WCAG issues", 9 items needing review and 4 platform advisories, with the note that manual testing is still required.
+4. One finding: the search button has no accessible name, with its screenshot, who is affected and WCAG 1.1.1 and 4.1.2.
+5. The screen-reader tab: the X button below Pay was spoken as "btnCancelPayment" where Swipewalk predicted "Unlabeled, Button".
+6. An iOS Simulator scan with large text (about 235%) and Apple's accessibility audit, and the iOS report with its "Also reported by Apple accessibility audit" tag.
+7. A closing card: "Automated checks find some issues; manual testing is still required."
 
-1. The desktop app's New scan page, with an Android emulator chosen and the sample app's package name entered.
-2. The scan running: "Capturing the current screen over adb" and "Capturing what TalkBack says".
-3. The top of the report: "Automated checks found 6 WCAG issues", with 6 WCAG issues, 8 needing review and 4 platform advisories.
-4. One finding: an icon button (a magnifier) with no accessible name, its screenshot, who is affected, and the WCAG criteria it maps to (1.1.1 and 4.1.2).
-5. The "How to fix" advice for that finding.
-6. What TalkBack said for each focusable element next to what Swipewalk predicted. A different control, the X button below Pay, was spoken as "btnCancelPayment" where Swipewalk predicted "Unlabeled, Button"; the report lists it under "Differences from Swipewalk's prediction" for you to check by hand.
-
-A scan of the sample app (made-up, with planted accessibility bugs) on an Android emulator, with TalkBack capture on (`--screen-reader` on the command line; the desktop app's "Listen with TalkBack" option). The first two pictures are the Mac app's window. The last four show the report the scan saved, drawn from its HTML file outside the app, switched to its captured screen-reader tab and with the "How to fix" and "Differences" sections opened for the demo; they are not a recording of the app's own window.
+It scans the made-up sample app, on an Android emulator and an iOS Simulator. Sped-up parts are labelled in the video. The report frames show the saved HTML report displayed outside the app, not the app's own window. The website page has a full text description.
 
 </details>
-
-Swipewalk reads a running app through the operating system's accessibility layer, so it can scan an app whatever it was built with, although what it can see differs between frameworks (see [how it was tested](docs/testing.md#frameworks-covered)). It has been tried on native Android (Views and Jetpack Compose) and native iOS (UIKit and SwiftUI) sample apps and on .NET MAUI apps; an app built with another framework should scan too if the framework exposes its screens to the accessibility layer, but that hasn't been tried. For .NET MAUI there is extra help: on the iOS Simulator a finding can name the app's MAUI version and the MAUI release that fixes a known framework issue, the known MAUI quirks are listed in the limitations, and source-line pointing reads XAML, code-behind and .resx resources. Fix examples also exist for native Android and iOS, React Native, Flutter and hybrid web (Ionic, Capacitor, Cordova), and source-line pointing for native Android and iOS, React Native and Flutter. The fix examples are written from documentation and so far tested only on sample projects; source-line pointing was measured on seven real Android and iOS apps, and for React Native and Flutter only on made-up projects (see [how it was tested](docs/testing.md#source-mapping-on-real-apps) and [known limitations](docs/limitations.md)).
-
-Swipewalk inspects a **running app** through each platform's accessibility layer, applies a [shared set of rules](docs/checks.md), and maps every WCAG finding to **WCAG 2.2** success criteria. Platform-guideline advisories (Apple's default control size of 44×44 pt and stated minimum of 28×28 pt, Android's 48×48 dp touch targets) are reported separately and are not WCAG failures. Output is a machine-readable JSON file plus a human-readable HTML report with the screenshot, a predicted screen-reader transcript and contrast measured from the rendered pixels.
 
 ![An HTML report for the sample app on the iPhone Simulator at normal text size: 6 WCAG issues, 4 items needing review and 2 platform advisories, plus a summary of WCAG 2.2 A/AA coverage, with the screenshot marked up and each finding linked to its WCAG criterion](docs/images/report-ios.png)
 

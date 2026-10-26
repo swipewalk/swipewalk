@@ -8,7 +8,7 @@ are welcome: open an issue.
 ### New in 0.6.4
 
 - Exports state the conditions each finding was found under: a "Conditions" section in each ticket and six new columns at the end of the CSV (text size, appearance, orientation, reduced display size, how the evidence was gathered, and the screen's place in the run; anything the run did not record says "not recorded"), plus a one-line "Conditions" summary on each finding in the HTML and PDF report that shows only what differs from the main capture. A rescan shows only whether a finding is still found; manual testing is still required.
-- The README opens with an 18-second animated demo of a scan of the sample app (a still first, linked to the animation).
+- The README opens with a still linked to a 1-minute silent demo video of a scan of the sample app, on the website with a full text description.
 
 ### New in 0.6.3
 
