@@ -2166,18 +2166,30 @@ that fits where the findings are going:
   never as a claim that the app complies; where it was found (app id and version, platform, device, screen — the app version is
   detected from the device at capture time, Android's versionName/versionCode or iOS's
   CFBundleShortVersionString/CFBundleVersion; shown as "not available" for a run where it couldn't be
-  read, an older run recorded before this existed, or an app with no version information); the element
+  read, an older run recorded before this existed, or an app with no version information); a
+  "Conditions" section, so you can set up the same conditions again and check the finding after a fix
+  (a rescan shows only whether it is still found; see below); the element
   (role, label, node path, bounds); the evidence (the finding's own message, plus screenshots unless
   `--no-screenshots` is given); a "Likely same cause as N other findings" line, with their ids, when
   the report's "Likely same root cause" grouping (see above) puts this finding in a group; who it
   affects, in plain language; how to fix it, in the app's detected framework; an acceptance criterion
   you can turn into a checklist item; and provenance (scan date, Swipewalk version, ruleset version,
   rule id, and the finding id — see below).
+- **Conditions.** A ticket's "Conditions" section (and the last CSV columns, and a one-line "Conditions"
+  on each finding in the HTML and PDF report, which shows only what differs from the main capture) says which setup the finding came from: the text size (the
+  device's own, not changed by Swipewalk, or the large-text level tested, such as "Android font scale 2.0 (200%)" or the
+  level beyond 200%), light or dark appearance and portrait or landscape (when that rescan ran),
+  the reduced display size of the smaller-screen check, the evidence route (automated capture only, a TalkBack walk, an
+  Accessibility Inspector walk, VoiceOver captions captured while a person navigated, a keyboard walk, or a screen reader session driven by a tester), the screen and its place in
+  the run (screen N of M, and when it was scanned again). It only states what the run recorded: anything
+  else says "not recorded", for example the appearance of a scan where no appearance rescan was run. The
+  desktop app's exports show the same.
 - **`--format csv`** writes one row per finding with plain column headers (finding id, a `GroupId`
   column — filled in only when "Likely same root cause" grouping put this finding in a group,
   otherwise blank — title, kind, rule id, WCAG criteria, platform guideline, the ids of the laws and standards it's relevant to (all mapped ones, or just the `--standard` one), app
   id/version/platform/device/screen, element details, the finding's message, provenance, and the
-  manual-testing caveat repeated on every row) for bulk import into Jira, Azure Boards or GitHub. The
+  manual-testing caveat repeated on every row, then six condition columns at the very end: `TextSize`,
+  `Display`, `EvidenceRoute`, `Step`, `AppearanceCondition`, `OrientationCondition`) for bulk import into Jira, Azure Boards or GitHub. The
   `AppVersion` column is left empty (rather than "not available") for a finding where it couldn't be
   read, since that reads cleanly to most CSV importers. A CSV importer has nowhere to put an
   attachment, so this format never includes screenshots — `--no-screenshots` has no effect on it. A

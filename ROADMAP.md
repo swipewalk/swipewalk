@@ -5,6 +5,11 @@ are welcome: open an issue.
 
 ## Working now
 
+### New in 0.6.4
+
+- Exports state the conditions each finding was found under: a "Conditions" section in each ticket and six new columns at the end of the CSV (text size, appearance, orientation, reduced display size, how the evidence was gathered, and the screen's place in the run; anything the run did not record says "not recorded"), plus a one-line "Conditions" summary on each finding in the HTML and PDF report that shows only what differs from the main capture. A rescan shows only whether a finding is still found; manual testing is still required.
+- The README opens with an 18-second animated demo of a scan of the sample app (a still first, linked to the animation).
+
 ### New in 0.6.3
 
 - New check (Android): a text field that has a content description is listed for review (WCAG 4.1.2), with advice that follows Microsoft's guidance for .NET MAUI (use Placeholder, not SemanticProperties.Description). Google's own result for the same case is merged into it.
